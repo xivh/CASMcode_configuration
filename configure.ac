@@ -6,14 +6,14 @@ AC_INIT([CASM],
         m4_esyscmd([tr -d '\n' < ./casm_version.txt]),
         [casm-developers@lists.engr.ucsb.edu],
         [],
-        [https://github.com/prisms-center/CASMcode_monte])
+        [https://github.com/prisms-center/CASMcode_configuration])
 AC_CONFIG_AUX_DIR([build-aux]) #This is my doing
 AC_CONFIG_MACRO_DIR([build-aux/m4])
 #Rules to apply to every Makefile.am. Using tar-ustar due to loooooong file names (I'm looking at you Eigen)
 AM_INIT_AUTOMAKE([foreign subdir-objects 1.9 tar-ustar])
 
 
-AC_CONFIG_SRCDIR([src/casm/monte])
+AC_CONFIG_SRCDIR([src/casm/configuration])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.

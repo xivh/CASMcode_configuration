@@ -821,9 +821,9 @@ def main():
 
     chunk = make_aggregated_unit_test([
         {
-            "directory": "tests/unit/monte",
+            "directory": "tests/unit/configuration",
             "ldadd": [
-                "libcasm_monte.la"
+                "libcasm_configuration.la"
             ],
         }
     ])
@@ -839,7 +839,7 @@ def main():
         if "include/" in f
     ]
 
-    chunk = make_libcasm("monte", header_files,
+    chunk = make_libcasm("configuration", header_files,
                          libadd=["-lcasm_global", "-lcasm_crystallography"])
     target = os.path.join("src", "casm", "Makemodule.am")
     string_to_file(chunk, target)
