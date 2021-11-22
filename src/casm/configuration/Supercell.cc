@@ -9,11 +9,12 @@ Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
                      Superlattice const &_superlattice)
     : prim(_prim),
       superlattice(_superlattice),
-      unitcell_index_converter(_superlattice.transformation_matrix_to_super()),
+      unitcell_index_converter(superlattice.transformation_matrix_to_super()),
       unitcellcoord_index_converter(
-          _superlattice.transformation_matrix_to_super(),
-          _prim->basicstructure.basis().size()),
-      sym_info(_prim, _superlattice) {}
+          superlattice.transformation_matrix_to_super(),
+          prim->basicstructure.basis().size()),
+      sym_info(prim, superlattice, unitcell_index_converter,
+               unitcellcoord_index_converter) {}
 
 }  // namespace config
 }  // namespace CASM

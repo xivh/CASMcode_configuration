@@ -8,8 +8,11 @@ namespace config {
 
 /// \brief Data structure describing application of symmetry in a supercell
 struct SupercellSymInfo {
-  SupercellSymInfo(std::shared_ptr<Prim const> const &prim,
-                   Superlattice const &_superlattice);
+  /// \brief Constructor
+  SupercellSymInfo(
+      std::shared_ptr<Prim const> const &prim, Superlattice const &superlattice,
+      xtal::UnitCellIndexConverter const &unitcell_index_converter,
+      xtal::UnitCellCoordIndexConverter const &unitcellcoord_index_converter);
 
   /// \brief The subgroup of the prim factor group that leaves
   /// the supercell lattice vectors invariant

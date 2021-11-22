@@ -90,12 +90,12 @@ std::vector<ElementType> _make_subgroup_elements(
 }
 
 template <typename ElementType>
-std::vector<ElementType> _make_subgroup_multiplication_table(
+MultiplicationTable _make_subgroup_multiplication_table(
     std::shared_ptr<Group<ElementType> const> const &_head_group,
     std::set<Index> const &_head_group_index) {
   MultiplicationTable result(_head_group_index.size());
   MultiplicationTable const &head_group_table =
-      _head_group.multiplication_table;
+      _head_group->multiplication_table;
   Index N = head_group_table.size();
 
   for (Index index : _head_group_index) {
@@ -132,9 +132,6 @@ std::vector<ElementType> _make_subgroup_multiplication_table(
     }
 
     ++row;
-  }
-  for (Index index : _head_group_index) {
-    result.push_back(_head_group->element[index]);
   }
   return result;
 }
