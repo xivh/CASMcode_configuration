@@ -16,7 +16,7 @@ struct Group {
   Group(std::vector<ElementType> const &_element,
         MultiplicationTable const &_multiplication_table);
 
-  /// \brief Construct a sub group
+  /// \brief Construct a subgroup
   Group(std::shared_ptr<Group const> const &_head_group,
         std::set<Index> const &_head_group_index);
 
@@ -51,6 +51,14 @@ struct Group {
   ///       == element[inverse_index[i]] * element[i]
   std::vector<Index> const inverse_index;
 };
+
+template <typename ElementType,
+          typename MultiplyFunctionType = std::multiplies<ElementType>,
+          typename EqualToFunctionType = std::equal_to<ElementType>>
+Group<ElementType> make_group(
+    std::vector<ElementType> const &element,
+    MultiplyFunctionType multiply_f = MultiplyFunctionType(),
+    EqualToFunctionType equal_to_f = EqualToFunctionType());
 
 }  // namespace basic_symmetry
 }  // namespace CASM
@@ -166,7 +174,12 @@ inline std::vector<Index> _make_inverse_index(
 /// \brief Construct a head group
 ///
 /// \params _element Group elements, expected to be closed and sorted as desired
+/// \params _multiplication_table Contains indices of products,
+///     `_multiplication_table[i][j] == _element[i] * _element[j]`.
 ///
+/// Notes:
+/// - Use `make_group` to build the multiplication table from known
+///   multiplication and equals_to operations.
 template <typename ElementType>
 Group<ElementType>::Group(std::vector<ElementType> const &_element,
                           MultiplicationTable const &_multiplication_table)
@@ -176,7 +189,12 @@ Group<ElementType>::Group(std::vector<ElementType> const &_element,
       multiplication_table(_multiplication_table),
       inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {}
 
-/// \brief Construct a sub group
+/// \brief Construct a subgroup
+///
+/// \params _head_group The group that is the head group of this subgroup.
+/// \params _head_group_index Contains indices into `_head_group->element` of
+///     the members of the subgroup.
+///
 template <typename ElementType>
 Group<ElementType>::Group(
     std::shared_ptr<Group<ElementType> const> const &_head_group,
@@ -188,6 +206,34 @@ Group<ElementType>::Group(
       multiplication_table(Group_impl::_make_subgroup_multiplication_table(
           _head_group, _head_group_index)),
       inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {}
+
+template <typename ElementType, typename MultiplyFunctionType,
+          typename EqualToFunctionType>
+Group<ElementType> make_group(std::vector<ElementType> const &element,
+                              MultiplyFunctionType multiply_f,
+                              EqualToFunctionType equal_to_f) {
+  Index size = element.size();
+  MultiplicationTable multiplication_table(size);
+  auto begin = element.begin();
+  auto end = element.end();
+  for (Index i = 0; i < size; ++i) {
+    for (Index j = 0; j < size; ++j) {
+      ElementType product = multiply_f(element[i], element[j]);
+      auto unary_f = [&](ElementType const &lhs) {
+        return equal_to_f(lhs, product);
+      };
+      auto it = std::find_if(begin, end, unary_f);
+      if (it == end) {
+        throw std::runtime_error(
+            "Error in CASM::basic_symmetry::make_group: Failed to construct "
+            "multiplication table");
+      }
+
+      multiplication_table[i].push_back(std::distance(begin, it));
+    }
+  }
+  return Group<ElementType>(element, multiplication_table);
+}
 
 }  // namespace basic_symmetry
 }  // namespace CASM

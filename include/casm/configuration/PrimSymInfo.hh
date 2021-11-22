@@ -20,6 +20,9 @@ struct PrimSymInfo {
   std::shared_ptr<SymGroup const> factor_group;
 
   /// \brief Factor group elements without translations
+  ///
+  /// Notes:
+  /// - Degenerate symmetry operations will not be added
   std::shared_ptr<SymGroup const> point_group;
 
   /// \brief Describes how sublattices permute under symmetry
