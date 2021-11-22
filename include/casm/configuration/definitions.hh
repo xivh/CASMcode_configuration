@@ -122,6 +122,9 @@ Container &apply(Permutation const &perm, Container &before);
 template <typename Container>
 Container copy_apply(Permutation const &perm, Container const &before);
 
+/// \brief Make the inverse permutation
+Permutation inverse(Permutation const &perm);
+
 /// \brief Return permutation that is equivalent to applying two permutations
 /// sequentially (applied in the order 'first' then 'second')
 Permutation combined_permute(Permutation const &first,
@@ -154,6 +157,15 @@ Container copy_apply(Permutation const &perm, Container const &before) {
     after[i] = before[perm[i]];
   }
   return after;
+}
+
+/// \brief Make the inverse permutation
+inline Permutation inverse(Permutation const &perm) {
+  Permutation _inverse_perm(perm.size(), 0);
+  for (Index i = 0; i < perm.size(); i++) {
+    _inverse_perm[perm[i]] = i;
+  }
+  return _inverse_perm;
 }
 
 /// \brief Return permutation that is equivalent to applying two permutations
