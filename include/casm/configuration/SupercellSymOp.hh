@@ -42,6 +42,13 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
   SupercellSymOp(std::shared_ptr<Supercell const> const &_supercell,
                  Index _factor_group_index, Index _translation_index);
 
+  /// \brief Make supercell symop begin iterator
+  static SupercellSymOp begin(
+      std::shared_ptr<Supercell const> const &_supercell);
+
+  /// \brief Make supercell symop end iterator
+  static SupercellSymOp end(std::shared_ptr<Supercell const> const &_supercell);
+
   std::shared_ptr<Supercell const> const &supercell() const;
 
   Index factor_group_index() const;

@@ -25,6 +25,19 @@ SupercellSymOp::SupercellSymOp(
       m_translation_index(_translation_index),
       m_N_translation(m_supercell->sym_info.translation_permutations.size()) {}
 
+/// \brief Make supercell symop begin iterator
+SupercellSymOp SupercellSymOp::begin(
+    std::shared_ptr<Supercell const> const &_supercell) {
+  return SupercellSymOp(_supercell, 0, 0);
+}
+
+/// \brief Make supercell symop end iterator
+SupercellSymOp SupercellSymOp::end(
+    std::shared_ptr<Supercell const> const &_supercell) {
+  return SupercellSymOp(
+      _supercell, _supercell->sym_info.factor_group_permutations.size(), 0);
+}
+
 std::shared_ptr<Supercell const> const &SupercellSymOp::supercell() const {
   return m_supercell;
 }

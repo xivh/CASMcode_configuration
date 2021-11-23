@@ -12,8 +12,8 @@ namespace config {
 /// \param rep UnitCellCoordRep representation of the symmetry operation
 /// \param integral_site_coordinate Coordinate being transformed
 ///
-inline UnitCellCoord &apply(UnitCellCoordRep const &rep,
-                            UnitCellCoord &integral_site_coordinate) {
+UnitCellCoord &apply(UnitCellCoordRep const &rep,
+                     UnitCellCoord &integral_site_coordinate) {
   integral_site_coordinate = copy_apply(rep, integral_site_coordinate);
   return integral_site_coordinate;
 }
@@ -23,8 +23,8 @@ inline UnitCellCoord &apply(UnitCellCoordRep const &rep,
 /// \param rep UnitCellCoordRep representation of the symmetry operation
 /// \param integral_site_coordinate Coordinate being transformed
 ///
-inline UnitCellCoord copy_apply(UnitCellCoordRep const &rep,
-                                UnitCellCoord const &integral_site_coordinate) {
+UnitCellCoord copy_apply(UnitCellCoordRep const &rep,
+                         UnitCellCoord integral_site_coordinate) {
   UnitCell unitcell_indices =
       rep.point_matrix * integral_site_coordinate.unitcell() +
       rep.unitcell_indices[integral_site_coordinate.sublattice()];

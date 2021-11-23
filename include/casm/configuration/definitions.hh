@@ -146,7 +146,7 @@ Container &apply(Permutation const &perm, Container &before) {
 /// Container must support operator[] indexing and copy construction
 template <typename Container>
 Container copy_apply(Permutation const &perm, Container const &before) {
-  if (before.size() == perm.size()) {
+  if (before.size() != perm.size()) {
     throw std::runtime_error(
         "Error in copy_apply(Permutation const &, Container const &): "
         "permutation size does not match container size");

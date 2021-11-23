@@ -73,7 +73,7 @@ inline CASM::xtal::BasicStructure FCC_binary_prim() {
   lat << 0.0, 2.0, 2.0, 2.0, 0.0, 2.0, 2.0, 2.0, 0.0;
 
   BasicStructure struc{Lattice{lat}};
-  struc.set_title("FCC_ternary");
+  struc.set_title("FCC_binary");
 
   Molecule A = Molecule::make_atom("A");
   Molecule B = Molecule::make_atom("B");
@@ -103,6 +103,28 @@ inline CASM::xtal::BasicStructure FCC_ternary_prim() {
   struc.push_back(
       Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
            std::vector<Molecule>{A, B, C}));
+
+  return struc;
+}
+
+inline CASM::xtal::BasicStructure FCC_binary_disp_prim() {
+  using namespace CASM;
+  using namespace CASM::xtal;
+
+  // lattice vectors as cols
+  Eigen::Matrix3d lat;
+  lat << 0.0, 2.0, 2.0, 2.0, 0.0, 2.0, 2.0, 2.0, 0.0;
+
+  BasicStructure struc{Lattice{lat}};
+  struc.set_title("FCC_binary_disp");
+
+  Molecule A = Molecule::make_atom("A");
+  Molecule B = Molecule::make_atom("B");
+  SiteDoFSet disp_dofset{AnisoValTraits::disp()};
+
+  struc.push_back(
+      Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
+           std::vector<Molecule>{A, B}, std::vector<SiteDoFSet>{disp_dofset}));
 
   return struc;
 }
