@@ -116,6 +116,61 @@ TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, Test1) {
   EXPECT_TRUE(almost_equal(GLstrain_count, Eigen::VectorXd::Zero(6)));
 }
 
+TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestProduct) {
+  // test multiplication table
+  config::Configuration configuration(supercell);
+  clexulator::ConfigDoFValues dof_values = configuration.dof_values;
+  Index size = dof_values.occupation.size();
+  EXPECT_TRUE(almost_equal(dof_values.occupation, Eigen::VectorXi::Zero(size)));
+
+  auto begin_a = config::SupercellSymOp::begin(supercell);
+  auto begin_b = config::SupercellSymOp::begin(supercell);
+  auto end = config::SupercellSymOp::end(supercell);
+
+  dof_values.occupation(0) = 1;
+  dof_values.local_dof_values.at("disp")(0, 0) = 1.0;
+  dof_values.global_dof_values.at("GLstrain")(0) = 0.01;
+
+  for (auto it_a = begin_a; it_a != end; ++it_a) {
+    for (auto it_b = begin_b; it_b != end; ++it_b) {
+      clexulator::ConfigDoFValues ab =
+          copy_apply(*it_a, copy_apply(*it_b, dof_values));
+      auto product_it = it_a * it_b;
+      clexulator::ConfigDoFValues prod = copy_apply(*product_it, dof_values);
+      EXPECT_TRUE(almost_equal(ab.occupation, prod.occupation));
+      EXPECT_TRUE(almost_equal(ab.local_dof_values.at("disp"),
+                               prod.local_dof_values.at("disp")));
+      EXPECT_TRUE(almost_equal(ab.global_dof_values.at("GLstrain"),
+                               prod.global_dof_values.at("GLstrain")));
+    }
+  }
+}
+
+TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestInverse) {
+  // test inverse
+  config::Configuration configuration(supercell);
+  clexulator::ConfigDoFValues dof_values = configuration.dof_values;
+  Index size = dof_values.occupation.size();
+  EXPECT_TRUE(almost_equal(dof_values.occupation, Eigen::VectorXi::Zero(size)));
+
+  auto begin = config::SupercellSymOp::begin(supercell);
+  auto end = config::SupercellSymOp::end(supercell);
+
+  dof_values.occupation(0) = 1;
+  dof_values.local_dof_values.at("disp")(0, 0) = 1.0;
+  dof_values.global_dof_values.at("GLstrain")(0) = 0.01;
+
+  for (auto it = begin; it != end; ++it) {
+    clexulator::ConfigDoFValues transformed = copy_apply(*it, dof_values);
+    clexulator::ConfigDoFValues check = copy_apply(it.inverse(), transformed);
+    EXPECT_TRUE(almost_equal(check.occupation, dof_values.occupation));
+    EXPECT_TRUE(almost_equal(check.local_dof_values.at("disp"),
+                             dof_values.local_dof_values.at("disp")));
+    EXPECT_TRUE(almost_equal(check.global_dof_values.at("GLstrain"),
+                             dof_values.global_dof_values.at("GLstrain")));
+  }
+}
+
 class SupercellSymOpSimpleCubicIsingTest : public testing::Test {
  protected:
   SupercellSymOpSimpleCubicIsingTest() {
