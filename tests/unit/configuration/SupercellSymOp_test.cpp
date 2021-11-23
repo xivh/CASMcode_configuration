@@ -42,34 +42,28 @@ TEST_F(SupercellSymOpFCCTest, Test2) {
 TEST_F(SupercellSymOpFCCTest, Test3) {
   config::Configuration configuration(supercell);
   clexulator::ConfigDoFValues dof_values = configuration.dof_values;
-  Eigen::VectorXi zeros(supercell->unitcellcoord_index_converter.total_sites());
-  zeros.setZero();
-  EXPECT_TRUE(almost_equal(dof_values.occupation, zeros));
+  Index size = dof_values.occupation.size();
+  EXPECT_TRUE(almost_equal(dof_values.occupation, Eigen::VectorXi::Zero(size)));
 
   auto begin = config::SupercellSymOp::begin(supercell);
   auto end = config::SupercellSymOp::end(supercell);
 
-  // ConfigDoFValues copy_apply(SupercellSymOp const &op,
-  //                            ConfigDoFValues dof_values);
   dof_values.occupation(0) = 1;
-  Index size = dof_values.occupation.size();
-  Eigen::VectorXi count = Eigen::VectorXi::Zero(size);
+  Eigen::VectorXi occ_count = Eigen::VectorXi::Zero(size);
 
   for (auto it = begin; it != end; ++it) {
     clexulator::ConfigDoFValues transformed_dof_values =
         copy_apply(*it, dof_values);
-    std::cout << transformed_dof_values.occupation.transpose() << std::endl;
-    count += transformed_dof_values.occupation;
+    occ_count += transformed_dof_values.occupation;
   }
-  Eigen::VectorXi expected = Eigen::VectorXi::Constant(size, 48);
-  EXPECT_TRUE(almost_equal(count, expected));
+  EXPECT_TRUE(almost_equal(occ_count, Eigen::VectorXi::Constant(size, 48)));
 }
 
-class SupercellSymOpFCCDispTest : public testing::Test {
+class SupercellSymOpFCCTernaryGLStrainDispTest : public testing::Test {
  protected:
-  SupercellSymOpFCCDispTest() {
-    std::shared_ptr<config::Prim const> prim =
-        std::make_shared<config::Prim const>(test::FCC_binary_disp_prim());
+  SupercellSymOpFCCTernaryGLStrainDispTest() {
+    auto prim = std::make_shared<config::Prim const>(
+        test::FCC_ternary_GLstrain_disp_prim());
     Eigen::Matrix3l T;
     T << -1, 1, 1, 1, -1, 1, 1, 1, -1;
     supercell = std::make_shared<config::Supercell const>(prim, T);
@@ -78,12 +72,11 @@ class SupercellSymOpFCCDispTest : public testing::Test {
   std::shared_ptr<config::Supercell const> supercell;
 };
 
-TEST_F(SupercellSymOpFCCDispTest, Test1) {
+TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, Test1) {
   config::Configuration configuration(supercell);
   clexulator::ConfigDoFValues dof_values = configuration.dof_values;
-  Eigen::VectorXi zeros(supercell->unitcellcoord_index_converter.total_sites());
-  zeros.setZero();
-  EXPECT_TRUE(almost_equal(dof_values.occupation, zeros));
+  Index size = dof_values.occupation.size();
+  EXPECT_TRUE(almost_equal(dof_values.occupation, Eigen::VectorXi::Zero(size)));
 
   auto begin = config::SupercellSymOp::begin(supercell);
   auto end = config::SupercellSymOp::end(supercell);
@@ -92,13 +85,35 @@ TEST_F(SupercellSymOpFCCDispTest, Test1) {
   //                            ConfigDoFValues dof_values);
   dof_values.occupation(0) = 1;
   dof_values.local_dof_values.at("disp")(0, 0) = 1.0;
-  Eigen::VectorXi count = Eigen::VectorXi::Zero(4);
+  dof_values.global_dof_values.at("GLstrain")(0) = 0.01;
+  Eigen::VectorXi occ_count = Eigen::VectorXi::Zero(size);
+  Eigen::MatrixXd disp_count = Eigen::MatrixXd::Zero(3, size);
+  Eigen::VectorXd GLstrain_count = Eigen::VectorXd::Zero(6);
 
   for (auto it = begin; it != end; ++it) {
     clexulator::ConfigDoFValues transformed_dof_values =
         copy_apply(*it, dof_values);
-    std::cout << transformed_dof_values.occupation.transpose() << std::endl;
-    std::cout << transformed_dof_values.local_dof_values.at("disp") << std::endl
-              << std::endl;
+    occ_count += transformed_dof_values.occupation;
+    disp_count += transformed_dof_values.local_dof_values.at("disp");
+    GLstrain_count += transformed_dof_values.global_dof_values.at("GLstrain");
   }
+  EXPECT_TRUE(almost_equal(occ_count, Eigen::VectorXi::Constant(size, 48)));
+  EXPECT_TRUE(almost_equal(disp_count, Eigen::MatrixXd::Zero(3, size)));
+
+  // positive stretch gets transformed to positive x,y,z
+  Eigen::VectorXd expected(6);
+  expected << 0.01, 0.01, 0.01, 0.0, 0.0, 0.0;
+  expected *= 48.0 * 4.0 / 3.0;
+  EXPECT_TRUE(almost_equal(GLstrain_count, expected));
+
+  // shear gets transformed to +/- xy,yz,xz, averages to 0.0
+  dof_values.global_dof_values.at("GLstrain") = Eigen::VectorXd::Zero(6);
+  dof_values.global_dof_values.at("GLstrain")(4) = 0.01;
+  GLstrain_count = Eigen::VectorXd::Zero(6);
+  for (auto it = begin; it != end; ++it) {
+    clexulator::ConfigDoFValues transformed_dof_values =
+        copy_apply(*it, dof_values);
+    GLstrain_count += transformed_dof_values.global_dof_values.at("GLstrain");
+  }
+  EXPECT_TRUE(almost_equal(GLstrain_count, Eigen::VectorXd::Zero(6)));
 }
