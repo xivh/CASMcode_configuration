@@ -21,5 +21,32 @@ Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
     : Supercell(_prim, Superlattice(_prim->basicstructure.lattice(),
                                     _superlattice_matrix)) {}
 
+/// \brief Less than comparison of Supercell
+bool Supercell::operator<(Supercell const &B) const {
+  if (prim != B.prim) {
+    throw std::runtime_error(
+        "Error using Supercell::operator<(Supercell const &B): "
+        "Only Supercell with shared prim may be compared this way.");
+  }
+  if (superlattice.size() != B.superlattice.size()) {
+    return superlattice.size() < B.superlattice.size();
+  }
+  return superlattice.superlattice() < B.superlattice.superlattice();
+}
+
+/// \brief Equality comparison of Supercell
+bool Supercell::eq_impl(Supercell const &B) const {
+  if (this == &B) {
+    return true;
+  }
+  if (prim != B.prim) {
+    throw std::runtime_error(
+        "Error using Supercell::operator==(const Supercell& B): "
+        "Only Supercell with shared prim may be compared this way.");
+  }
+  return superlattice.transformation_matrix_to_super() ==
+         B.superlattice.transformation_matrix_to_super();
+}
+
 }  // namespace config
 }  // namespace CASM

@@ -1,6 +1,8 @@
 #include "casm/configuration/Configuration.hh"
 
 #include "casm/clexulator/ConfigDoFValuesTools.hh"
+#include "casm/configuration/ConfigCompare.hh"
+#include "casm/configuration/ConfigIsEquivalent.hh"
 
 namespace CASM {
 namespace config {
@@ -15,6 +17,27 @@ Configuration::Configuration(std::shared_ptr<Supercell const> const &_supercell)
 Configuration::Configuration(std::shared_ptr<Supercell const> const &_supercell,
                              clexulator::ConfigDoFValues const &_dof_values)
     : supercell(_supercell), dof_values(_dof_values) {}
+
+/// \brief Less than comparison of Configuration
+///
+/// - Must have the same Supercell
+bool Configuration::operator<(Configuration const &rhs) const {
+  ConfigCompare compare(*this);
+  return compare(rhs);
+}
+
+/// \brief Equality comparison of Configuration
+///
+/// - Must have the same Supercell
+/// - Checks that all DoF are the same, within tolerance
+bool Configuration::eq_impl(Configuration const &rhs) const {
+  if (supercell != rhs.supercell) {
+    return false;
+  }
+  double xtal_tol = supercell->prim->basicstructure.lattice().tol();
+  ConfigIsEquivalent equal_to(*this, xtal_tol);
+  return equal_to(rhs);
+}
 
 }  // namespace config
 }  // namespace CASM

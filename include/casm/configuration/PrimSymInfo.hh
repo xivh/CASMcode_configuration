@@ -28,6 +28,9 @@ struct PrimSymInfo {
   /// \brief Describes how sublattices permute under symmetry
   BasisPermutationSymGroupRep basis_permutation_symgroup_rep;
 
+  /// \brief True if any occupation DoF
+  bool has_occupation_dofs;
+
   /// \brief True if any permutation in occ_symgroup_rep is non-trivial
   bool has_aniso_occs;
 

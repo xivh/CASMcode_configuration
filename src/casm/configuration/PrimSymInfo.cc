@@ -67,10 +67,17 @@ PrimSymInfo::PrimSymInfo(BasicStructure const &basicstructure) {
     ++op_index;
   }
 
-  // Construct (OccSymGroupRep) occ_symgroup_rep & set (bool) has_aniso_occs;
+  // Construct (OccSymGroupRep) occ_symgroup_rep,
+  //   & set (bool) has_occupation_dofs & set (bool) has_aniso_occs
   auto const &basis = basicstructure.basis();
-  op_index = 0;
+  has_occupation_dofs = false;
+  for (Index b = 0; b < basis.size(); ++b) {
+    if (basis[b].occupant_dof().size() > 1) {
+      has_occupation_dofs = true;
+    }
+  }
   has_aniso_occs = false;
+  op_index = 0;
   for (SymOp const &op : fg_element) {
     // the rep is a vector of permutation (one per prim site), that are used
     // to generate the new occupant indices

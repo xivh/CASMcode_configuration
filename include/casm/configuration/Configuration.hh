@@ -4,13 +4,14 @@
 #include "casm/clexulator/ConfigDoFValues.hh"
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/definitions.hh"
+#include "casm/misc/Comparisons.hh"
 
 namespace CASM {
 namespace config {
 
 /// \brief Data structure encapsulating configuration DoF values and all
 /// information necessary to apply symmetry operations
-struct Configuration {
+struct Configuration : public Comparisons<CRTPBase<Configuration>> {
   Configuration(std::shared_ptr<Supercell const> const &_supercell);
 
   Configuration(std::shared_ptr<Supercell const> const &_supercell,
@@ -19,6 +20,15 @@ struct Configuration {
   std::shared_ptr<Supercell const> supercell;
 
   clexulator::ConfigDoFValues dof_values;
+
+  /// \brief Less than comparison of Configuration
+  bool operator<(Configuration const &rhs) const;
+
+ private:
+  friend struct Comparisons<CRTPBase<Configuration>>;
+
+  /// \brief Equality comparison of Configuration
+  bool eq_impl(Configuration const &rhs) const;
 };
 
 }  // namespace config

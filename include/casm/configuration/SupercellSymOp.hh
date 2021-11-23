@@ -55,6 +55,10 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
 
   Index translation_index() const;
 
+  /// \brief Returns the index of the site containing the site DoF values that
+  ///     will be permuted onto site i
+  Index permute_index(Index i) const;
+
   /// Returns a reference to this -- allows SupercellSymOp to be treated
   /// as an iterator to SupercellSymOp object
   SupercellSymOp const &operator*() const;

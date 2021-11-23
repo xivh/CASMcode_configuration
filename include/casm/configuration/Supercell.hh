@@ -5,13 +5,14 @@
 #include "casm/configuration/SupercellSymInfo.hh"
 #include "casm/crystallography/LinearIndexConverter.hh"
 #include "casm/crystallography/Superlattice.hh"
+#include "casm/misc/Comparisons.hh"
 
 namespace CASM {
 namespace config {
 
 /// \brief Specifies all the structural and symmetry information common for all
 /// configurations with the same supercell. All members are const.
-struct Supercell {
+struct Supercell : public Comparisons<CRTPBase<Supercell>> {
   Supercell(std::shared_ptr<Prim const> const &_prim,
             Superlattice const &_superlattice);
   Supercell(std::shared_ptr<Prim const> const &_prim,
@@ -37,6 +38,15 @@ struct Supercell {
   /// \brief Holds symmetry representations used for all configurations with
   /// the same supercell
   SupercellSymInfo const sym_info;
+
+  /// \brief Less than comparison of Supercell
+  bool operator<(Supercell const &B) const;
+
+ private:
+  friend struct Comparisons<CRTPBase<Supercell>>;
+
+  /// \brief Equality comparison of Supercell
+  bool eq_impl(Supercell const &rhs) const;
 };
 
 }  // namespace config

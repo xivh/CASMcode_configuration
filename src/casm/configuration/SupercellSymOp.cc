@@ -48,6 +48,20 @@ Index SupercellSymOp::factor_group_index() const {
 
 Index SupercellSymOp::translation_index() const { return m_translation_index; }
 
+/// \brief Returns the index of the site containing the site DoF values that
+///     will be permuted onto site i
+///
+/// Permutation of configuration site dof values occurs according to:
+///     after[i] = before[permute_index(i)]
+Index SupercellSymOp::permute_index(Index i) const {
+  SupercellSymInfo const &sym_info = m_supercell->sym_info;
+  auto const &fg_perm =
+      sym_info.factor_group_permutations[m_factor_group_index];
+  auto const &trans_perm =
+      sym_info.translation_permutations[m_translation_index];
+  return fg_perm[trans_perm[i]];
+}
+
 /// Returns a reference to this -- allows SupercellSymOp to be treated as an
 /// iterator to SupercellSymOp object
 SupercellSymOp const &SupercellSymOp::operator*() const { return *this; }
