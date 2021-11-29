@@ -1,6 +1,8 @@
 #ifndef CASM_config_SupercellSymOp
 #define CASM_config_SupercellSymOp
 
+#include <iterator>
+
 #include "casm/configuration/definitions.hh"
 #include "casm/misc/Comparisons.hh"
 
@@ -35,6 +37,12 @@ namespace config {
 /// \endcode
 class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
  public:
+  using iterator_category = std::bidirectional_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using value_type = SupercellSymOp;
+  using pointer = SupercellSymOp *;
+  using reference = SupercellSymOp &;
+
   /// Default invalid SupercellSymOp, not equal to end iterator
   SupercellSymOp();
 

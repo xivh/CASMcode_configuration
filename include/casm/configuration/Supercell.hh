@@ -14,6 +14,8 @@ namespace config {
 /// configurations with the same supercell. All members are const.
 struct Supercell : public Comparisons<CRTPBase<Supercell>> {
   Supercell(std::shared_ptr<Prim const> const &_prim,
+            Lattice const &_superlattice);
+  Supercell(std::shared_ptr<Prim const> const &_prim,
             Superlattice const &_superlattice);
   Supercell(std::shared_ptr<Prim const> const &_prim,
             Eigen::Matrix3l const &_superlattice_matrix);

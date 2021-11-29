@@ -342,8 +342,8 @@ class Local {
     using clexulator::sublattice_block;
     if (A.factor_group_index() != m_fg_index_A || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = A.supercell()->prim->sym_info;
+      m_fg_index_A = A.factor_group_index();
       for (Index b = 0; b < m_n_sublat; ++b) {
-        m_fg_index_A = A.factor_group_index();
         Eigen::MatrixXd const &M =
             prim_sym_info.local_dof_symgroup_rep.at(m_key)[m_fg_index_A][b];
         Index dim = M.cols();
@@ -357,8 +357,8 @@ class Local {
     using clexulator::sublattice_block;
     if (B.factor_group_index() != m_fg_index_B || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = B.supercell()->prim->sym_info;
+      m_fg_index_B = B.factor_group_index();
       for (Index b = 0; b < m_n_sublat; ++b) {
-        m_fg_index_B = B.factor_group_index();
         Eigen::MatrixXd const &M =
             prim_sym_info.local_dof_symgroup_rep.at(m_key)[m_fg_index_B][b];
         Index dim = M.cols();
@@ -412,7 +412,7 @@ class Local {
   Index m_n_vol;
 
   // Tolerance for comparisons
-  bool m_tol;
+  double m_tol;
 
   // Set to false when comparison is made to "other" ConfigDoF, to force update
   // of temporary dof during the next comparison

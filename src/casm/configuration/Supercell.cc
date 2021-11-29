@@ -6,6 +6,11 @@ namespace CASM {
 namespace config {
 
 Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
+                     Lattice const &_superlattice)
+    : Supercell(_prim,
+                Superlattice(_prim->basicstructure.lattice(), _superlattice)) {}
+
+Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
                      Superlattice const &_superlattice)
     : prim(_prim),
       superlattice(_superlattice),

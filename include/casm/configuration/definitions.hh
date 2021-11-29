@@ -52,6 +52,7 @@ struct ConfigDoFValues;
 
 namespace xtal {
 class BasicStructure;
+class Lattice;
 class SimpleStructure;
 class Superlattice;
 struct SymOp;
@@ -65,6 +66,7 @@ namespace config {
 
 using clexulator::ConfigDoFValues;
 using xtal::BasicStructure;
+using xtal::Lattice;
 using xtal::SimpleStructure;
 using xtal::Superlattice;
 using xtal::SymOp;
