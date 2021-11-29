@@ -3,6 +3,7 @@
 #include "casm/clexulator/ConfigDoFValuesTools.hh"
 #include "casm/configuration/ConfigCompare.hh"
 #include "casm/configuration/ConfigIsEquivalent.hh"
+#include "casm/configuration/SupercellSymOp.hh"
 
 namespace CASM {
 namespace config {
@@ -37,6 +38,20 @@ bool Configuration::eq_impl(Configuration const &rhs) const {
   double xtal_tol = supercell->prim->basicstructure.lattice().tol();
   ConfigIsEquivalent equal_to(*this, xtal_tol);
   return equal_to(rhs);
+}
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+/// Configuration
+Configuration &apply(SupercellSymOp const &op, Configuration &configuration) {
+  apply(op, configuration.dof_values);
+  return configuration;
+}
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+/// Configuration
+Configuration copy_apply(SupercellSymOp const &op,
+                         Configuration configuration) {
+  return apply(op, configuration);
 }
 
 }  // namespace config

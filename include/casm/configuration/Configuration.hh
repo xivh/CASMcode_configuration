@@ -31,6 +31,16 @@ struct Configuration : public Comparisons<CRTPBase<Configuration>> {
   bool eq_impl(Configuration const &rhs) const;
 };
 
+class SupercellSymOp;
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+/// Configuration
+Configuration &apply(SupercellSymOp const &op, Configuration &configuration);
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+/// Configuration
+Configuration copy_apply(SupercellSymOp const &op, Configuration configuration);
+
 }  // namespace config
 }  // namespace CASM
 

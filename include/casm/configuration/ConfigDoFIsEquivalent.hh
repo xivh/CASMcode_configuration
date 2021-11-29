@@ -3,6 +3,8 @@
 
 #include "casm/clexulator/ConfigDoFValues.hh"
 #include "casm/clexulator/ConfigDoFValuesTools.hh"
+#include "casm/configuration/PrimSymInfo.hh"
+#include "casm/configuration/Supercell.hh"
 #include "casm/configuration/SupercellSymOp.hh"
 
 namespace CASM {
