@@ -187,9 +187,12 @@ class AnisoOccupation {
       m_fg_index_A = A.factor_group_index();
       Index l = 0;
       PrimSymInfo const &prim_sym_info = A.supercell()->prim->sym_info;
+      SupercellSymInfo const &supercell_sym_info = A.supercell()->sym_info;
+      Index prim_fg_index =
+          supercell_sym_info.factor_group->head_group_index[m_fg_index_A];
       for (Index b = 0; b < m_n_sublat; ++b) {
         Permutation const &occ_perm =
-            prim_sym_info.occ_symgroup_rep[A.factor_group_index()][b];
+            prim_sym_info.occ_symgroup_rep[prim_fg_index][b];
         for (Index n = 0; n < m_n_vol; ++n, ++l) {
           m_new_occ_A[l] = occ_perm[before[l]];
         }
@@ -202,9 +205,12 @@ class AnisoOccupation {
       m_fg_index_B = B.factor_group_index();
       Index l = 0;
       PrimSymInfo const &prim_sym_info = B.supercell()->prim->sym_info;
+      SupercellSymInfo const &supercell_sym_info = B.supercell()->sym_info;
+      Index prim_fg_index =
+          supercell_sym_info.factor_group->head_group_index[m_fg_index_B];
       for (Index b = 0; b < m_n_sublat; ++b) {
         Permutation const &occ_perm =
-            prim_sym_info.occ_symgroup_rep[B.factor_group_index()][b];
+            prim_sym_info.occ_symgroup_rep[prim_fg_index][b];
         for (Index n = 0; n < m_n_vol; ++n, ++l) {
           m_new_occ_B[l] = occ_perm[before[l]];
         }
@@ -343,9 +349,12 @@ class Local {
     if (A.factor_group_index() != m_fg_index_A || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = A.supercell()->prim->sym_info;
       m_fg_index_A = A.factor_group_index();
+      SupercellSymInfo const &supercell_sym_info = A.supercell()->sym_info;
+      Index prim_fg_index =
+          supercell_sym_info.factor_group->head_group_index[m_fg_index_A];
       for (Index b = 0; b < m_n_sublat; ++b) {
         Eigen::MatrixXd const &M =
-            prim_sym_info.local_dof_symgroup_rep.at(m_key)[m_fg_index_A][b];
+            prim_sym_info.local_dof_symgroup_rep.at(m_key)[prim_fg_index][b];
         Index dim = M.cols();
         sublattice_block(m_new_dof_A, b, m_n_vol).topRows(dim) =
             M * sublattice_block(before, b, m_n_vol).topRows(dim);
@@ -358,9 +367,12 @@ class Local {
     if (B.factor_group_index() != m_fg_index_B || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = B.supercell()->prim->sym_info;
       m_fg_index_B = B.factor_group_index();
+      SupercellSymInfo const &supercell_sym_info = B.supercell()->sym_info;
+      Index prim_fg_index =
+          supercell_sym_info.factor_group->head_group_index[m_fg_index_B];
       for (Index b = 0; b < m_n_sublat; ++b) {
         Eigen::MatrixXd const &M =
-            prim_sym_info.local_dof_symgroup_rep.at(m_key)[m_fg_index_B][b];
+            prim_sym_info.local_dof_symgroup_rep.at(m_key)[prim_fg_index][b];
         Index dim = M.cols();
         sublattice_block(m_new_dof_B, b, m_n_vol).topRows(dim) =
             M * sublattice_block(before, b, m_n_vol).topRows(dim);
@@ -496,8 +508,11 @@ class Global {
     if (A.factor_group_index() != m_fg_index_A || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = A.supercell()->prim->sym_info;
       m_fg_index_A = A.factor_group_index();
+      SupercellSymInfo const &supercell_sym_info = A.supercell()->sym_info;
+      Index prim_fg_index =
+          supercell_sym_info.factor_group->head_group_index[m_fg_index_A];
       Eigen::MatrixXd const &M =
-          prim_sym_info.global_dof_symgroup_rep.at(m_key)[m_fg_index_A];
+          prim_sym_info.global_dof_symgroup_rep.at(m_key)[prim_fg_index];
       m_new_dof_A = M * before;
     }
   }
@@ -506,8 +521,11 @@ class Global {
     if (B.factor_group_index() != m_fg_index_B || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = B.supercell()->prim->sym_info;
       m_fg_index_B = B.factor_group_index();
+      SupercellSymInfo const &supercell_sym_info = B.supercell()->sym_info;
+      Index prim_fg_index =
+          supercell_sym_info.factor_group->head_group_index[m_fg_index_B];
       Eigen::MatrixXd const &M =
-          prim_sym_info.global_dof_symgroup_rep.at(m_key)[m_fg_index_B];
+          prim_sym_info.global_dof_symgroup_rep.at(m_key)[prim_fg_index];
       m_new_dof_B = M * before;
     }
   }

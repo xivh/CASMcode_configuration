@@ -38,6 +38,18 @@ SupercellSymOp SupercellSymOp::end(
       _supercell, _supercell->sym_info.factor_group_permutations.size(), 0);
 }
 
+/// \brief Make translations supercell symop begin iterator
+SupercellSymOp SupercellSymOp::translation_begin(
+    std::shared_ptr<Supercell const> const &_supercell) {
+  return SupercellSymOp(_supercell, 0, 0);
+}
+
+/// \brief Make translations supercell symop end iterator
+SupercellSymOp SupercellSymOp::translation_end(
+    std::shared_ptr<Supercell const> const &_supercell) {
+  return SupercellSymOp(_supercell, 1, 0);
+}
+
 std::shared_ptr<Supercell const> const &SupercellSymOp::supercell() const {
   return m_supercell;
 }

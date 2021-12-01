@@ -16,8 +16,6 @@ namespace config {
 /// Notes:
 /// - Uses basicstructure.lattice().tol() for symmetry finding
 PrimSymInfo::PrimSymInfo(BasicStructure const &basicstructure) {
-  // TODO: set the following
-
   xtal::Lattice const &lattice = basicstructure.lattice();
   double xtal_tol = lattice.tol();
   std::multiplies<SymOp> multiply_f;
