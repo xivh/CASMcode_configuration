@@ -11,16 +11,13 @@ struct SymOp;
 }  // namespace xtal
 namespace config {
 
-/// \brief Make the canonical supercell name of a superlattice
-std::string make_canonical_supercell_name(
-    std::vector<xtal::SymOp> const &point_group,
-    xtal::Lattice const &prim_lattice, xtal::Lattice const &superlattice);
+/// \brief Make the supercell name of a superlattice
+std::string make_supercell_name(xtal::Lattice const &prim_lattice,
+                                xtal::Lattice const &superlattice);
 
-/// \brief Construct a superlattice, in canonical form, from the
-///     canonical supercell name
-xtal::Lattice make_superlattice_from_canonical_supercell_name(
-    std::vector<xtal::SymOp> const &point_group,
-    xtal::Lattice const &prim_lattice, std::string canonical_supercell_name);
+/// \brief Construct a superlattice from the supercell name
+xtal::Lattice make_superlattice_from_supercell_name(
+    xtal::Lattice const &prim_lattice, std::string supercell_name);
 
 }  // namespace config
 }  // namespace CASM
