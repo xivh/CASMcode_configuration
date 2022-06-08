@@ -1,6 +1,8 @@
 #ifndef CASM_config_canonical_form
 #define CASM_config_canonical_form
 
+#include <set>
+
 #include "casm/configuration/definitions.hh"
 
 namespace CASM {
@@ -68,6 +70,24 @@ template <typename SupercellSymOpIt>
 std::vector<Configuration> make_equivalents(Configuration const &configuration,
                                             SupercellSymOpIt begin,
                                             SupercellSymOpIt end);
+
+/// \brief Return true if the operation does not mix given sites and other sites
+bool site_indices_are_invariant(SupercellSymOp const &op,
+                                std::set<Index> const &site_indices);
+
+/// \brief Return the subgroup of [begin, end] that does not mix given sites and
+///     other sites
+template <typename SupercellSymOpIt>
+std::vector<SupercellSymOp> make_invariant_subgroup(
+    std::set<Index> const &site_indices, SupercellSymOpIt begin,
+    SupercellSymOpIt end);
+
+/// \brief Return the subgroup of [begin, end] that leaves configuration
+///     invariant and does not mix given sites and other sites
+template <typename SupercellSymOpIt>
+std::vector<SupercellSymOp> make_invariant_subgroup(
+    Configuration const &configuration, std::set<Index> const &site_indices,
+    SupercellSymOpIt begin, SupercellSymOpIt end);
 
 }  // namespace config
 }  // namespace CASM
@@ -177,6 +197,34 @@ std::vector<Configuration> make_equivalents(Configuration const &configuration,
     equivalents.emplace(copy_apply(*it, configuration));
   }
   return std::vector<Configuration>(equivalents.begin(), equivalents.end());
+}
+
+/// \brief Return the subgroup of [begin, end] that does not mix given sites and
+///     other sites
+template <typename SupercellSymOpIt>
+std::vector<SupercellSymOp> make_invariant_subgroup(
+    std::set<Index> const &site_indices, SupercellSymOpIt begin,
+    SupercellSymOpIt end) {
+  std::vector<SupercellSymOp> invariant_subgroup;
+
+  for (auto it = begin; it != end; ++it) {
+    if (site_indices_are_invariant(*it, site_indices)) {
+      invariant_subgroup.push_back(*it);
+    }
+  }
+  return invariant_subgroup;
+}
+
+/// \brief Return the subgroup of [begin, end] that leaves configuration
+///     invariant and does not mix given sites and other sites
+template <typename SupercellSymOpIt>
+std::vector<SupercellSymOp> make_invariant_subgroup(
+    Configuration const &configuration, std::set<Index> const &site_indices,
+    SupercellSymOpIt begin, SupercellSymOpIt end) {
+  std::vector<SupercellSymOp> config_factor_group =
+      make_invariant_subgroup(configuration, begin, end);
+  return make_invariant_subgroup(site_indices, config_factor_group.begin(),
+                                 config_factor_group.end());
 }
 
 }  // namespace config

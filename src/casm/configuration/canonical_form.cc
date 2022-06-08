@@ -102,5 +102,18 @@ std::vector<std::shared_ptr<Supercell const>> make_equivalents(
   return result;
 }
 
+/// \brief Return true if the operation does not mix given sites and other sites
+bool site_indices_are_invariant(SupercellSymOp const &op,
+                                std::set<Index> const &site_indices) {
+  // Applying the operation indicated by `op` moves the value from
+  // site index `op.permute_index(s)` to site index `s`, for each `s` in
+  // the set. Therefore, if none of `op.permute_index(s)` are outside the
+  // set `site_indices` the sites are invariant.
+
+  return std::none_of(site_indices.begin(), site_indices.end(), [&](Index s) {
+    return site_indices.count(op.permute_index(s)) == 0;
+  });
+}
+
 }  // namespace config
 }  // namespace CASM
