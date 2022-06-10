@@ -1,10 +1,11 @@
-#ifndef CASM_basic_symmetry_subgroups
-#define CASM_basic_symmetry_subgroups
+#ifndef CASM_configuration_basic_symmetry_subgroups
+#define CASM_configuration_basic_symmetry_subgroups
 
-#include "casm/basic_symmetry/Group.hh"
-#include "casm/basic_symmetry/definitions.hh"
+#include "casm/configuration/basic_symmetry/Group.hh"
+#include "casm/configuration/basic_symmetry/definitions.hh"
 
 namespace CASM {
+namespace config {
 namespace basic_symmetry {
 
 typedef std::set<Index> SubgroupIndices;
@@ -17,6 +18,7 @@ template <typename ElementType>
 std::set<SubgroupOrbit> make_all_subgroups(Group<ElementType> const &group);
 
 }  // namespace basic_symmetry
+}  // namespace config
 }  // namespace CASM
 
 // --- Implementation ---
@@ -24,6 +26,7 @@ std::set<SubgroupOrbit> make_all_subgroups(Group<ElementType> const &group);
 #include <numeric>
 
 namespace CASM {
+namespace config {
 namespace basic_symmetry {
 
 namespace subgroups_impl {
@@ -212,6 +215,7 @@ std::set<SubgroupOrbit> make_all_subgroups(Group<ElementType> const &group) {
 }
 
 }  // namespace basic_symmetry
+}  // namespace config
 }  // namespace CASM
 
 #endif

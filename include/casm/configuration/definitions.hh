@@ -41,11 +41,6 @@
 
 namespace CASM {
 
-namespace basic_symmetry {
-template <typename ElementType>
-struct Group;
-}
-
 namespace clexulator {
 struct ConfigDoFValues;
 }
@@ -63,6 +58,10 @@ class UnitCellCoordIndexConverter;
 }  // namespace xtal
 
 namespace config {
+namespace basic_symmetry {
+template <typename ElementType>
+struct Group;
+}
 
 using clexulator::ConfigDoFValues;
 using xtal::BasicStructure;

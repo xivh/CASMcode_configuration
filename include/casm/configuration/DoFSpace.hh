@@ -37,6 +37,9 @@ struct DoFSpace {
   /// "Hstrain", "occ")
   DoFKey const dof_key;
 
+  /// Store if dof_key names a global DoF type vs local DoF type
+  bool is_global;
+
   /// Shared prim
   std::shared_ptr<Prim const> const prim;
 
@@ -54,6 +57,9 @@ struct DoFSpace {
   /// The DoF space basis, as a column vector matrix. May be a subspace (cols <=
   /// rows).
   Eigen::MatrixXd const basis;
+
+  /// The pseudo-inverse of basis.
+  Eigen::MatrixXd const basis_inv;
 
   /// The DoF subspace dimension (equal to number of columns in basis).
   Index const subspace_dim;
@@ -120,33 +126,33 @@ bool is_valid_dof_space(Configuration const &config, DoFSpace const &dof_space);
 void throw_if_invalid_dof_space(Configuration const &config,
                                 DoFSpace const &dof_space);
 
-/// Perform conversions between DoFSpace site indices to config site indices
+/// \brief Perform conversions between site indices for an
+///     arbitrary supercell and the supercell of a DoFSpace
 struct DoFSpaceIndexConverter {
-  DoFSpaceIndexConverter(Configuration const &config,
-                         DoFSpace const &dof_space);
+  DoFSpaceIndexConverter(Supercell const &supercell, DoFSpace const &dof_space);
 
   std::shared_ptr<Prim const> const prim;
-  xtal::UnitCellCoordIndexConverter const &config_index_converter;
+  xtal::UnitCellCoordIndexConverter const &supercell_index_converter;
   xtal::UnitCellCoordIndexConverter const dof_space_index_converter;
 
   /// Perform conversion from Coordinate to DoFSpace site index
   Index dof_space_site_index(xtal::Coordinate const &coord,
                              double tol = TOL) const;
 
-  /// Perform conversion from DoFSpace site index to config site index
-  Index dof_space_site_index(Index config_site_index) const;
+  /// Perform conversion from DoFSpace site index to supercell site index
+  Index dof_space_site_index(Index supercell_site_index) const;
 
-  /// Perform conversion from Coordinate to config site index
-  Index config_site_index(xtal::Coordinate const &coord,
-                          double tol = TOL) const;
+  /// Perform conversion from Coordinate to supercell site index
+  Index supercell_site_index(xtal::Coordinate const &coord,
+                             double tol = TOL) const;
 
-  /// Perform conversion from DoFSpace site index to config site index
-  Index config_site_index(Index dof_space_site_index) const;
+  /// Perform conversion from DoFSpace site index to supercell site index
+  Index supercell_site_index(Index dof_space_site_index) const;
 
-  /// \brief Perform conversion from DoFSpace site index to config site index,
-  /// with additional translation within config
-  Index config_site_index(Index dof_space_site_index,
-                          UnitCell const &translation) const;
+  /// \brief Perform conversion from DoFSpace site index to supercell site
+  /// index, with additional translation within supercell
+  Index supercell_site_index(Index dof_space_site_index,
+                             UnitCell const &translation) const;
 };
 
 /// \brief Removes the homogeneous mode space from the DoFSpace basis

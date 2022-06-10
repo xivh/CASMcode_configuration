@@ -1,12 +1,13 @@
-#ifndef CASM_basic_symmetry_Group
-#define CASM_basic_symmetry_Group
+#ifndef CASM_configuration_basic_symmetry_Group
+#define CASM_configuration_basic_symmetry_Group
 
 #include <memory>
 #include <set>
 
-#include "casm/basic_symmetry/definitions.hh"
+#include "casm/configuration/basic_symmetry/definitions.hh"
 
 namespace CASM {
+namespace config {
 namespace basic_symmetry {
 
 /// \brief Holds group elements and multiplication table
@@ -61,6 +62,7 @@ Group<ElementType> make_group(
     EqualToFunctionType equal_to_f = EqualToFunctionType());
 
 }  // namespace basic_symmetry
+}  // namespace config
 }  // namespace CASM
 
 // --- Implementation ---
@@ -68,6 +70,7 @@ Group<ElementType> make_group(
 #include <numeric>
 
 namespace CASM {
+namespace config {
 namespace basic_symmetry {
 
 namespace Group_impl {
@@ -233,6 +236,7 @@ Group<ElementType> make_group(std::vector<ElementType> const &element,
 }
 
 }  // namespace basic_symmetry
+}  // namespace config
 }  // namespace CASM
 
 #endif

@@ -12,8 +12,8 @@
 // Allowed dependencies:
 // - CASMcode_global
 
-#ifndef CASM_basic_symmetry_definitions
-#define CASM_basic_symmetry_definitions
+#ifndef CASM_configuration_basic_symmetry_definitions
+#define CASM_configuration_basic_symmetry_definitions
 
 #include <memory>
 #include <vector>
@@ -21,7 +21,7 @@
 #include "casm/external/Eigen/Dense"
 
 namespace CASM {
-
+namespace config {
 namespace basic_symmetry {
 
 typedef long Index;
@@ -39,6 +39,7 @@ struct Group;
 typedef std::vector<std::vector<Index>> MultiplicationTable;
 
 }  // namespace basic_symmetry
+}  // namespace config
 }  // namespace CASM
 
 #endif

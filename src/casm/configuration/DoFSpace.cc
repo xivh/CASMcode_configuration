@@ -92,6 +92,7 @@ DoFSpace::DoFSpace(
     std::optional<Eigen::MatrixXd> &&_basis,
     AnisoValTraits const &_aniso_val_traits, DoFSpaceAxisInfo &&_axis_info)
     : dof_key(std::move(_dof_key)),
+      is_global(_aniso_val_traits.global()),
       prim(std::move(_prim)),
       transformation_matrix_to_super(
           std::move(_transformation_matrix_to_super)),
@@ -100,9 +101,13 @@ DoFSpace::DoFSpace(
                                   transformation_matrix_to_super, sites)),
       basis(_basis.has_value() ? _basis.value()
                                : Eigen::MatrixXd::Identity(dim, dim)),
+      basis_inv(basis.transpose()
+                    .colPivHouseholderQr()
+                    .solve(Eigen::MatrixXd::Identity(dim, dim))
+                    .transpose()),
       subspace_dim(basis.cols()),
       axis_info(std::move(_axis_info)) {
-  if (_aniso_val_traits.global()) {
+  if (is_global) {
     if (transformation_matrix_to_super.has_value()) {
       std::stringstream msg;
       msg << "Error constructing DoFSpace: transformation_matrix_to_super has "
@@ -214,7 +219,7 @@ void set_dof_value(Configuration &config, DoFSpace const &dof_space,
   auto const &dof_key = dof_space.dof_key;
   auto const &basis = dof_space.basis;
 
-  if (AnisoValTraits(dof_key).global()) {
+  if (dof_space.is_global) {
     config.dof_values.global_dof_values.at(dof_key) =
         basis * dof_space_coordinate;
   } else {
@@ -282,7 +287,7 @@ bool includes_all_sites(DoFSpace const &dof_space) {
 /// - For local DoF, that the transformation_matrix_to_super are equivalent
 bool is_valid_dof_space(Configuration const &config,
                         DoFSpace const &dof_space) {
-  if (!AnisoValTraits(dof_space.dof_key).global()) {
+  if (!dof_space.is_global) {
     if (config.supercell->prim != dof_space.prim) {
       return false;
     }
@@ -304,16 +309,16 @@ void throw_if_invalid_dof_space(Configuration const &config,
   }
 }
 
-DoFSpaceIndexConverter::DoFSpaceIndexConverter(Configuration const &config,
+DoFSpaceIndexConverter::DoFSpaceIndexConverter(Supercell const &supercell,
                                                DoFSpace const &dof_space)
     : prim(dof_space.prim),
-      config_index_converter(config.supercell->unitcellcoord_index_converter),
+      supercell_index_converter(supercell.unitcellcoord_index_converter),
       dof_space_index_converter(
           dof_space.transformation_matrix_to_super.value(),
           dof_space.prim->basicstructure.basis().size()) {
-  if (config.supercell->prim != dof_space.prim) {
+  if (supercell.prim != dof_space.prim) {
     std::stringstream msg;
-    msg << "Error in DoFSpaceIndexConverter: Configuration and DoFSpace must "
+    msg << "Error in DoFSpaceIndexConverter: Supercell and DoFSpace must "
            "share the same prim."
         << std::endl;
     throw std::runtime_error(msg.str());
@@ -328,43 +333,43 @@ Index DoFSpaceIndexConverter::dof_space_site_index(
   return dof_space_index_converter(bijk);
 }
 
-/// Perform conversion from DoFSpace site index to config site index
+/// Perform conversion from DoFSpace site index to supercell site index
 Index DoFSpaceIndexConverter::dof_space_site_index(
-    Index config_site_index) const {
-  xtal::UnitCellCoord bijk = config_index_converter(config_site_index);
+    Index supercell_site_index) const {
+  xtal::UnitCellCoord bijk = supercell_index_converter(supercell_site_index);
   return dof_space_index_converter(bijk);
 }
 
-/// Perform conversion from Coordinate to config site index
-Index DoFSpaceIndexConverter::config_site_index(xtal::Coordinate const &coord,
-                                                double tol) const {
+/// Perform conversion from Coordinate to supercell site index
+Index DoFSpaceIndexConverter::supercell_site_index(
+    xtal::Coordinate const &coord, double tol) const {
   xtal::UnitCellCoord bijk =
       UnitCellCoord::from_coordinate(prim->basicstructure, coord, tol);
-  return config_index_converter(bijk);
+  return supercell_index_converter(bijk);
 }
 
-/// Perform conversion from DoFSpace site index to config site index
-Index DoFSpaceIndexConverter::config_site_index(
+/// Perform conversion from DoFSpace site index to supercell site index
+Index DoFSpaceIndexConverter::supercell_site_index(
     Index dof_space_site_index) const {
   xtal::UnitCellCoord bijk = dof_space_index_converter(dof_space_site_index);
-  return config_index_converter(bijk);
+  return supercell_index_converter(bijk);
 }
 
-/// \brief Perform conversion from DoFSpace site index to config site index,
-/// with additional translation within config
+/// \brief Perform conversion from DoFSpace site index to supercell site index,
+/// with additional translation within supercell
 ///
 /// Equivalent to:
 /// \code
 /// xtal::UnitCellCoord bijk =
 ///     dof_space_index_converter(dof_space_site_index);
 /// bijk += translation;
-/// return config_index_converter(bijk);
+/// return supercell_index_converter(bijk);
 /// \endcode
-Index DoFSpaceIndexConverter::config_site_index(
+Index DoFSpaceIndexConverter::supercell_site_index(
     Index dof_space_site_index, UnitCell const &translation) const {
   xtal::UnitCellCoord bijk = dof_space_index_converter(dof_space_site_index);
   bijk += translation;
-  return config_index_converter(bijk);
+  return supercell_index_converter(bijk);
 }
 
 /// \brief Removes the homogeneous mode space from the DoFSpace basis
@@ -376,8 +381,8 @@ Index DoFSpaceIndexConverter::config_site_index(
 /// \returns A copy of dof_space with basis modified to remove homogeneous
 /// modes.
 DoFSpace exclude_homogeneous_mode_space(DoFSpace const &dof_space) {
-  if (AnisoValTraits(dof_space.dof_key).global() ||
-      dof_space.dof_key == "occ" || !includes_all_sites(dof_space)) {
+  if (dof_space.is_global || dof_space.dof_key == "occ" ||
+      !includes_all_sites(dof_space)) {
     std::stringstream msg;
     msg << "Error in exclude_homogeneous_mode_space: Must be a DoF space for a "
            "local continuous degrees of freedom that includes all sites in the "
@@ -450,8 +455,8 @@ DoFSpace exclude_homogeneous_mode_space(DoFSpace const &dof_space) {
 /// Note that the lines above represent blocks equal to the dimension of the
 /// DoF basis on each site.
 Eigen::MatrixXd make_homogeneous_mode_space(DoFSpace const &dof_space) {
-  if (AnisoValTraits(dof_space.dof_key).global() ||
-      dof_space.dof_key == "occ" || !includes_all_sites(dof_space)) {
+  if (dof_space.is_global || dof_space.dof_key == "occ" ||
+      !includes_all_sites(dof_space)) {
     std::stringstream msg;
     msg << "Error in make_homogeneous_mode_space: Must be a DoF space for a "
            "local continuous degrees of freedom that includes all sites in the "

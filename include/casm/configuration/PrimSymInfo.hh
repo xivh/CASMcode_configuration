@@ -3,8 +3,8 @@
 
 #include <map>
 
-#include "casm/basic_symmetry/Group.hh"
 #include "casm/configuration/UnitCellCoordRep.hh"
+#include "casm/configuration/basic_symmetry/Group.hh"
 #include "casm/configuration/definitions.hh"
 #include "casm/crystallography/SymTools.hh"
 

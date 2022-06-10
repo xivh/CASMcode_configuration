@@ -1,5 +1,5 @@
-#include "casm/basic_symmetry/subgroups.hh"
 #include "casm/configuration/PrimSymInfo.hh"
+#include "casm/configuration/basic_symmetry/subgroups.hh"
 #include "gtest/gtest.h"
 #include "teststructures.hh"
 
@@ -11,9 +11,10 @@ Index multiply_f(Index i, Index j) { return (i + j) % 10; }
 
 bool equal_to_f(Index i, Index j) { return i == j; }
 
-std::function<bool(basic_symmetry::SubgroupIndices const &)> make_any_count(
-    std::set<basic_symmetry::SubgroupOrbit> const &cyclic_subgroups) {
-  return [&](basic_symmetry::SubgroupIndices const &subgroup) {
+std::function<bool(config::basic_symmetry::SubgroupIndices const &)>
+make_any_count(
+    std::set<config::basic_symmetry::SubgroupOrbit> const &cyclic_subgroups) {
+  return [&](config::basic_symmetry::SubgroupIndices const &subgroup) {
     for (auto const &orbit : cyclic_subgroups) {
       if (orbit.count(subgroup)) {
         return true;
@@ -26,7 +27,7 @@ std::function<bool(basic_symmetry::SubgroupIndices const &)> make_any_count(
 }  // namespace cyclic_subgroups_test
 
 TEST(CyclicSubgroupsTest, Test1) {
-  using namespace basic_symmetry;
+  using namespace config::basic_symmetry;
   using namespace cyclic_subgroups_test;
   std::vector<Index> elements;
   for (Index i = 0; i < 10; ++i) {
@@ -44,7 +45,7 @@ TEST(CyclicSubgroupsTest, Test1) {
 }
 
 TEST(CyclicSubgroupsTest, Test2) {
-  using namespace basic_symmetry;
+  using namespace config::basic_symmetry;
   using namespace cyclic_subgroups_test;
   config::PrimSymInfo prim_sym_info(test::FCC_binary_prim());
   std::set<SubgroupOrbit> cyclic_subgroups =
@@ -65,7 +66,7 @@ TEST(CyclicSubgroupsTest, Test2) {
 }
 
 TEST(AllSubgroupsTest, Test1) {
-  using namespace basic_symmetry;
+  using namespace config::basic_symmetry;
   using namespace cyclic_subgroups_test;
   std::vector<Index> elements;
   for (Index i = 0; i < 10; ++i) {
@@ -83,7 +84,7 @@ TEST(AllSubgroupsTest, Test1) {
 }
 
 TEST(AllSubgroupsTest, Test2) {
-  using namespace basic_symmetry;
+  using namespace config::basic_symmetry;
   using namespace cyclic_subgroups_test;
   config::PrimSymInfo prim_sym_info(test::FCC_binary_prim());
   std::set<SubgroupOrbit> all_subgroups =
