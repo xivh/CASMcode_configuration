@@ -326,5 +326,30 @@ ConfigDoFValues copy_apply(SupercellSymOp const &op,
   return dof_values;
 }
 
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+///     xtal::UnitCellCoord
+xtal::UnitCellCoord &apply(SupercellSymOp const &op,
+                           xtal::UnitCellCoord &unitcellcoord) {
+  UnitCell translation_frac =
+      op.supercell()->unitcell_index_converter(op.translation_index());
+
+  UnitCellCoordRep const &fg_op =
+      op.supercell()
+          ->prim->sym_info
+          .basis_permutation_symgroup_rep[op.factor_group_index()];
+
+  apply(fg_op, unitcellcoord);
+  unitcellcoord += translation_frac;
+  return unitcellcoord;
+}
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+///     xtal::UnitCellCoord
+xtal::UnitCellCoord copy_apply(SupercellSymOp const &op,
+                               xtal::UnitCellCoord unitcellcoord) {
+  apply(op, unitcellcoord);
+  return unitcellcoord;
+}
+
 }  // namespace config
 }  // namespace CASM

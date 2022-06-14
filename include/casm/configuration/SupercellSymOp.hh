@@ -137,6 +137,16 @@ ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values);
 ConfigDoFValues copy_apply(SupercellSymOp const &op,
                            ConfigDoFValues dof_values);
 
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+///     xtal::UnitCellCoord
+xtal::UnitCellCoord &apply(SupercellSymOp const &op,
+                           xtal::UnitCellCoord &unitcellcoord);
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+///     xtal::UnitCellCoord
+xtal::UnitCellCoord copy_apply(SupercellSymOp const &op,
+                               xtal::UnitCellCoord unitcellcoord);
+
 }  // namespace config
 }  // namespace CASM
 

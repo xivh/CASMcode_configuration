@@ -1,14 +1,13 @@
-#ifndef CASM_configuration_basic_symmetry_Group
-#define CASM_configuration_basic_symmetry_Group
+#ifndef CASM_group_Group
+#define CASM_group_Group
 
 #include <memory>
 #include <set>
 
-#include "casm/configuration/basic_symmetry/definitions.hh"
+#include "casm/configuration/group/definitions.hh"
 
 namespace CASM {
-namespace config {
-namespace basic_symmetry {
+namespace group {
 
 /// \brief Holds group elements and multiplication table
 template <typename ElementType>
@@ -61,8 +60,7 @@ Group<ElementType> make_group(
     MultiplyFunctionType multiply_f = MultiplyFunctionType(),
     EqualToFunctionType equal_to_f = EqualToFunctionType());
 
-}  // namespace basic_symmetry
-}  // namespace config
+}  // namespace group
 }  // namespace CASM
 
 // --- Implementation ---
@@ -70,8 +68,7 @@ Group<ElementType> make_group(
 #include <numeric>
 
 namespace CASM {
-namespace config {
-namespace basic_symmetry {
+namespace group {
 
 namespace Group_impl {
 
@@ -225,7 +222,7 @@ Group<ElementType> make_group(std::vector<ElementType> const &element,
       auto it = std::find_if(begin, end, unary_f);
       if (it == end) {
         throw std::runtime_error(
-            "Error in CASM::basic_symmetry::make_group: Failed to construct "
+            "Error in CASM::group::make_group: Failed to construct "
             "multiplication table");
       }
 
@@ -235,8 +232,7 @@ Group<ElementType> make_group(std::vector<ElementType> const &element,
   return Group<ElementType>(element, multiplication_table);
 }
 
-}  // namespace basic_symmetry
-}  // namespace config
+}  // namespace group
 }  // namespace CASM
 
 #endif

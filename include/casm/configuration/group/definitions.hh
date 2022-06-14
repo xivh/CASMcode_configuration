@@ -1,19 +1,16 @@
-// The `casm/basic_symmetry` module supports groups, orbits, and algorithms
+// The `casm/group` module supports groups, orbits, and algorithms
 //
 // Primarily, this purpose of this module is to provide:
 // - Group: a simple group data structure
 //   - Includes multiplication_table, inverse, and group-subgroup relationships
-// - [todo] Orbit: an orbit data structure
-//   - Includes orbit finding, generating group, equivalence map, sorting
-// - [todo] LargeOrbit: a orbit data structure for large orbits
-//   - Includes orbit finding, excludes generating group, equivalence map,
-//     sorting
+// - make_orbit: function to construct and sort an orbit of objects
+// - make_equivalence_map: function to construct an equivalence map
 //
 // Allowed dependencies:
 // - CASMcode_global
 
-#ifndef CASM_configuration_basic_symmetry_definitions
-#define CASM_configuration_basic_symmetry_definitions
+#ifndef CASM_group_definitions
+#define CASM_group_definitions
 
 #include <memory>
 #include <vector>
@@ -21,8 +18,7 @@
 #include "casm/external/Eigen/Dense"
 
 namespace CASM {
-namespace config {
-namespace basic_symmetry {
+namespace group {
 
 typedef long Index;
 
@@ -38,8 +34,7 @@ struct Group;
 ///
 typedef std::vector<std::vector<Index>> MultiplicationTable;
 
-}  // namespace basic_symmetry
-}  // namespace config
+}  // namespace group
 }  // namespace CASM
 
 #endif

@@ -53,15 +53,17 @@ class Superlattice;
 struct SymOp;
 class UnitCell;
 class UnitCellCoord;
+struct UnitCellCoordRep;
 class UnitCellIndexConverter;
 class UnitCellCoordIndexConverter;
 }  // namespace xtal
 
-namespace config {
-namespace basic_symmetry {
+namespace group {
 template <typename ElementType>
 struct Group;
 }
+
+namespace config {
 
 using clexulator::ConfigDoFValues;
 using xtal::BasicStructure;
@@ -71,19 +73,19 @@ using xtal::Superlattice;
 using xtal::SymOp;
 using xtal::UnitCell;
 using xtal::UnitCellCoord;
+using xtal::UnitCellCoordRep;
 
 struct Configuration;
 struct Prim;
 struct PrimSymInfo;
 struct Supercell;
 struct SupercellSymInfo;
-struct UnitCellCoordRep;
 
 typedef long Index;
 typedef std::string DoFKey;
 
-/// \brief A basic_symmetry::Group of xtal::SymGroup
-typedef basic_symmetry::Group<SymOp> SymGroup;
+/// \brief A group::Group of xtal::SymOp
+typedef group::Group<SymOp> SymGroup;
 
 /// \brief Describes how sublattices are permuted
 typedef std::vector<UnitCellCoordRep> BasisPermutationSymGroupRep;

@@ -3,10 +3,10 @@
 
 #include <map>
 
-#include "casm/configuration/UnitCellCoordRep.hh"
-#include "casm/configuration/basic_symmetry/Group.hh"
 #include "casm/configuration/definitions.hh"
+#include "casm/configuration/group/Group.hh"
 #include "casm/crystallography/SymTools.hh"
+#include "casm/crystallography/UnitCellCoordRep.hh"
 
 namespace CASM {
 namespace config {

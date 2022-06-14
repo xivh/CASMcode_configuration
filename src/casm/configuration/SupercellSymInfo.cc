@@ -1,9 +1,9 @@
 #include "casm/configuration/SupercellSymInfo.hh"
 
 #include "casm/configuration/Prim.hh"
-#include "casm/configuration/UnitCellCoordRep.hh"
 #include "casm/crystallography/LinearIndexConverter.hh"
 #include "casm/crystallography/Superlattice.hh"
+#include "casm/crystallography/UnitCellCoordRep.hh"
 
 namespace CASM {
 namespace config {

@@ -20,7 +20,7 @@ PrimSymInfo::PrimSymInfo(BasicStructure const &basicstructure) {
   double xtal_tol = lattice.tol();
   std::multiplies<SymOp> multiply_f;
   xtal::SymOpPeriodicCompare_f equal_to_f(lattice, xtal_tol);
-  using basic_symmetry::make_group;
+  using group::make_group;
 
   // Construct (std::shared_ptr<Group const>) factor_group
   std::vector<SymOp> fg_element = xtal::make_factor_group(basicstructure);
