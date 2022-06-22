@@ -8,7 +8,7 @@ using namespace CASM;
 
 TEST(SupercellTest, Test1) {
   std::shared_ptr<config::Prim const> prim =
-      std::make_shared<config::Prim const>(test::FCC_binary_prim());
+      config::make_shared_prim(test::FCC_binary_prim());
 
   Eigen::Matrix3l T;
   T << -1, 1, 1, 1, -1, 1, 1, 1, -1;

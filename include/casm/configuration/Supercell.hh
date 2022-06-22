@@ -51,6 +51,13 @@ struct Supercell : public Comparisons<CRTPBase<Supercell>> {
   bool eq_impl(Supercell const &rhs) const;
 };
 
+struct CompareSharedSupercell {
+  bool operator()(std::shared_ptr<Supercell const> const &lhs,
+                  std::shared_ptr<Supercell const> const &rhs) const {
+    return *lhs < *rhs;
+  }
+};
+
 }  // namespace config
 }  // namespace CASM
 

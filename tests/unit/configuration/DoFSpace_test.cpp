@@ -25,8 +25,7 @@ class DoFSpaceTest : public testing::Test {
   std::shared_ptr<config::Supercell const> supercell;  // conventional unit cell
 
   DoFSpaceTest()
-      : prim(std::make_shared<config::Prim const>(
-            test::FCC_ternary_GLstrain_disp_prim())),
+      : prim(config::make_shared_prim(test::FCC_ternary_GLstrain_disp_prim())),
         supercell(std::make_shared<config::Supercell const>(
             prim, _fcc_conventional_transf_mat())) {}
 };
@@ -76,7 +75,7 @@ class RestrictedLocalDoFSpaceTest : public testing::Test {
   static xtal::BasicStructure make_prim();
 
   RestrictedLocalDoFSpaceTest()
-      : prim(std::make_shared<config::Prim const>(make_prim())),
+      : prim(config::make_shared_prim(make_prim())),
         supercell(std::make_shared<config::Supercell const>(
             prim, _fcc_conventional_transf_mat())) {}
 };
@@ -149,7 +148,7 @@ class RestrictedLocalDoFSpaceTest2 : public testing::Test {
   static xtal::BasicStructure make_prim();
 
   RestrictedLocalDoFSpaceTest2()
-      : prim(std::make_shared<config::Prim const>(make_prim())),
+      : prim(config::make_shared_prim(make_prim())),
         supercell(std::make_shared<config::Supercell const>(
             prim, Eigen::Matrix3l::Identity())) {}
 };
@@ -237,7 +236,7 @@ class RestrictedLocalDoFSpaceTest3 : public testing::Test {
   static xtal::BasicStructure make_prim();
 
   RestrictedLocalDoFSpaceTest3()
-      : prim(std::make_shared<config::Prim const>(make_prim())),
+      : prim(config::make_shared_prim(make_prim())),
         supercell(std::make_shared<config::Supercell const>(
             prim, Eigen::Matrix3l::Identity())) {}
 };
@@ -331,7 +330,7 @@ class VariableLocalDoFSpaceTest1 : public testing::Test {
   static xtal::BasicStructure make_prim();
 
   VariableLocalDoFSpaceTest1()
-      : prim(std::make_shared<config::Prim const>(make_prim())),
+      : prim(config::make_shared_prim(make_prim())),
         supercell(std::make_shared<config::Supercell const>(
             prim, Eigen::Matrix3l::Identity())) {}
 };
@@ -551,7 +550,7 @@ TEST_F(DebugLocalDoFSpaceTest, Test1) {  // failed original method
        Site{Coordinate{0.0, 0.5, 0.5, lat, FRAC}, {C, D}, {disp_yz}},
        Site{Coordinate{0.5, 0.0, 0.5, lat, FRAC}, {C, D}, {disp_xz}}});
 
-  prim = std::make_shared<config::Prim const>(struc);
+  prim = config::make_shared_prim(struc);
   supercell = std::make_shared<config::Supercell const>(
       prim, Eigen::Matrix3l::Identity());
 
@@ -621,7 +620,7 @@ TEST_F(DebugLocalDoFSpaceTest, Test2) {  // failed original method
        Site{Coordinate{0.0, 0.5, 0.5, lat, FRAC}, {A, B}, {disp_yz}},
        Site{Coordinate{0.5, 0.0, 0.5, lat, FRAC}, {A, B}, {disp_xz}}});
 
-  prim = std::make_shared<config::Prim const>(struc);
+  prim = config::make_shared_prim(struc);
   supercell = std::make_shared<config::Supercell const>(
       prim, Eigen::Matrix3l::Identity());
 
@@ -680,7 +679,7 @@ TEST_F(DebugLocalDoFSpaceTest, Test3) {  // passes
       {Site{Coordinate{0.0, 0.0, 0.0, lat, FRAC}, {A, B}, {disp_xyz}},
        Site{Coordinate{0.5, 0.5, 0.5, lat, FRAC}, {A, B}, {disp_z}}});
 
-  prim = std::make_shared<config::Prim const>(struc);
+  prim = config::make_shared_prim(struc);
   supercell = std::make_shared<config::Supercell const>(
       prim, Eigen::Matrix3l::Identity());
 
@@ -739,7 +738,7 @@ TEST_F(DebugLocalDoFSpaceTest, Test4) {  // failed for 2x2x2, passed for 2x1x1
       {Site{Coordinate{0.0, 0.0, 0.0, lat, FRAC}, {A, B}, {disp_xyz}},
        Site{Coordinate{0.5, 0.5, 0.5, lat, FRAC}, {A, B}, {disp_z}}});
 
-  prim = std::make_shared<config::Prim const>(struc);
+  prim = config::make_shared_prim(struc);
 
   Eigen::Matrix3l T;
   T << 2, 0, 0, 0, 2, 0, 0, 0, 2;
@@ -796,7 +795,7 @@ TEST_F(DebugLocalDoFSpaceTest, Test5) {
   struc.set_basis(
       {Site{Coordinate{0.0, 0.0, 0.0, lat, FRAC}, {A, B}, {disp_xyz}}});
 
-  prim = std::make_shared<config::Prim const>(struc);
+  prim = config::make_shared_prim(struc);
 
   Index prim_factor_group_size = 48;
   Index prim_disp_dof_space_dim = 3;
@@ -809,7 +808,7 @@ TEST_F(DebugLocalDoFSpaceTest, Test5) {
   Eigen::Matrix3i generating_matrix = Eigen::Matrix3i::Identity();
   ScelEnumProps enumeration_params{begin_volume, end_volume, dirs,
                                    generating_matrix};
-  SuperlatticeEnumerator enumerator{prim->basicstructure.lattice(),
+  SuperlatticeEnumerator enumerator{prim->basicstructure->lattice(),
                                     prim->sym_info.point_group->element,
                                     enumeration_params};
 

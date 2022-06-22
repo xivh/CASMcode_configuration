@@ -72,7 +72,7 @@ inline ConfigIsEquivalent::ConfigIsEquivalent(
     Configuration const &_config, double _tol,
     std::set<std::string> const &_which_dofs)
     : m_config(&_config),
-      m_n_sublat(config().supercell->prim->basicstructure.basis().size()),
+      m_n_sublat(config().supercell->prim->basicstructure->basis().size()),
       m_all_dofs(_which_dofs.count("all")),
       m_check_occupation(
           (m_all_dofs || _which_dofs.count("occ")) &&
@@ -109,7 +109,7 @@ inline ConfigIsEquivalent::ConfigIsEquivalent(
 inline ConfigIsEquivalent::ConfigIsEquivalent(
     Configuration const &_config, std::set<std::string> const &_which_dofs)
     : ConfigIsEquivalent(
-          _config, _config.supercell->prim->basicstructure.lattice().tol(),
+          _config, _config.supercell->prim->basicstructure->lattice().tol(),
           _which_dofs) {}
 
 inline Configuration const &ConfigIsEquivalent::config() const {

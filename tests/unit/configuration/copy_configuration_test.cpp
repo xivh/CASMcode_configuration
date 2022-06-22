@@ -12,9 +12,9 @@ using namespace CASM;
 class CopyConfigurationFCCTest : public testing::Test {
  protected:
   CopyConfigurationFCCTest() {
-    prim = std::make_shared<config::Prim const>(test::FCC_binary_prim());
+    prim = config::make_shared_prim(test::FCC_binary_prim());
 
-    xtal::Lattice const &prim_lattice = prim->basicstructure.lattice();
+    xtal::Lattice const &prim_lattice = prim->basicstructure->lattice();
     // prim lattice is:
     // a: 0., 2., 2. (column 0)
     // b: 2., 0., 2. (column 1)
@@ -230,7 +230,7 @@ TEST_F(CopyConfigurationFCCTest, InCanonicalSupercellTest2) {
   L.col(0) << 0., 4., 0.;
   L.col(1) << -4., 0., 0.;
   L.col(2) << 0., 0., 4.;
-  xtal::Lattice const &prim_lattice = prim->basicstructure.lattice();
+  xtal::Lattice const &prim_lattice = prim->basicstructure->lattice();
   auto non_canonical_supercell = std::make_shared<config::Supercell const>(
       prim, xtal::Superlattice(prim_lattice, xtal::Lattice(L)));
 
@@ -257,7 +257,7 @@ TEST_F(CopyConfigurationFCCTest, InCanonicalSupercellTest3) {
   L.col(0) << 0., 4., 0.;
   L.col(1) << -4., 0., 0.;
   L.col(2) << 0., 0., 4.;
-  xtal::Lattice const &prim_lattice = prim->basicstructure.lattice();
+  xtal::Lattice const &prim_lattice = prim->basicstructure->lattice();
   auto non_canonical_supercell = std::make_shared<config::Supercell const>(
       prim, xtal::Superlattice(prim_lattice, xtal::Lattice(L)));
 
@@ -291,8 +291,7 @@ TEST_F(CopyConfigurationFCCTest, InCanonicalSupercellTest3) {
 class CopyConfigurationFCCTernaryGLStrainDispTest : public testing::Test {
  protected:
   CopyConfigurationFCCTernaryGLStrainDispTest() {
-    prim = std::make_shared<config::Prim const>(
-        test::FCC_ternary_GLstrain_disp_prim());
+    prim = config::make_shared_prim(test::FCC_ternary_GLstrain_disp_prim());
   }
 
   Index to_site_index(std::shared_ptr<config::Supercell const> const &supercell,
@@ -351,7 +350,7 @@ TEST_F(CopyConfigurationFCCTernaryGLStrainDispTest, Test1) {
   L.col(0) << 0., 4., 0.;
   L.col(1) << -4., 0., 0.;
   L.col(2) << 0., 0., 4.;
-  xtal::Lattice const &prim_lattice = prim->basicstructure.lattice();
+  xtal::Lattice const &prim_lattice = prim->basicstructure->lattice();
   auto non_canonical_supercell = std::make_shared<config::Supercell const>(
       prim, xtal::Superlattice(prim_lattice, xtal::Lattice(L)));
 

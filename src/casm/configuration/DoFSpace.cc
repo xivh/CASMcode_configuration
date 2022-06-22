@@ -97,7 +97,7 @@ DoFSpace::DoFSpace(
       transformation_matrix_to_super(
           std::move(_transformation_matrix_to_super)),
       sites(std::move(_sites)),
-      dim(get_dof_space_dimension(dof_key, prim->basicstructure,
+      dim(get_dof_space_dimension(dof_key, *prim->basicstructure,
                                   transformation_matrix_to_super, sites)),
       basis(_basis.has_value() ? _basis.value()
                                : Eigen::MatrixXd::Identity(dim, dim)),
@@ -166,7 +166,7 @@ DoFSpace make_dof_space(
       sites = std::set<Index>();
       xtal::UnitCellCoordIndexConverter unitcellcoord_index_converter(
           transformation_matrix_to_super.value(),
-          prim->basicstructure.basis().size());
+          prim->basicstructure->basis().size());
       for (Index i = 0; i < unitcellcoord_index_converter.total_sites(); ++i) {
         sites->insert(i);
       }
@@ -175,7 +175,7 @@ DoFSpace make_dof_space(
 
   return DoFSpace(dof_key, prim, std::move(transformation_matrix_to_super),
                   std::move(sites), std::move(basis), aniso_val_traits,
-                  DoFSpaceAxisInfo(dof_key, prim->basicstructure,
+                  DoFSpaceAxisInfo(dof_key, *prim->basicstructure,
                                    transformation_matrix_to_super, sites));
 }
 
@@ -277,7 +277,7 @@ bool includes_all_sites(DoFSpace const &dof_space) {
          dof_space.sites.has_value() &&
          (dof_space.sites->size() ==
           dof_space.transformation_matrix_to_super->determinant() *
-              dof_space.prim->basicstructure.basis().size());
+              dof_space.prim->basicstructure->basis().size());
 }
 
 /// Return true if `dof_space` is valid for `config`
@@ -315,7 +315,7 @@ DoFSpaceIndexConverter::DoFSpaceIndexConverter(Supercell const &supercell,
       supercell_index_converter(supercell.unitcellcoord_index_converter),
       dof_space_index_converter(
           dof_space.transformation_matrix_to_super.value(),
-          dof_space.prim->basicstructure.basis().size()) {
+          dof_space.prim->basicstructure->basis().size()) {
   if (supercell.prim != dof_space.prim) {
     std::stringstream msg;
     msg << "Error in DoFSpaceIndexConverter: Supercell and DoFSpace must "
@@ -329,7 +329,7 @@ DoFSpaceIndexConverter::DoFSpaceIndexConverter(Supercell const &supercell,
 Index DoFSpaceIndexConverter::dof_space_site_index(
     xtal::Coordinate const &coord, double tol) const {
   xtal::UnitCellCoord bijk =
-      UnitCellCoord::from_coordinate(prim->basicstructure, coord, tol);
+      UnitCellCoord::from_coordinate(*prim->basicstructure, coord, tol);
   return dof_space_index_converter(bijk);
 }
 
@@ -344,7 +344,7 @@ Index DoFSpaceIndexConverter::dof_space_site_index(
 Index DoFSpaceIndexConverter::supercell_site_index(
     xtal::Coordinate const &coord, double tol) const {
   xtal::UnitCellCoord bijk =
-      UnitCellCoord::from_coordinate(prim->basicstructure, coord, tol);
+      UnitCellCoord::from_coordinate(*prim->basicstructure, coord, tol);
   return supercell_index_converter(bijk);
 }
 
@@ -478,10 +478,10 @@ Eigen::MatrixXd make_homogeneous_mode_space(DoFSpace const &dof_space) {
   // l: linear index in supercell
   // bijk: UnitCellCoord, integral site coordinates
   xtal::UnitCellCoordIndexConverter l_to_bijk(
-      T, prim.basicstructure.basis().size());
+      T, prim.basicstructure->basis().size());
   for (Index l : sites) {
     Index b = l_to_bijk(l).sublattice();
-    xtal::Site const &site = prim.basicstructure.basis()[b];
+    xtal::Site const &site = prim.basicstructure->basis()[b];
     if (site.has_dof(dof_key)) {
       sites_dof_info.push_back(prim_dof_info[b]);
     }

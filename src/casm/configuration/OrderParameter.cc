@@ -175,7 +175,7 @@ OrderParameter &OrderParameter::update(Supercell const &supercell,
 
   xtal::UnitCellCoordIndexConverter const &s1_converter =
       supercell.unitcellcoord_index_converter;
-  int basis_size = supercell.prim->basicstructure.basis().size();
+  int basis_size = supercell.prim->basicstructure->basis().size();
   xtal::UnitCellCoordIndexConverter s2_converter{s2_T, basis_size};
 
   std::optional<std::set<Index>> s1_sites = std::nullopt;  // include all sites

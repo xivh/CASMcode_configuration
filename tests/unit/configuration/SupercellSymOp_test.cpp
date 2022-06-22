@@ -13,7 +13,7 @@ class SupercellSymOpFCCTest : public testing::Test {
  protected:
   SupercellSymOpFCCTest() {
     std::shared_ptr<config::Prim const> prim =
-        std::make_shared<config::Prim const>(test::FCC_binary_prim());
+        config::make_shared_prim(test::FCC_binary_prim());
     Eigen::Matrix3l T;
     T << -1, 1, 1, 1, -1, 1, 1, 1, -1;
     supercell = std::make_shared<config::Supercell const>(prim, T);
@@ -62,8 +62,8 @@ TEST_F(SupercellSymOpFCCTest, Test3) {
 class SupercellSymOpFCCTernaryGLStrainDispTest : public testing::Test {
  protected:
   SupercellSymOpFCCTernaryGLStrainDispTest() {
-    auto prim = std::make_shared<config::Prim const>(
-        test::FCC_ternary_GLstrain_disp_prim());
+    auto prim =
+        config::make_shared_prim(test::FCC_ternary_GLstrain_disp_prim());
     Eigen::Matrix3l T;
     T << -1, 1, 1, 1, -1, 1, 1, 1, -1;
     supercell = std::make_shared<config::Supercell const>(prim, T);
@@ -174,8 +174,7 @@ TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestInverse) {
 class SupercellSymOpSimpleCubicIsingTest : public testing::Test {
  protected:
   SupercellSymOpSimpleCubicIsingTest() {
-    auto prim =
-        std::make_shared<config::Prim const>(test::SimpleCubic_ising_prim());
+    auto prim = config::make_shared_prim(test::SimpleCubic_ising_prim());
     Eigen::Matrix3l T = Eigen::Matrix3l::Identity() * 2;
     supercell = std::make_shared<config::Supercell const>(prim, T);
   }

@@ -8,7 +8,8 @@ namespace config {
 Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
                      Lattice const &_superlattice)
     : Supercell(_prim,
-                Superlattice(_prim->basicstructure.lattice(), _superlattice)) {}
+                Superlattice(_prim->basicstructure->lattice(), _superlattice)) {
+}
 
 Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
                      Superlattice const &_superlattice)
@@ -17,13 +18,13 @@ Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
       unitcell_index_converter(superlattice.transformation_matrix_to_super()),
       unitcellcoord_index_converter(
           superlattice.transformation_matrix_to_super(),
-          prim->basicstructure.basis().size()),
+          prim->basicstructure->basis().size()),
       sym_info(prim, superlattice, unitcell_index_converter,
                unitcellcoord_index_converter) {}
 
 Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
                      Eigen::Matrix3l const &_superlattice_matrix)
-    : Supercell(_prim, Superlattice(_prim->basicstructure.lattice(),
+    : Supercell(_prim, Superlattice(_prim->basicstructure->lattice(),
                                     _superlattice_matrix)) {}
 
 /// \brief Less than comparison of Supercell

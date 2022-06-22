@@ -12,11 +12,11 @@ namespace config {
 /// allowed degrees of freedom (DoF), and also symmetry representations
 /// used for all configurations with the same prim. All members are const.
 struct Prim {
-  Prim(BasicStructure const &_basicstructure);
+  Prim(std::shared_ptr<BasicStructure const> const &_basicstructure);
 
   /// \brief The BasicStructure specifies the primitive crystal structure
   /// (lattice and basis) and allowed degrees of freedom (DoF)
-  BasicStructure const basicstructure;
+  std::shared_ptr<BasicStructure const> const basicstructure;
 
   /// \brief Global DoFSet information, defines bases for global DoF
   std::map<DoFKey, xtal::DoFSet> const global_dof_info;
@@ -29,6 +29,17 @@ struct Prim {
   /// the same prim structure
   PrimSymInfo const sym_info;
 };
+
+inline std::shared_ptr<Prim const> make_shared_prim(
+    xtal::BasicStructure const &basicstructure) {
+  return std::make_shared<config::Prim const>(
+      std::make_shared<xtal::BasicStructure const>(basicstructure));
+}
+
+inline std::shared_ptr<Prim const> make_shared_prim(
+    std::shared_ptr<xtal::BasicStructure const> const &basicstructure) {
+  return std::make_shared<config::Prim const>(basicstructure);
+}
 
 }  // namespace config
 }  // namespace CASM

@@ -14,7 +14,7 @@ class ConfigCompareFCCTest : public testing::Test {
  protected:
   ConfigCompareFCCTest() {
     std::shared_ptr<config::Prim const> prim =
-        std::make_shared<config::Prim const>(test::FCC_binary_prim());
+        config::make_shared_prim(test::FCC_binary_prim());
     Eigen::Matrix3l T;
     T << -1, 1, 1, 1, -1, 1, 1, 1, -1;
     supercell = std::make_shared<config::Supercell const>(prim, T);
@@ -113,7 +113,7 @@ TEST_F(ConfigCompareFCCTest, Test3) {
   Eigen::VectorXi &lhs_occ = lhs_configuration.dof_values.occupation;
 
   std::shared_ptr<config::Prim const> rhs_prim =
-      std::make_shared<config::Prim const>(test::FCC_ternary_prim());
+      config::make_shared_prim(test::FCC_ternary_prim());
   Eigen::Matrix3l T = Eigen::Matrix3l::Identity();
   auto rhs_supercell = std::make_shared<config::Supercell const>(rhs_prim, T);
   config::Configuration rhs_configuration(rhs_supercell);

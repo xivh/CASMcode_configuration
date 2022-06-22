@@ -258,7 +258,7 @@ ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values) {
   Prim const &prim = *op.supercell()->prim;
   PrimSymInfo const &prim_sym_info = prim.sym_info;
   Index n_vol = supercell.superlattice.size();
-  Index n_sublat = prim.basicstructure.basis().size();
+  Index n_sublat = prim.basicstructure->basis().size();
   Index n_sites = n_vol * n_sublat;
 
   Index supercell_fg_index = op.factor_group_index();

@@ -5,11 +5,11 @@
 namespace CASM {
 namespace config {
 
-Prim::Prim(BasicStructure const &_basicstructure)
+Prim::Prim(std::shared_ptr<BasicStructure const> const &_basicstructure)
     : basicstructure(_basicstructure),
-      global_dof_info(clexulator::make_global_dof_info(basicstructure)),
-      local_dof_info(clexulator::make_local_dof_info(basicstructure)),
-      sym_info(basicstructure) {}
+      global_dof_info(clexulator::make_global_dof_info(*basicstructure)),
+      local_dof_info(clexulator::make_local_dof_info(*basicstructure)),
+      sym_info(*basicstructure) {}
 
 }  // namespace config
 }  // namespace CASM

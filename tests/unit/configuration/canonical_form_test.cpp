@@ -9,7 +9,7 @@ using namespace CASM;
 class CanonicalFormFCCTest : public testing::Test {
  protected:
   CanonicalFormFCCTest() {
-    prim = std::make_shared<config::Prim const>(test::FCC_binary_prim());
+    prim = config::make_shared_prim(test::FCC_binary_prim());
     Eigen::Matrix3l T;
     T << -1, 1, 1, 1, -1, 1, 1, 1, -1;
     supercell = std::make_shared<config::Supercell const>(prim, T);
@@ -22,7 +22,8 @@ class CanonicalFormFCCTest : public testing::Test {
 TEST_F(CanonicalFormFCCTest, TestSupercell1) {
   Eigen::Matrix3d S;
   S << 4., 0, 0, 0, 8., 0, 0, 0, 4.;
-  xtal::Superlattice superlat(prim->basicstructure.lattice(), xtal::Lattice(S));
+  xtal::Superlattice superlat(prim->basicstructure->lattice(),
+                              xtal::Lattice(S));
   std::shared_ptr<config::Supercell const> tmp_supercell =
       std::make_shared<config::Supercell const>(prim, superlat);
   std::shared_ptr<config::Supercell const> canonical_supercell =
@@ -38,7 +39,8 @@ TEST_F(CanonicalFormFCCTest, TestSupercell1) {
 TEST_F(CanonicalFormFCCTest, TestSupercell2) {
   Eigen::Matrix3d S;
   S << 4., 0, 0, 0, 8., 0, 0, 0, 4.;
-  xtal::Superlattice superlat(prim->basicstructure.lattice(), xtal::Lattice(S));
+  xtal::Superlattice superlat(prim->basicstructure->lattice(),
+                              xtal::Lattice(S));
   std::shared_ptr<config::Supercell const> tmp_supercell =
       std::make_shared<config::Supercell const>(prim, superlat);
   std::vector<std::shared_ptr<config::Supercell const>> equivalents =
@@ -93,7 +95,7 @@ class CanonicalFormFCCTest2 : public testing::Test {
  protected:
   CanonicalFormFCCTest2() {
     std::shared_ptr<config::Prim const> prim =
-        std::make_shared<config::Prim const>(test::FCC_binary_prim());
+        config::make_shared_prim(test::FCC_binary_prim());
     Eigen::Matrix3l T;
     T << 4, 0, 0, 0, 1, 0, 0, 0, 1;
     supercell = std::make_shared<config::Supercell const>(prim, T);
@@ -130,8 +132,8 @@ TEST_F(CanonicalFormFCCTest2, Test1) {
 class CanonicalFormFCCTernaryGLStrainDispTest : public testing::Test {
  protected:
   CanonicalFormFCCTernaryGLStrainDispTest() {
-    auto prim = std::make_shared<config::Prim const>(
-        test::FCC_ternary_GLstrain_disp_prim());
+    auto prim =
+        config::make_shared_prim(test::FCC_ternary_GLstrain_disp_prim());
     Eigen::Matrix3l T;
     T << -1, 1, 1, 1, -1, 1, 1, 1, -1;
     supercell = std::make_shared<config::Supercell const>(prim, T);

@@ -213,7 +213,7 @@ bool is_primitive(Configuration const &configuration) {
 Configuration make_primitive(Configuration const &configuration) {
   Configuration tconfig{configuration};
   auto prim = tconfig.supercell->prim;
-  double xtal_tol = prim->basicstructure.lattice().tol();
+  double xtal_tol = prim->basicstructure->lattice().tol();
 
   // check if config is primitive, and if not, obtain a translation that maps
   // the config on itself
