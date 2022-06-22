@@ -1,4 +1,4 @@
-// The `casm/group` module supports groups, orbits, and algorithms
+// The `casm/configuration/group` module supports groups, orbits, and algorithms
 //
 // Primarily, this purpose of this module is to provide:
 // - Group: a simple group data structure

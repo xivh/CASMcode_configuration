@@ -50,6 +50,18 @@ struct Group {
   ///     I == element[i] * element[inverse_index[i]]
   ///       == element[inverse_index[i]] * element[i]
   std::vector<Index> const inverse_index;
+
+  /// \brief Use the multiplication table
+  ///
+  /// \param i,j Element indices
+  /// \returns k, where element[k] == element[i] * element[j]
+  Index mult(Index i, Index j) const { return multiplication_table[i][j]; }
+
+  /// \brief Get the inverse element index
+  ///
+  /// \param i Element index
+  /// \returns i_inv, The index of the inverse element of element i
+  Index inv(Index i) const { return inverse_index[i]; }
 };
 
 template <typename ElementType,

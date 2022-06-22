@@ -36,7 +36,6 @@ namespace clust {
 /// Optionally, the derived cluster type may specialize protected methods:
 /// - MostDerived& sort_impl();
 /// - bool is_sorted_impl() const;
-/// - Permutation sort_permutation_impl() const;
 /// - bool compare_impl(MostDerived const &B) const;
 ///
 /// To implement the CRTP pattern:
@@ -103,10 +102,6 @@ class GenericCluster : public Comparisons<Base> {
 
   bool is_sorted() const { return derived().is_sorted_impl(); }
 
-  Permutation sort_permutation() const {
-    return derived().sort_permutation_impl();
-  }
-
   bool operator<(MostDerived const &B) const {
     return derived().compare_impl(B);
   }
@@ -121,17 +116,6 @@ class GenericCluster : public Comparisons<Base> {
   }
 
   bool is_sorted_impl() const { return std::is_sorted(begin(), end()); }
-
-  Permutation sort_permutation_impl() const {
-    if (size() == 0) return Permutation(0);
-    std::vector<Index> ind = sequence(Index(0), Index(size() - 1));
-
-    std::sort(ind.begin(), ind.end(), [&](const Index &a, const Index &b) {
-      return (this->derived().element(a) < this->derived().element(b));
-    });
-
-    return Permutation(std::move(ind));
-  }
 
   bool compare_impl(MostDerived const &B) const {
     if (size() != B.size()) {
