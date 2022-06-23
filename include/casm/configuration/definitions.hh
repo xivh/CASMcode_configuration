@@ -133,6 +133,9 @@ Permutation inverse(Permutation const &perm);
 Permutation combined_permute(Permutation const &first,
                              Permutation const &second);
 
+template <typename T>
+T const &throw_if_equal_to_nullptr(T const &t, std::string message);
+
 // --- Inline definitions ---
 
 /// \brief Permute container
@@ -176,6 +179,14 @@ inline Permutation inverse(Permutation const &perm) {
 inline Permutation combined_permute(Permutation const &first,
                                     Permutation const &second) {
   return copy_apply(second, first);
+}
+
+template <typename T>
+T const &throw_if_equal_to_nullptr(T const &t, std::string message) {
+  if (t == nullptr) {
+    throw std::runtime_error(message);
+  }
+  return t;
 }
 
 }  // namespace config
