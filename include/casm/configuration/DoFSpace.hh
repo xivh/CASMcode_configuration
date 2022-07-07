@@ -5,7 +5,7 @@
 #include <set>
 
 #include "casm/configuration/DoFSpaceAxisInfo.hh"
-#include "casm/configuration/Prim.hh"
+#include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/DoFDecl.hh"
 #include "casm/crystallography/LinearIndexConverter.hh"
 #include "casm/global/eigen.hh"
@@ -16,18 +16,22 @@ class AnisoValTraits;
 namespace xtal {
 class BasicStructure;
 class Coordinate;
+class UnitCell;
 class UnitCellCoordIndexConverter;
 }  // namespace xtal
 
-namespace config {
+namespace clexulator {
+struct ConfigDoFValues;
+}  // namespace clexulator
 
-struct Configuration;
+namespace config {
 
 /// \brief
 struct DoFSpace {
  public:
   /// \brief Constructor
-  DoFSpace(DoFKey const &dof_key, std::shared_ptr<Prim const> const &prim,
+  DoFSpace(DoFKey const &dof_key,
+           std::shared_ptr<xtal::BasicStructure const> const &prim,
            std::optional<Eigen::Matrix3l> transformation_matrix_to_super =
                std::nullopt,
            std::optional<std::set<Index>> sites = std::nullopt,
@@ -41,7 +45,7 @@ struct DoFSpace {
   bool is_global;
 
   /// Shared prim
-  std::shared_ptr<Prim const> const prim;
+  std::shared_ptr<xtal::BasicStructure const> const prim;
 
   /// Specifies the supercell for a DoF space of site DoF. Has value for site
   /// DoF only.
@@ -69,13 +73,15 @@ struct DoFSpace {
 
  private:
   friend DoFSpace make_dof_space(
-      DoFKey const &dof_key, std::shared_ptr<Prim const> const &prim,
+      DoFKey const &dof_key,
+      std::shared_ptr<xtal::BasicStructure const> const &prim,
       std::optional<Eigen::Matrix3l> transformation_matrix_to_super,
       std::optional<std::set<Index>> sites,
       std::optional<Eigen::MatrixXd> basis);
 
   /// \brief Private constructor, implemented to initialize const members
-  DoFSpace(DoFKey const &_dof_key, std::shared_ptr<Prim const> const &_prim,
+  DoFSpace(DoFKey const &_dof_key,
+           std::shared_ptr<xtal::BasicStructure const> const &_prim,
            std::optional<Eigen::Matrix3l> &&_transformation_matrix_to_super,
            std::optional<std::set<Index>> &&_sites,
            std::optional<Eigen::MatrixXd> &&_basis,
@@ -85,24 +91,29 @@ struct DoFSpace {
 
 /// \brief Make a DoFSpace (global or local DoF)
 DoFSpace make_dof_space(DoFKey const &dof_key,
-                        std::shared_ptr<Prim const> const &prim,
+                        std::shared_ptr<xtal::BasicStructure const> const &prim,
                         std::optional<Eigen::Matrix3l>
                             transformation_matrix_to_super = std::nullopt,
                         std::optional<std::set<Index>> sites = std::nullopt,
                         std::optional<Eigen::MatrixXd> basis = std::nullopt);
 
 /// \brief Make a DoFSpace, convenience overload for global DoF
-DoFSpace make_dof_space(
-    std::shared_ptr<Prim const> const &_prim, DoFKey dof_key,
-    std::optional<Eigen::MatrixXd> const &basis = std::nullopt);
+DoFSpace make_global_dof_space(
+    DoFKey dof_key, std::shared_ptr<xtal::BasicStructure const> const &_prim,
+    std::optional<Eigen::MatrixXd> basis = std::nullopt);
 
 /// \brief Make a DoFSpace, convenience overload for local DoF
-DoFSpace make_dof_space(DoFKey dof_key, Supercell const &supercell,
-                        std::optional<std::set<Index>> sites = std::nullopt,
-                        std::optional<Eigen::MatrixXd> basis = std::nullopt);
+DoFSpace make_local_dof_space(
+    DoFKey dof_key, std::shared_ptr<xtal::BasicStructure const> const &_prim,
+    Eigen::Matrix3l const &transformation_matrix_to_super,
+    std::optional<std::set<Index>> sites = std::nullopt,
+    std::optional<Eigen::MatrixXd> basis = std::nullopt);
 
-/// \brief Set `config` DoF value from a coordinate in the DoFSpace basis
-void set_dof_value(Configuration &config, DoFSpace const &dof_space,
+/// \brief Set DoF values from a coordinate in the DoFSpace basis
+///     (continuous DoF only)
+void set_dof_value(clexulator::ConfigDoFValues &dof_values,
+                   Eigen::Matrix3l const &transformation_matrix_to_super,
+                   DoFSpace const &dof_space,
                    Eigen::VectorXd const &dof_space_coordinate);
 
 /// \brief Return dimension of DoFSpace
@@ -115,23 +126,26 @@ Index get_dof_space_dimension(
 /// True, if local DoF space with all sites in the supercell included
 bool includes_all_sites(DoFSpace const &dof_space);
 
-/// Return true if `dof_space` is valid for `config`
+/// Return true if `dof_space` is valid for `transformation_matrix_to_super`
 ///
 /// Checks that:
-/// - The prim are equivalent
 /// - For local DoF, that the transformation_matrix_to_super are equivalent
-bool is_valid_dof_space(Configuration const &config, DoFSpace const &dof_space);
+bool is_valid_dof_space(Eigen::Matrix3l const &transformation_matrix_to_super,
+                        DoFSpace const &dof_space);
 
-/// Throw if `!is_valid_dof_space(config, dof_space)`
-void throw_if_invalid_dof_space(Configuration const &config,
-                                DoFSpace const &dof_space);
+/// Throw if `!is_valid_dof_space(transformation_matrix_to_super, dof_space)`
+void throw_if_invalid_dof_space(
+    Eigen::Matrix3l const &transformation_matrix_to_super,
+    DoFSpace const &dof_space);
 
 /// \brief Perform conversions between site indices for an
 ///     arbitrary supercell and the supercell of a DoFSpace
 struct DoFSpaceIndexConverter {
-  DoFSpaceIndexConverter(Supercell const &supercell, DoFSpace const &dof_space);
+  DoFSpaceIndexConverter(
+      xtal::UnitCellCoordIndexConverter const &_supercell_index_converter,
+      DoFSpace const &dof_space);
 
-  std::shared_ptr<Prim const> const prim;
+  std::shared_ptr<xtal::BasicStructure const> const prim;
   xtal::UnitCellCoordIndexConverter const &supercell_index_converter;
   xtal::UnitCellCoordIndexConverter const dof_space_index_converter;
 
@@ -152,7 +166,7 @@ struct DoFSpaceIndexConverter {
   /// \brief Perform conversion from DoFSpace site index to supercell site
   /// index, with additional translation within supercell
   Index supercell_site_index(Index dof_space_site_index,
-                             UnitCell const &translation) const;
+                             xtal::UnitCell const &translation) const;
 };
 
 /// \brief Removes the homogeneous mode space from the DoFSpace basis

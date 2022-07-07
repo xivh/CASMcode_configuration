@@ -1,6 +1,9 @@
 #include "casm/configuration/OrderParameter.hh"
 
+#include "casm/clexulator/ConfigDoFValues.hh"
 #include "casm/configuration/DoFSpace.hh"
+#include "casm/crystallography/Superlattice.hh"
+#include "casm/crystallography/SymTools.hh"
 
 namespace CASM {
 namespace config {
@@ -131,21 +134,29 @@ OrderParameter::OrderParameter(DoFSpace const &dof_space)
 ///
 /// Equivalent to `update(configuration).value()`
 Eigen::VectorXd const &OrderParameter::operator()(
-    Configuration const &configuration) {
-  return this->update(configuration).value();
+    Eigen::Matrix3l const &transformation_matrix_to_super,
+    xtal::UnitCellCoordIndexConverter const &supercell_index_converter,
+    clexulator::ConfigDoFValues const *dof_values) {
+  return this
+      ->update(transformation_matrix_to_super, supercell_index_converter,
+               dof_values)
+      .value();
 }
 
 /// \brief Set internal data to calculate order parameters in a different
 ///     supercell
 ///
-/// \param supercell A Supercell in which to calculation order parameters
+/// \param transformation_matrix_to_super Transformation matrix that
+///     generates the supercell in which to calculation order parameters
+/// \param supercell_index_converter UnitCellCoordIndexConverter for the
+///     supercell in which the order parameter is begin calculated, which
+///     may be different and not directly commensurate with the DoFSpace.
 /// \param dof_values Pointer to the ConfigDoFValues to be used as input for
 ///     calculating the order parameter.
-OrderParameter &OrderParameter::update(Supercell const &supercell,
-                                       ConfigDoFValues const *dof_values) {
-  if (supercell.prim != m_dof_space.prim) {
-    throw std::runtime_error("Error in OrderParameter: prim mismatch.");
-  }
+OrderParameter &OrderParameter::update(
+    Eigen::Matrix3l const &transformation_matrix_to_super,
+    xtal::UnitCellCoordIndexConverter const &supercell_index_converter,
+    clexulator::ConfigDoFValues const *dof_values) {
   if (dof_values != nullptr) {
     set(dof_values);
   }
@@ -154,34 +165,33 @@ OrderParameter &OrderParameter::update(Supercell const &supercell,
     return *this;
   }
   // skip if same supercell as current data
-  if (m_supercell_T ==
-      supercell.superlattice.transformation_matrix_to_super()) {
+  if (m_supercell_T == transformation_matrix_to_super) {
     return *this;
   }
 
   // convention:
-  //   s1 is `supercell`,
+  //   s1 is `supercell` with configuration order parameter is calculated for
   ///  s2 is DoF space supercell,
   //   s3 is minimal commensurate supercell of s1 and s2
 
-  m_supercell_T = supercell.superlattice.transformation_matrix_to_super();
+  m_supercell_T = transformation_matrix_to_super;
   Eigen::Matrix3l const &s1_T = m_supercell_T;
   Eigen::Matrix3l const &s2_T =
       m_dof_space.transformation_matrix_to_super.value();
 
-  xtal::Lattice const &P = supercell.superlattice.prim_lattice();
-  xtal::Lattice const &s1 = supercell.superlattice.superlattice();
+  xtal::Lattice const &P = m_dof_space.prim->lattice();
+  xtal::Lattice s1 = xtal::make_superlattice(P, m_supercell_T);
   xtal::Lattice s2 = xtal::make_superlattice(P, s2_T);
 
   xtal::UnitCellCoordIndexConverter const &s1_converter =
-      supercell.unitcellcoord_index_converter;
-  int basis_size = supercell.prim->basicstructure->basis().size();
+      supercell_index_converter;
+  int basis_size = m_dof_space.prim->basis().size();
   xtal::UnitCellCoordIndexConverter s2_converter{s2_T, basis_size};
 
   std::optional<std::set<Index>> s1_sites = std::nullopt;  // include all sites
   std::optional<std::set<Index>> const &s2_sites = m_dof_space.sites;
 
-  std::vector<Lattice> lattices({s1, s2});
+  std::vector<xtal::Lattice> lattices({s1, s2});
   xtal::Lattice s3 = xtal::make_commensurate_superduperlattice(lattices.begin(),
                                                                lattices.end());
   xtal::Superlattice s1_to_s3_superlattice{s1, s3};
@@ -201,14 +211,6 @@ OrderParameter &OrderParameter::update(Supercell const &supercell,
   return *this;
 }
 
-/// \brief If necessary, reset internal data to calculate order
-///     parameters in a different supercell
-///
-/// Equivalent to `update(*configuration.supercell, &configuration.dof_values)`
-OrderParameter &OrderParameter::update(Configuration const &configuration) {
-  return this->update(*configuration.supercell, &configuration.dof_values);
-}
-
 /// \brief Reset internal pointer to DoF values - must have the same supercell
 ///
 /// \param _dof_values Pointer to the ConfigDoFValues to be used as input for
@@ -218,7 +220,7 @@ OrderParameter &OrderParameter::update(Configuration const &configuration) {
 ///     valid (i.e. they must not be erased) or a new OrderParameter
 ///     object should be used.
 ///
-void OrderParameter::set(ConfigDoFValues const *_dof_values) {
+void OrderParameter::set(clexulator::ConfigDoFValues const *_dof_values) {
   if (_dof_values == nullptr) {
     throw std::runtime_error(
         "Error in OrderParameter::set: _dof_values == nullptr");
@@ -238,7 +240,9 @@ void OrderParameter::set(ConfigDoFValues const *_dof_values) {
 }
 
 /// \brief Get internal pointer to DoF values
-ConfigDoFValues const *OrderParameter::get() const { return m_dof_values; }
+clexulator::ConfigDoFValues const *OrderParameter::get() const {
+  return m_dof_values;
+}
 
 /// \brief Calculate and return current order parameter value
 Eigen::VectorXd const &OrderParameter::value() {
@@ -395,27 +399,6 @@ Eigen::VectorXd const &OrderParameter::global_delta(Index dof_component,
   m_delta_value = m_dof_space.basis_inv.col(dof_component) *
                   (new_value - (*m_global_dof_values)(dof_component));
   return m_delta_value;
-}
-
-/// \brief Calculate order parameter for a single Configuration
-///
-/// Note: If the order parameter is being calculated for multiple
-/// configurations, especially if in the same supercell, it is
-///  more efficient to use the OrderParamter class. Example:
-///
-/// \code
-/// std::set<Configuration> configs;
-/// OrderParameter f{dof_space};
-/// for (auto const &config : configs) {
-///   Eigen::VectorXd order_parameter = f(config);
-///   ...
-/// }
-/// \endcode
-///
-Eigen::VectorXd make_order_parameter(DoFSpace const &dof_space,
-                                     Configuration const &config) {
-  OrderParameter f{dof_space};
-  return f(config);
 }
 
 }  // namespace config

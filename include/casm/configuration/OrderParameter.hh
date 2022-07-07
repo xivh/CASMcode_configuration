@@ -3,7 +3,6 @@
 
 #include <optional>
 
-#include "casm/configuration/Configuration.hh"
 #include "casm/configuration/DoFSpace.hh"
 #include "casm/crystallography/DoFDecl.hh"
 
@@ -17,23 +16,23 @@ class OrderParameter {
   OrderParameter(DoFSpace const &dof_space);
 
   /// \brief Calculate and return order parameter value
-  Eigen::VectorXd const &operator()(Configuration const &configuration);
+  Eigen::VectorXd const &operator()(
+      Eigen::Matrix3l const &transformation_matrix_to_super,
+      xtal::UnitCellCoordIndexConverter const &supercell_index_converter,
+      clexulator::ConfigDoFValues const *dof_values);
 
   /// \brief If necessary, reset internal data to calculate order
   ///     parameters in a different supercell
-  OrderParameter &update(Supercell const &supercell,
-                         ConfigDoFValues const *dof_values = nullptr);
+  OrderParameter &update(
+      Eigen::Matrix3l const &transformation_matrix_to_super,
+      xtal::UnitCellCoordIndexConverter const &supercell_index_converter,
+      clexulator::ConfigDoFValues const *dof_values = nullptr);
 
-  /// \brief If necessary, reset internal data to calculate order
-  ///     parameters in a different supercell
-  OrderParameter &update(Configuration const &configuration);
-
-  /// \brief Set internal pointer to DoF values - must be consistent with
-  ///     supercell
-  void set(ConfigDoFValues const *dof_values);
+  /// \brief Reset internal pointer to DoF values - must have the same supercell
+  void set(clexulator::ConfigDoFValues const *dof_values);
 
   /// \brief Get internal pointer to DoF values
-  ConfigDoFValues const *get() const;
+  clexulator::ConfigDoFValues const *get() const;
 
   /// \brief Calculate and return current order parameter value
   Eigen::VectorXd const &value();
@@ -85,7 +84,7 @@ class OrderParameter {
   Eigen::VectorXd m_prim_local_dof_values;
 
   /// DoF values to use
-  ConfigDoFValues const *m_dof_values;
+  clexulator::ConfigDoFValues const *m_dof_values;
 
   /// Pointer to global DoF values. Set when m_dof_values is set.
   Eigen::VectorXd const *m_global_dof_values;
@@ -115,10 +114,6 @@ class OrderParameter {
   /// Used for efficient calculation of order parameter value.
   std::vector<std::vector<Index>> m_dof_space_to_supercell_sites;
 };
-
-/// \brief Calculate order parameter for a single Configuration
-Eigen::VectorXd make_order_parameter(DoFSpace const &dof_space,
-                                     Configuration const &config);
 
 }  // namespace config
 }  // namespace CASM

@@ -1,6 +1,6 @@
 #include "casm/configuration/DoFSpace.hh"
 
-#include "casm/configuration/Configuration.hh"
+#include "casm/crystallography/BasicStructureTools.hh"
 #include "casm/crystallography/CanonicalForm.hh"
 #include "casm/crystallography/SuperlatticeEnumerator.hh"
 #include "gtest/gtest.h"
@@ -17,42 +17,45 @@ Eigen::Matrix3l _fcc_conventional_transf_mat() {
   return transf_mat;
 }
 
+std::shared_ptr<xtal::BasicStructure const> make_shared_prim(
+    xtal::BasicStructure const &prim) {
+  return std::make_shared<xtal::BasicStructure const>(prim);
+}
+
 }  // namespace
 
 class DoFSpaceTest : public testing::Test {
  protected:
-  std::shared_ptr<config::Prim const> prim;
-  std::shared_ptr<config::Supercell const> supercell;  // conventional unit cell
+  std::shared_ptr<xtal::BasicStructure const> prim;
+  Eigen::Matrix3l transformation_matrix_to_super;
 
   DoFSpaceTest()
-      : prim(config::make_shared_prim(test::FCC_ternary_GLstrain_disp_prim())),
-        supercell(std::make_shared<config::Supercell const>(
-            prim, _fcc_conventional_transf_mat())) {}
+      : prim(make_shared_prim(test::FCC_ternary_GLstrain_disp_prim())),
+        transformation_matrix_to_super(_fcc_conventional_transf_mat()) {}
 };
 
 TEST_F(DoFSpaceTest, ConstructorTest1_GLstrain) {
   // Construct the GLstrain DoF space.
-  config::Configuration config{supercell};
   DoFKey dof_key = "GLstrain";
-  config::DoFSpace dof_space = config::make_dof_space(dof_key, prim);
+  config::DoFSpace dof_space = config::make_global_dof_space(dof_key, prim);
   EXPECT_EQ(dof_space.dim, 6);
   EXPECT_EQ(dof_space.dim, dof_space.basis.rows());
 }
 
 TEST_F(DoFSpaceTest, ConstructorTest2_disp) {
   // Construct the disp DoF space.
-  config::Configuration config{supercell};
   DoFKey dof_key = "disp";
-  config::DoFSpace dof_space = config::make_dof_space(dof_key, *supercell);
+  config::DoFSpace dof_space = config::make_local_dof_space(
+      dof_key, prim, transformation_matrix_to_super);
   EXPECT_EQ(dof_space.dim, 4 * 3);
   EXPECT_EQ(dof_space.dim, dof_space.basis.rows());
 }
 
 TEST_F(DoFSpaceTest, ExcludeHomogeneousModeSpace) {
   // Construct the disp DoF space.
-  config::Configuration config{supercell};
   DoFKey dof_key = "disp";
-  config::DoFSpace dof_space_0 = config::make_dof_space(dof_key, *supercell);
+  config::DoFSpace dof_space_0 = config::make_local_dof_space(
+      dof_key, prim, transformation_matrix_to_super);
 
   Eigen::MatrixXd homogeneous_mode_space =
       config::make_homogeneous_mode_space(dof_space_0);
@@ -69,15 +72,14 @@ TEST_F(DoFSpaceTest, ExcludeHomogeneousModeSpace) {
 /// the basis is the same on all sites
 class RestrictedLocalDoFSpaceTest : public testing::Test {
  protected:
-  std::shared_ptr<config::Prim const> prim;
-  std::shared_ptr<config::Supercell const> supercell;  // conventional unit cell
+  std::shared_ptr<xtal::BasicStructure const> prim;
+  Eigen::Matrix3l transformation_matrix_to_super;
 
   static xtal::BasicStructure make_prim();
 
   RestrictedLocalDoFSpaceTest()
-      : prim(config::make_shared_prim(make_prim())),
-        supercell(std::make_shared<config::Supercell const>(
-            prim, _fcc_conventional_transf_mat())) {}
+      : prim(make_shared_prim(make_prim())),
+        transformation_matrix_to_super(_fcc_conventional_transf_mat()) {}
 };
 
 xtal::BasicStructure RestrictedLocalDoFSpaceTest::make_prim() {
@@ -107,14 +109,14 @@ xtal::BasicStructure RestrictedLocalDoFSpaceTest::make_prim() {
 }
 
 TEST_F(RestrictedLocalDoFSpaceTest, FactorGroupSize) {
-  EXPECT_EQ(prim->sym_info.factor_group->element.size(), 16);
+  EXPECT_EQ(xtal::make_factor_group(*prim).size(), 16);
 }
 
 TEST_F(RestrictedLocalDoFSpaceTest, ExcludeHomogeneousModeSpace) {
   // Construct the restricted disp DoF space.
-  config::Configuration config{supercell};
   DoFKey dof_key = "disp";
-  config::DoFSpace dof_space_0 = config::make_dof_space(dof_key, *supercell);
+  config::DoFSpace dof_space_0 = config::make_local_dof_space(
+      dof_key, prim, transformation_matrix_to_super);
   // std::cout << "including homogeneous_mode_space: \n"
   //           << dof_space_0.basis << std::endl;
   EXPECT_EQ(dof_space_0.dim, 8);
@@ -142,15 +144,14 @@ TEST_F(RestrictedLocalDoFSpaceTest, ExcludeHomogeneousModeSpace) {
 /// possible along z
 class RestrictedLocalDoFSpaceTest2 : public testing::Test {
  protected:
-  std::shared_ptr<config::Prim const> prim;
-  std::shared_ptr<config::Supercell const> supercell;  // conventional unit cell
+  std::shared_ptr<xtal::BasicStructure const> prim;
+  Eigen::Matrix3l transformation_matrix_to_super;
 
   static xtal::BasicStructure make_prim();
 
   RestrictedLocalDoFSpaceTest2()
-      : prim(config::make_shared_prim(make_prim())),
-        supercell(std::make_shared<config::Supercell const>(
-            prim, Eigen::Matrix3l::Identity())) {}
+      : prim(make_shared_prim(make_prim())),
+        transformation_matrix_to_super(Eigen::Matrix3l::Identity()) {}
 };
 
 xtal::BasicStructure RestrictedLocalDoFSpaceTest2::make_prim() {
@@ -195,14 +196,14 @@ xtal::BasicStructure RestrictedLocalDoFSpaceTest2::make_prim() {
 }
 
 TEST_F(RestrictedLocalDoFSpaceTest2, FactorGroupSize) {
-  EXPECT_EQ(prim->sym_info.factor_group->element.size(), 16);
+  EXPECT_EQ(xtal::make_factor_group(*prim).size(), 16);
 }
 
 TEST_F(RestrictedLocalDoFSpaceTest2, ExcludeHomogeneousModeSpace) {
   // Construct the restricted disp DoF space.
-  config::Configuration config{supercell};
   DoFKey dof_key = "disp";
-  config::DoFSpace dof_space_0 = config::make_dof_space(dof_key, *supercell);
+  config::DoFSpace dof_space_0 = config::make_local_dof_space(
+      dof_key, prim, transformation_matrix_to_super);
   // std::cout << "including homogeneous_mode_space: \n"
   //           << dof_space_0.basis << std::endl;
   EXPECT_EQ(dof_space_0.dim, 4);
@@ -230,15 +231,14 @@ TEST_F(RestrictedLocalDoFSpaceTest2, ExcludeHomogeneousModeSpace) {
 /// possible along z, occupation is different on the two sublattices
 class RestrictedLocalDoFSpaceTest3 : public testing::Test {
  protected:
-  std::shared_ptr<config::Prim const> prim;
-  std::shared_ptr<config::Supercell const> supercell;  // conventional unit cell
+  std::shared_ptr<xtal::BasicStructure const> prim;
+  Eigen::Matrix3l transformation_matrix_to_super;
 
   static xtal::BasicStructure make_prim();
 
   RestrictedLocalDoFSpaceTest3()
-      : prim(config::make_shared_prim(make_prim())),
-        supercell(std::make_shared<config::Supercell const>(
-            prim, Eigen::Matrix3l::Identity())) {}
+      : prim(make_shared_prim(make_prim())),
+        transformation_matrix_to_super(Eigen::Matrix3l::Identity()) {}
 };
 
 xtal::BasicStructure RestrictedLocalDoFSpaceTest3::make_prim() {
@@ -289,14 +289,14 @@ TEST_F(RestrictedLocalDoFSpaceTest3, FactorGroupSize) {
   // SymInfoOptions opt{CART};
   // brief_description(log(), factor_group, prim->lattice(), opt);
 
-  EXPECT_EQ(prim->sym_info.factor_group->element.size(), 8);
+  EXPECT_EQ(xtal::make_factor_group(*prim).size(), 8);
 }
 
 TEST_F(RestrictedLocalDoFSpaceTest3, ExcludeHomogeneousModeSpace) {
   // Construct the restricted disp DoF space.
-  config::Configuration config{supercell};
   DoFKey dof_key = "disp";
-  config::DoFSpace dof_space_0 = config::make_dof_space(dof_key, *supercell);
+  config::DoFSpace dof_space_0 = config::make_local_dof_space(
+      dof_key, prim, transformation_matrix_to_super);
   // std::cout << "including homogeneous_mode_space: \n"
   //           << dof_space_0.basis << std::endl;
   EXPECT_EQ(dof_space_0.dim, 4);
@@ -324,15 +324,14 @@ TEST_F(RestrictedLocalDoFSpaceTest3, ExcludeHomogeneousModeSpace) {
 /// are possible
 class VariableLocalDoFSpaceTest1 : public testing::Test {
  protected:
-  std::shared_ptr<config::Prim const> prim;
-  std::shared_ptr<config::Supercell const> supercell;  // conventional unit cell
+  std::shared_ptr<xtal::BasicStructure const> prim;
+  Eigen::Matrix3l transformation_matrix_to_super;
 
   static xtal::BasicStructure make_prim();
 
   VariableLocalDoFSpaceTest1()
-      : prim(config::make_shared_prim(make_prim())),
-        supercell(std::make_shared<config::Supercell const>(
-            prim, Eigen::Matrix3l::Identity())) {}
+      : prim(make_shared_prim(make_prim())),
+        transformation_matrix_to_super(Eigen::Matrix3l::Identity()) {}
 };
 
 xtal::BasicStructure VariableLocalDoFSpaceTest1::make_prim() {
@@ -398,7 +397,7 @@ xtal::BasicStructure VariableLocalDoFSpaceTest1::make_prim() {
 }
 
 TEST_F(VariableLocalDoFSpaceTest1, FactorGroupSize) {
-  EXPECT_EQ(prim->sym_info.factor_group->element.size(), 48);
+  EXPECT_EQ(xtal::make_factor_group(*prim).size(), 48);
 }
 
 TEST_F(VariableLocalDoFSpaceTest1, ExcludeHomogeneousModeSpace) {
@@ -406,9 +405,9 @@ TEST_F(VariableLocalDoFSpaceTest1, ExcludeHomogeneousModeSpace) {
   // translations are possible
 
   // Construct the restricted disp DoF space.
-  config::Configuration config{supercell};
   DoFKey dof_key = "disp";
-  config::DoFSpace dof_space_0 = config::make_dof_space(dof_key, *supercell);
+  config::DoFSpace dof_space_0 = config::make_local_dof_space(
+      dof_key, prim, transformation_matrix_to_super);
   // std::cout << "including homogeneous_mode_space: \n"
   //           << dof_space_0.basis << std::endl;
   EXPECT_EQ(dof_space_0.dim, 9);
@@ -435,8 +434,8 @@ TEST_F(VariableLocalDoFSpaceTest1, ExcludeHomogeneousModeSpace) {
 /// customization to tests various structures that are found to be problematic
 class DebugLocalDoFSpaceTest : public testing::Test {
  protected:
-  std::shared_ptr<config::Prim const> prim;            // must make in test
-  std::shared_ptr<config::Supercell const> supercell;  // must make in test
+  std::shared_ptr<xtal::BasicStructure const> prim;  // must make in test
+  Eigen::Matrix3l transformation_matrix_to_super;
 
   DebugLocalDoFSpaceTest() {}
 
@@ -450,7 +449,7 @@ class DebugLocalDoFSpaceTest : public testing::Test {
 };
 
 void DebugLocalDoFSpaceTest::check_FactorGroupSize(Index factor_group_size) {
-  EXPECT_EQ(prim->sym_info.factor_group->element.size(), factor_group_size);
+  EXPECT_EQ(xtal::make_factor_group(*prim).size(), factor_group_size);
 }
 
 void DebugLocalDoFSpaceTest::check_ExcludeHomogeneousModeSpace(
@@ -464,9 +463,9 @@ void DebugLocalDoFSpaceTest::check_ExcludeHomogeneousModeSpace(
   // print_local_dof_symreps(supercell->sym_info());
 
   // Construct the restricted disp DoF space.
-  config::Configuration config{supercell};
   DoFKey dof_key = "disp";
-  config::DoFSpace dof_space_0 = make_dof_space(dof_key, *supercell);
+  config::DoFSpace dof_space_0 = config::make_local_dof_space(
+      dof_key, prim, transformation_matrix_to_super);
   // std::cout << "including homogeneous_mode_space: \n"
   //           << pretty(dof_space_0.basis) << std::endl;
   EXPECT_EQ(dof_space_0.dim, initial_dof_space_shape.first);
@@ -550,9 +549,8 @@ TEST_F(DebugLocalDoFSpaceTest, Test1) {  // failed original method
        Site{Coordinate{0.0, 0.5, 0.5, lat, FRAC}, {C, D}, {disp_yz}},
        Site{Coordinate{0.5, 0.0, 0.5, lat, FRAC}, {C, D}, {disp_xz}}});
 
-  prim = config::make_shared_prim(struc);
-  supercell = std::make_shared<config::Supercell const>(
-      prim, Eigen::Matrix3l::Identity());
+  prim = make_shared_prim(struc);
+  transformation_matrix_to_super = Eigen::Matrix3l::Identity();
 
   Index prim_factor_group_size = 48;
 
@@ -620,9 +618,8 @@ TEST_F(DebugLocalDoFSpaceTest, Test2) {  // failed original method
        Site{Coordinate{0.0, 0.5, 0.5, lat, FRAC}, {A, B}, {disp_yz}},
        Site{Coordinate{0.5, 0.0, 0.5, lat, FRAC}, {A, B}, {disp_xz}}});
 
-  prim = config::make_shared_prim(struc);
-  supercell = std::make_shared<config::Supercell const>(
-      prim, Eigen::Matrix3l::Identity());
+  prim = make_shared_prim(struc);
+  transformation_matrix_to_super = Eigen::Matrix3l::Identity();
 
   Index prim_factor_group_size = 48;
 
@@ -679,9 +676,8 @@ TEST_F(DebugLocalDoFSpaceTest, Test3) {  // passes
       {Site{Coordinate{0.0, 0.0, 0.0, lat, FRAC}, {A, B}, {disp_xyz}},
        Site{Coordinate{0.5, 0.5, 0.5, lat, FRAC}, {A, B}, {disp_z}}});
 
-  prim = config::make_shared_prim(struc);
-  supercell = std::make_shared<config::Supercell const>(
-      prim, Eigen::Matrix3l::Identity());
+  prim = make_shared_prim(struc);
+  transformation_matrix_to_super = Eigen::Matrix3l::Identity();
 
   Index prim_factor_group_size = 16;
 
@@ -738,12 +734,11 @@ TEST_F(DebugLocalDoFSpaceTest, Test4) {  // failed for 2x2x2, passed for 2x1x1
       {Site{Coordinate{0.0, 0.0, 0.0, lat, FRAC}, {A, B}, {disp_xyz}},
        Site{Coordinate{0.5, 0.5, 0.5, lat, FRAC}, {A, B}, {disp_z}}});
 
-  prim = config::make_shared_prim(struc);
+  prim = make_shared_prim(struc);
 
   Eigen::Matrix3l T;
   T << 2, 0, 0, 0, 2, 0, 0, 0, 2;
-
-  supercell = std::make_shared<config::Supercell const>(prim, T);
+  transformation_matrix_to_super = T;
 
   Index prim_factor_group_size = 16;
   Index vol = T.determinant();
@@ -795,7 +790,7 @@ TEST_F(DebugLocalDoFSpaceTest, Test5) {
   struc.set_basis(
       {Site{Coordinate{0.0, 0.0, 0.0, lat, FRAC}, {A, B}, {disp_xyz}}});
 
-  prim = config::make_shared_prim(struc);
+  prim = make_shared_prim(struc);
 
   Index prim_factor_group_size = 48;
   Index prim_disp_dof_space_dim = 3;
@@ -808,19 +803,20 @@ TEST_F(DebugLocalDoFSpaceTest, Test5) {
   Eigen::Matrix3i generating_matrix = Eigen::Matrix3i::Identity();
   ScelEnumProps enumeration_params{begin_volume, end_volume, dirs,
                                    generating_matrix};
-  SuperlatticeEnumerator enumerator{prim->basicstructure->lattice(),
-                                    prim->sym_info.point_group->element,
+  double tol = prim->lattice().tol();
+  auto fg = xtal::make_factor_group(*prim, tol);
+  auto crystal_point_group = xtal::make_crystal_point_group(fg, tol);
+  SuperlatticeEnumerator enumerator{prim->lattice(), crystal_point_group,
                                     enumeration_params};
 
   // for various supercells:
   for (Lattice const &superlattice : enumerator) {
     Lattice canonical_superlattice = xtal::canonical::equivalent(
-        superlattice, prim->sym_info.point_group->element, superlattice.tol());
+        superlattice, crystal_point_group, superlattice.tol());
 
-    supercell =
-        std::make_shared<config::Supercell const>(prim, canonical_superlattice);
-    Eigen::Matrix3l T =
-        supercell->superlattice.transformation_matrix_to_super();
+    Eigen::Matrix3l T = make_transformation_matrix_to_super(
+        prim->lattice(), canonical_superlattice, tol);
+    transformation_matrix_to_super = T;
 
     // std::cout << "--- begin supercell ---" << std::endl;
     // std::cout << "transformation_matrix_to_super:" << std::endl;
