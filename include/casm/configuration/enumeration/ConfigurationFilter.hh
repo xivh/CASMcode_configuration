@@ -1,5 +1,5 @@
-#ifndef CASM_config_enum_filter
-#define CASM_config_enum_filter
+#ifndef CASM_config_enum_ConfigurationFilter
+#define CASM_config_enum_ConfigurationFilter
 
 #include <functional>
 #include <vector>
@@ -26,7 +26,7 @@ struct ConfigurationFilter {
   virtual bool canonical_guarantee() const = 0;
 };
 
-struct NoConfigurationFilter : public ConfigurationFilter {
+struct AllConfigurationFilter : public ConfigurationFilter {
   bool operator()(Configuration const &configuration) const override {
     return true;
   }

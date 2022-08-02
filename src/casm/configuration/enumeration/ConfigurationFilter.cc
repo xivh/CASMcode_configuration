@@ -1,4 +1,4 @@
-#include "casm/configuration/enumeration/filter.hh"
+#include "casm/configuration/enumeration/ConfigurationFilter.hh"
 
 #include "casm/configuration/SupercellSymOp.hh"
 #include "casm/configuration/canonical_form.hh"
