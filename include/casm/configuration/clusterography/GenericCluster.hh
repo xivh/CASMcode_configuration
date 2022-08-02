@@ -4,11 +4,15 @@
 #include <algorithm>
 #include <vector>
 
-#include "casm/container/Permutation.hh"
 #include "casm/container/algorithm.hh"
+#include "casm/global/definitions.hh"
 #include "casm/misc/Comparisons.hh"
 
 namespace CASM {
+
+template <typename T>
+struct traits;
+
 namespace clust {
 
 /** \defgroup Clusterography

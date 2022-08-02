@@ -12,3 +12,34 @@
 // Allowed dependencies:
 // - CASMcode_global
 // - CASMcode_crystallography
+// - CASMcode_clexulator
+// - CASMcode_configuration/group
+
+#ifndef CASM_clust_definitions
+#define CASM_clust_definitions
+
+namespace CASM {
+
+namespace xtal {
+struct SymOp;
+class UnitCell;
+class UnitCellCoord;
+struct UnitCellCoordRep;
+}  // namespace xtal
+
+namespace group {
+template <typename ElementType>
+struct Group;
+}
+
+namespace clust {
+
+typedef long Index;
+
+/// \brief A group::Group of xtal::SymOp
+typedef group::Group<xtal::SymOp> SymGroup;
+
+}  // namespace clust
+}  // namespace CASM
+
+#endif
