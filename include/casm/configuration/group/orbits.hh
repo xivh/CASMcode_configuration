@@ -28,12 +28,12 @@ std::set<OrbitElementType, CompareType> make_orbit(
     OrbitElementType const &orbit_element, GroupElementIt group_begin,
     GroupElementIt group_end, CompareType compare_f,
     CopyApplyType copy_apply_f) {
-  std::set<ElementType, CompareElementType> orbit(compare_f);
+  std::set<OrbitElementType, CompareType> orbit(compare_f);
   for (; group_begin != group_end; ++group_begin) {
     orbit.emplace(copy_apply_f(*group_begin, orbit_element));
   }
   return orbit;
-);
+}
 
 /// \brief Make the orbit equivalence map
 ///
@@ -51,9 +51,9 @@ std::set<OrbitElementType, CompareType> make_orbit(
 ///     orbit element i
 /// \param group The group used to generate the orbit
 ///
-/// \returns invariant_subgroups, The indices invariant_subgroups[i] are
-///     the indices of the group elements which leave orbit element i
-///     invariant.
+/// \returns equivalence_map, The indices equivalence_map[i] are
+///     the indices of the group elements transform the first
+///     element in the orbit into the i-th element in the orbit.
 ///
 template <typename OrbitElementType, typename GroupElementIt,
           typename CompareType, typename CopyApplyType>
@@ -65,7 +65,7 @@ std::vector<std::vector<Index>> make_equivalence_map(
   equivalence_map.resize(orbit.size());
   Index i = 0;
   for (; group_begin != group_end; ++group_begin) {
-    auto it = orbit.find(copy_apply_f(*group_begin, orbit_element));
+    auto it = orbit.find(copy_apply_f(*group_begin, *orbit.begin()));
     if (it == orbit.end()) {
       throw std::runtime_error("Error in make_equivalence_map: failed");
     }

@@ -5,6 +5,10 @@
 //   - Includes multiplication_table, inverse, and group-subgroup relationships
 // - make_orbit: function to construct and sort an orbit of objects
 // - make_equivalence_map: function to construct an equivalence map
+// - make_cyclic_subgroups: function to make cyclic (small) subgroups
+// - make_all_subgroups: combines cyclic subgroups to form all subgroups
+// - make_invariant_subgroups: make the invariant subgroup of each element of
+//   an orbit
 //
 // Allowed dependencies:
 // - CASMcode_global

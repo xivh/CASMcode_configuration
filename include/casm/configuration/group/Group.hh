@@ -20,6 +20,11 @@ struct Group {
   Group(std::shared_ptr<Group const> const &_head_group,
         std::set<Index> const &_head_group_index);
 
+  /// \brief Construct a subgroup
+  Group(std::shared_ptr<Group const> const &_head_group,
+        std::vector<ElementType> const &_element,
+        std::set<Index> const &_head_group_index);
+
   /// \brief If this is a subgroup, indicates the head group; if this is a head
   /// group, then this is empty
   std::shared_ptr<Group const> const head_group;
@@ -36,6 +41,11 @@ struct Group {
   /// If this is a sub group, then:
   ///
   ///     this->element[i] == head_group->element[this->head_group_index[i]]
+  ///
+  /// Or, for example, for a subgroup of a factor group:
+  ///
+  ///     this->element[i] == <translation> *
+  ///     head_group->element[this->head_group_index[i]]
   ///
   std::vector<Index> const head_group_index;
 
@@ -211,6 +221,26 @@ Group<ElementType>::Group(
     : head_group(_head_group),
       element(
           Group_impl::_make_subgroup_elements(_head_group, _head_group_index)),
+      head_group_index(_head_group_index.begin(), _head_group_index.end()),
+      multiplication_table(Group_impl::_make_subgroup_multiplication_table(
+          _head_group, _head_group_index)),
+      inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {}
+
+/// \brief Construct a subgroup
+///
+/// \params _head_group The group that is the head group of this subgroup.
+///     the members of the subgroup.
+/// \params _element Group elements, expected to be closed and sorted as desired
+/// \params _head_group_index Contains indices into `_head_group->element` of
+///     the members of the subgroup.
+///
+template <typename ElementType>
+Group<ElementType>::Group(
+    std::shared_ptr<Group<ElementType> const> const &_head_group,
+    std::vector<ElementType> const &_element,
+    std::set<Index> const &_head_group_index)
+    : head_group(_head_group),
+      element(_element),
       head_group_index(_head_group_index.begin(), _head_group_index.end()),
       multiplication_table(Group_impl::_make_subgroup_multiplication_table(
           _head_group, _head_group_index)),
