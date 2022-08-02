@@ -28,8 +28,9 @@
 //     (the "greatest" of all symmetrically equivalent configuration).
 //
 // Allowed dependencies:
-// - casm/crystallography
-// - casm/clexulator
+// - CASMcode_global
+// - CASMcode_crystallography
+// - CASMcode_clexulator
 
 #ifndef CASM_config_definitions
 #define CASM_config_definitions
