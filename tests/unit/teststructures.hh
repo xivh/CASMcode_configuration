@@ -239,6 +239,32 @@ inline CASM::xtal::BasicStructure FCC_ternary_GLstrain_disp_prim() {
 
   return struc;
 }
+
+inline CASM::xtal::BasicStructure FCC_dimer_prim() {
+  using namespace CASM;
+  using namespace CASM::xtal;
+
+  // lattice vectors as cols
+  Eigen::Matrix3d lat;
+  lat << 0.0, 2.0, 2.0, 2.0, 0.0, 2.0, 2.0, 2.0, 0.0;
+
+  BasicStructure struc{Lattice{lat}};
+  struc.set_title("FCC_dimer");
+
+  Molecule A2x("A2", {AtomPosition(Eigen::Vector3d(-0.4, 0.0, 0.0), "A"),
+                      AtomPosition(Eigen::Vector3d(0.4, 0.0, 0.0), "A")});
+  Molecule A2y("A2", {AtomPosition(Eigen::Vector3d(0.0, -0.4, 0.0), "A"),
+                      AtomPosition(Eigen::Vector3d(0.0, 0.4, 0.0), "A")});
+  Molecule A2z("A2", {AtomPosition(Eigen::Vector3d(0.0, 0.0, -0.4), "A"),
+                      AtomPosition(Eigen::Vector3d(0.0, 0.0, 0.4), "A")});
+
+  struc.push_back(
+      Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
+           std::vector<Molecule>{A2x, A2y, A2z}, std::vector<SiteDoFSet>{}));
+
+  return struc;
+}
+
 }  // namespace test
 
 #endif

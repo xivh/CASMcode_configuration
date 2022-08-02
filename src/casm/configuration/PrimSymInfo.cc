@@ -65,7 +65,7 @@ PrimSymInfo::PrimSymInfo(BasicStructure const &basicstructure) {
     ++op_index;
   }
 
-  // Construct (OccSymGroupRep) occ_symgroup_rep,
+  // Construct (OccSymGroupRep) occ_symgroup_rep, atom_position_rep,
   //   & set (bool) has_occupation_dofs & set (bool) has_aniso_occs
   auto const &basis = basicstructure.basis();
   has_occupation_dofs = false;
@@ -77,9 +77,14 @@ PrimSymInfo::PrimSymInfo(BasicStructure const &basicstructure) {
   has_aniso_occs = false;
   op_index = 0;
   for (SymOp const &op : fg_element) {
-    // the rep is a vector of permutation (one per prim site), that are used
+    // the occ_rep is a vector of permutation (one per prim site), that are used
     // to generate the new occupant indices
-    OccSymOpRep rep;
+    OccSymOpRep occ_rep;
+
+    // atom_position_rep[sublattice_index_before][occupant_index_before] ->
+    // Permutation
+    AtomPositionSymOpRep atom_position_rep;
+
     for (Index b = 0; b < basis.size(); ++b) {
       // copy_aply(symop,dofref_from) = P.permute(dofref_to);
       auto const &dofref_to =
@@ -92,14 +97,22 @@ PrimSymInfo::PrimSymInfo(BasicStructure const &basicstructure) {
         if (!eq.perm().is_identity()) {
           has_aniso_occs = true;
         }
-        rep.push_back(inverse(eq.perm().perm_array()));
+        occ_rep.push_back(inverse(eq.perm().perm_array()));
+
+        std::vector<Permutation> tmp;
+        for (Index i = 0; i < dofref_from.size(); ++i) {
+          tmp.push_back(inverse(eq.atom_position_perm()[i].perm_array()));
+        }
+        atom_position_rep.push_back(tmp);
       } else {
         throw std::runtime_error(
             "In CASM::config::Prim constructor: Sites originally "
             "identified as equivalent cannot be mapped by symmetry.");
       }
     }
-    occ_symgroup_rep.push_back(rep);
+    occ_symgroup_rep.push_back(occ_rep);
+    atom_position_symgroup_rep.push_back(atom_position_rep);
+
     ++op_index;
   }
 

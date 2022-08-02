@@ -114,6 +114,12 @@ typedef std::vector<Permutation> OccSymOpRep;
 /// \brief One OccSymOpRep per master group operation
 typedef std::vector<OccSymOpRep> OccSymGroupRep;
 
+/// \brief One permutation per sublattice, per occupant
+typedef std::vector<std::vector<Permutation>> AtomPositionSymOpRep;
+
+/// \brief One AtomPositionSymOpRep per master group operation
+typedef std::vector<AtomPositionSymOpRep> AtomPositionSymGroupRep;
+
 /// \brief Permute container
 ///
 /// Container must support operator[] indexing and copy construction
