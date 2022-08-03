@@ -825,6 +825,12 @@ def main():
             "ldadd": [
                 "libcasm_configuration.la"
             ],
+        },
+        {
+            "directory": "tests/unit/clusterography",
+            "ldadd": [
+                "libcasm_configuration.la"
+            ],
         }
     ])
     target = os.path.join("tests", "unit", "Makemodule.am")

@@ -12,15 +12,19 @@
 // Allowed dependencies:
 // - CASMcode_global
 // - CASMcode_crystallography
-// - CASMcode_clexulator
 // - CASMcode_configuration/group
+// - CASMcode_configuration/sym_info
 
 #ifndef CASM_clust_definitions
 #define CASM_clust_definitions
 
 namespace CASM {
+template <typename T>
+struct traits;
 
 namespace xtal {
+class BasicStructure;
+class Site;
 struct SymOp;
 class UnitCell;
 class UnitCellCoord;
@@ -35,9 +39,31 @@ struct Group;
 namespace clust {
 
 typedef long Index;
+typedef std::string DoFKey;
+
+class ClusterInvariants;
+template <typename Base>
+class GenericCluster;
+class IntegralCluster;
+struct IntegralClusterOrbitGenerator;
 
 /// \brief A group::Group of xtal::SymOp
 typedef group::Group<xtal::SymOp> SymGroup;
+
+/// A SiteFilterFunction returns true if a Site should be included and false if
+/// it should be excluded
+typedef std::function<bool(xtal::Site)> SiteFilterFunction;
+
+/// A ClusterFilterFunction returns true if an IntegralCluster should be
+/// included and false if it should be excluded
+typedef std::function<bool(ClusterInvariants const &, IntegralCluster const &)>
+    ClusterFilterFunction;
+
+/// A CandidateSitesFunction generates a vector of UnitCellCoord from a
+/// Structure and SiteFilterFuntion
+typedef std::function<std::vector<xtal::UnitCellCoord>(
+    xtal::BasicStructure const &, SiteFilterFunction)>
+    CandidateSitesFunction;
 
 }  // namespace clust
 }  // namespace CASM

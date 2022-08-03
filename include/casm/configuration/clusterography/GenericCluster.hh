@@ -4,15 +4,12 @@
 #include <algorithm>
 #include <vector>
 
+#include "casm/configuration/clusterography/definitions.hh"
 #include "casm/container/algorithm.hh"
 #include "casm/global/definitions.hh"
 #include "casm/misc/Comparisons.hh"
 
 namespace CASM {
-
-template <typename T>
-struct traits;
-
 namespace clust {
 
 /** \defgroup Clusterography

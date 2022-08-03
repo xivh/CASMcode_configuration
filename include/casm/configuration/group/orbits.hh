@@ -35,6 +35,23 @@ std::set<OrbitElementType, CompareType> make_orbit(
   return orbit;
 }
 
+template <typename OrbitElementType, typename GroupElementIt,
+          typename CompareType, typename CopyApplyType>
+OrbitElementType make_canonical_element(OrbitElementType const &orbit_element,
+                                        GroupElementIt group_begin,
+                                        GroupElementIt group_end,
+                                        CompareType compare_f,
+                                        CopyApplyType copy_apply_f) {
+  OrbitElementType best = copy_apply_f(*group_begin++, orbit_element);
+  for (; group_begin != group_end; ++group_begin) {
+    auto test = copy_apply_f(*group_begin, orbit_element);
+    if (compare_f(best, test)) {
+      best = test;
+    }
+  }
+  return best;
+}
+
 /// \brief Make the orbit equivalence map
 ///
 /// Generate a lookup table for which group elements applied to the

@@ -1,10 +1,9 @@
 #ifndef CASM_config_PrimSymInfo
 #define CASM_config_PrimSymInfo
 
-#include <map>
-
 #include "casm/configuration/definitions.hh"
 #include "casm/configuration/group/Group.hh"
+#include "casm/configuration/sym_info/definitions.hh"
 #include "casm/crystallography/SymTools.hh"
 #include "casm/crystallography/UnitCellCoordRep.hh"
 
@@ -14,7 +13,7 @@ namespace config {
 /// \brief Data structure describing how prim DoF values transform under
 /// application of symmetry
 struct PrimSymInfo {
-  PrimSymInfo(BasicStructure const &basicstructure);
+  PrimSymInfo(xtal::BasicStructure const &basicstructure);
 
   /// \brief Structure factor group
   std::shared_ptr<SymGroup const> factor_group;
@@ -29,9 +28,9 @@ struct PrimSymInfo {
   ///
   /// Usage:
   /// - xtal::UnitCellCoord integral_site_coordinate_after =
-  /// sym::copy_apply(basis_permutation_symgroup_rep[factor_group_index],
+  /// sym::copy_apply(unitcellcoord_symgroup_rep[factor_group_index],
   /// integral_site_coordinate_before)
-  BasisPermutationSymGroupRep basis_permutation_symgroup_rep;
+  sym_info::UnitCellCoordSymGroupRep unitcellcoord_symgroup_rep;
 
   /// \brief True if any occupation DoF
   bool has_occupation_dofs;
@@ -42,56 +41,66 @@ struct PrimSymInfo {
   /// \brief Permutations describe occupant index transformation under symmetry
   ///
   /// Usage:
-  /// - Index occupant_index_after =
-  /// occ_symgroup_rep[factor_group_index][sublattice_index_before][occupant_index_before]
-  /// - This rep is used by:
-  ///   - `Configuration copy_apply(SupercellSymOp const &op, Configuration
-  ///   configuration)`
+  /// \code
+  /// Index occupant_index_after = atom_position_symgroup_rep
+  ///                                  .at(group_element_index)
+  ///                                  .at(sublattice_index_before)
+  ///                                  .at(occupant_index_before);
+  /// \endcode
   ///
   /// Note:
   /// - This describes cases such as discrete molecular orientations or
   /// occupants with spin where a symmetry operation may transform one discrete
   /// occupant into another *before* permutating among sites.
-  OccSymGroupRep occ_symgroup_rep;
+  sym_info::OccSymGroupRep occ_symgroup_rep;
 
   /// \brief Permutations describe atom position index transformation under
   /// symmetry
   ///
   /// Usage:
-  /// - Index atom_position_index_after =
-  /// atom_position_symgroup_rep[factor_group_index][sublattice_index_before][occupant_index_before]
+  /// \code
+  /// Index atom_position_index_after = atom_position_symgroup_rep
+  ///                                       .at(group_element_index)
+  ///                                       .at(sublattice_index_before)
+  ///                                       .at(occupant_index_before);
+  /// \endcode
   ///
   /// Note:
   /// - This describes symmetry operations transforming molecules, resulting in
   /// permutation of atoms among the symmetrically equivalent atom positions in
   /// the molecule.
-  AtomPositionSymGroupRep atom_position_symgroup_rep;
+  sym_info::AtomPositionSymGroupRep atom_position_symgroup_rep;
 
   /// \brief Matrices describe local DoF value transformation under symmetry
   ///
   /// Usage:
-  /// -
-  /// local_dof_symgroup_rep[dof_type][factor_group_index][sublattice_index_before]
-  ///     -> Eigen::MatrixXd
-  /// - For each group element there is one matrix representation per sublattice
-  /// - This rep is used by:
-  ///   - `Configuration copy_apply(SupercellSymOp const &op, Configuration
-  ///   configuration)`
+  /// \code
+  /// Eigen::MatrixXd const &M = local_dof_symgroup_rep
+  ///                                .at(dof_type)
+  ///                                .at(group_element_index)
+  ///                                .at(sublattice_index_before);
+  /// Eigen::MatrixXd sublattice_local_dof_values_after =
+  ///     M * sublattice_local_dof_values_before;
+  /// \endcode
   ///
   /// Note:
+  /// - For each group element there is one matrix representation per sublattice
   /// - Local DoF values transform using these symrep matrices *before*
-  /// permuting among sites
-  std::map<DoFKey, LocalDoFSymGroupRep> local_dof_symgroup_rep;
+  ///   permuting among sites.
+  ///
+  std::map<DoFKey, sym_info::LocalDoFSymGroupRep> local_dof_symgroup_rep;
 
   /// \brief Matrices describe local DoF value transformation under symmetry
   ///
   /// Usage:
-  /// - global_dof_symgroup_rep[dof_type][factor_group_index]
-  ///       -> Eigen::MatrixXd
-  /// - This rep is used by:
-  ///   - `Configuration copy_apply(SupercellSymOp const &op, Configuration
-  ///   configuration)`
-  std::map<DoFKey, GlobalDoFSymGroupRep> global_dof_symgroup_rep;
+  /// \code
+  /// Eigen::MatrixXd const &M = global_dof_symgroup_rep
+  ///                                .at(dof_type)
+  ///                                .at(group_element_index);
+  /// Eigen::VectorXd global_dof_values_after = M * global_dof_values_before;
+  /// \endcode
+  ///
+  std::map<DoFKey, sym_info::GlobalDoFSymGroupRep> global_dof_symgroup_rep;
 };
 
 }  // namespace config

@@ -116,7 +116,7 @@ Configuration copy_configuration(
 
   auto const &prim = supercell->prim;
   PrimSymInfo const &prim_sym_info = prim->sym_info;
-  auto const &unitcellcoord_rep = prim_sym_info.basis_permutation_symgroup_rep;
+  auto const &unitcellcoord_rep = prim_sym_info.unitcellcoord_symgroup_rep;
   Index inverse_prim_factor_group_index =
       prim->sym_info.factor_group->inverse_index[prim_factor_group_index];
 
@@ -157,7 +157,7 @@ Configuration copy_configuration(
 
     // occupation value transformation (accounts for aniostropic occupants)
     Index b = motif_unitcellcoord.sublattice();
-    Permutation const &perm_rep =
+    sym_info::Permutation const &perm_rep =
         prim_sym_info.occ_symgroup_rep[prim_factor_group_index][b];
 
     // copy transformed occupation value

@@ -49,7 +49,11 @@ class IntegralCluster
   using Base::Element;
   using Base::size_type;
 
-  IntegralCluster();
+  explicit IntegralCluster();
+
+  explicit IntegralCluster(std::vector<xtal::UnitCellCoord> const &elements);
+
+  explicit IntegralCluster(std::vector<xtal::UnitCellCoord> &&elements);
 
   template <typename Iterator>
   IntegralCluster(Iterator begin, Iterator end);

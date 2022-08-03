@@ -191,7 +191,7 @@ class AnisoOccupation {
       Index prim_fg_index =
           supercell_sym_info.factor_group->head_group_index[m_fg_index_A];
       for (Index b = 0; b < m_n_sublat; ++b) {
-        Permutation const &occ_perm =
+        sym_info::Permutation const &occ_perm =
             prim_sym_info.occ_symgroup_rep[prim_fg_index][b];
         for (Index n = 0; n < m_n_vol; ++n, ++l) {
           m_new_occ_A[l] = occ_perm[before[l]];
@@ -209,7 +209,7 @@ class AnisoOccupation {
       Index prim_fg_index =
           supercell_sym_info.factor_group->head_group_index[m_fg_index_B];
       for (Index b = 0; b < m_n_sublat; ++b) {
-        Permutation const &occ_perm =
+        sym_info::Permutation const &occ_perm =
             prim_sym_info.occ_symgroup_rep[prim_fg_index][b];
         for (Index n = 0; n < m_n_vol; ++n, ++l) {
           m_new_occ_B[l] = occ_perm[before[l]];

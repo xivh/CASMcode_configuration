@@ -144,9 +144,9 @@ SymOp SupercellSymOp::to_symop() const {
 
 /// Returns the combination of factor group operation permutation and
 /// translation permutation
-Permutation SupercellSymOp::combined_permute() const {
+sym_info::Permutation SupercellSymOp::combined_permute() const {
   SupercellSymInfo const &sym_info = m_supercell->sym_info;
-  return CASM::config::combined_permute(
+  return CASM::sym_info::combined_permute(
       sym_info.factor_group_permutations[m_factor_group_index],  // first
       sym_info.translation_permutations[m_translation_index]);   // second
 }
@@ -271,7 +271,7 @@ ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values) {
     dof.second = M * dof.second;
   }
 
-  Permutation combined_permute{op.combined_permute()};
+  sym_info::Permutation combined_permute{op.combined_permute()};
 
   if (dof_values.occupation.size()) {
     // permute occupant indices (if anisotropic)
@@ -280,7 +280,7 @@ ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values) {
       Index l = 0;
       for (Index b = 0; b < n_sublat; ++b) {
         for (Index n = 0; n < n_vol; ++n, ++l) {
-          Permutation const &occ_perm =
+          sym_info::Permutation const &occ_perm =
               prim_sym_info.occ_symgroup_rep[prim_fg_index][b];
           tmp[l] = occ_perm[tmp[l]];
         }
@@ -296,7 +296,7 @@ ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values) {
   using clexulator::sublattice_block;
   for (auto &dof : dof_values.local_dof_values) {
     // vector of matrix, one per sublattice
-    LocalDoFSymOpRep const &local_dof_symop_rep =
+    sym_info::LocalDoFSymOpRep const &local_dof_symop_rep =
         prim_sym_info.local_dof_symgroup_rep.at(dof.first)[prim_fg_index];
 
     // transform values on initial sites
@@ -335,8 +335,7 @@ xtal::UnitCellCoord &apply(SupercellSymOp const &op,
 
   UnitCellCoordRep const &fg_op =
       op.supercell()
-          ->prim->sym_info
-          .basis_permutation_symgroup_rep[op.factor_group_index()];
+          ->prim->sym_info.unitcellcoord_symgroup_rep[op.factor_group_index()];
 
   apply(fg_op, unitcellcoord);
   unitcellcoord += translation_frac;

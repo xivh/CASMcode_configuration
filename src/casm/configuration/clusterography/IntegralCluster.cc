@@ -7,6 +7,13 @@ namespace clust {
 
 IntegralCluster::IntegralCluster() {}
 
+IntegralCluster::IntegralCluster(
+    std::vector<xtal::UnitCellCoord> const &elements)
+    : m_element(elements) {}
+
+IntegralCluster::IntegralCluster(std::vector<xtal::UnitCellCoord> &&elements)
+    : m_element(std::move(elements)) {}
+
 /// \brief Access vector of elements
 std::vector<xtal::UnitCellCoord> &IntegralCluster::elements() {
   return m_element;

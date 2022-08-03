@@ -2,6 +2,7 @@
 #define CASM_config_SupercellSymInfo
 
 #include "casm/configuration/definitions.hh"
+#include "casm/configuration/sym_info/definitions.hh"
 
 namespace CASM {
 namespace config {
@@ -23,13 +24,13 @@ struct SupercellSymInfo {
   ///
   /// The number of translations is equal the supercell volume (as an integer
   /// multiple of the prim unit cell)
-  std::vector<Permutation> translation_permutations;
+  std::vector<sym_info::Permutation> translation_permutations;
 
   /// \brief Describes how sites permute due to supercell factor group
   /// operations.
   ///
   /// There is one element for each element in the supercell factor group.
-  std::vector<Permutation> factor_group_permutations;
+  std::vector<sym_info::Permutation> factor_group_permutations;
 };
 
 }  // namespace config

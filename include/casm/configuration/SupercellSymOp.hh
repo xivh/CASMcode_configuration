@@ -4,6 +4,7 @@
 #include <iterator>
 
 #include "casm/configuration/definitions.hh"
+#include "casm/configuration/sym_info/definitions.hh"
 #include "casm/misc/Comparisons.hh"
 
 namespace CASM {
@@ -25,12 +26,13 @@ namespace config {
 /// Container before;
 /// SupercellSymInfo sym_info = ...
 /// for( f=0; f<sym_info.factor_group_permutations.size(); f++) {
-///   Permutation const &factor_group_permute =
+///   sym_info::Permutation const &factor_group_permute =
 ///       sym_info.factor_group_permutations[g];
 ///
 ///   for( t=0; t<sym_info.translation_permutations.size(); t++) {
-///     Permutation const &trans_permute = sym_info.translation_permutations[t];
-///     Container after = copy_apply(trans_permute,
+///     sym_info::Permutation const &trans_permute =
+///     sym_info.translation_permutations[t]; Container after =
+///     copy_apply(trans_permute,
 ///                           copy_apply(factor_group_permute, before));
 ///   }
 /// }
@@ -100,7 +102,7 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
 
   /// Returns the combination of factor group operation permutation and
   /// translation permutation
-  Permutation combined_permute() const;
+  sym_info::Permutation combined_permute() const;
 
   /// \brief Returns the inverse supercell operation
   SupercellSymOp inverse() const;

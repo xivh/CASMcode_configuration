@@ -31,10 +31,10 @@ SymGroup make_factor_group(std::shared_ptr<Prim const> const &prim,
 ///     in this supercell. Generates translations within the supercell.
 /// \brief bijk_index_converter UnitCellCoord and linear site index conversions
 ///     in this supercell.
-std::vector<Permutation> make_translation_permutations(
+std::vector<sym_info::Permutation> make_translation_permutations(
     xtal::UnitCellIndexConverter const &ijk_index_converter,
     xtal::UnitCellCoordIndexConverter const &bijk_index_converter) {
-  std::vector<Permutation> translation_permutations;
+  std::vector<sym_info::Permutation> translation_permutations;
 
   // Loops over lattice points
   for (Index translation_ix = 0;
@@ -67,20 +67,20 @@ std::vector<Permutation> make_translation_permutations(
 ///
 /// \brief head_group_index Indices in prim factor group of the supercell
 ///     factor group operations. Used as indices into
-///     `basis_permutation_symgroup_rep`.
-/// \brief basis_permutation_symgroup_rep Symmetry representation used to
+///     `unitcellcoord_symgroup_rep`.
+/// \brief unitcellcoord_symgroup_rep Symmetry representation used to
 ///     transform integral site coordinates for this prim.
 /// \brief bijk_index_converter UnitCellCoord and linear site index conversions
 ///     in this supercell
-std::vector<Permutation> make_factor_group_permutations(
+std::vector<sym_info::Permutation> make_factor_group_permutations(
     std::vector<Index> const &head_group_index,
-    BasisPermutationSymGroupRep const &basis_permutation_symgroup_rep,
+    sym_info::UnitCellCoordSymGroupRep const &unitcellcoord_symgroup_rep,
     xtal::UnitCellCoordIndexConverter const &bijk_index_converter) {
-  std::vector<Permutation> factor_group_permutations;
+  std::vector<sym_info::Permutation> factor_group_permutations;
   long total_sites = bijk_index_converter.total_sites();
 
   for (Index operation_ix : head_group_index) {
-    auto const &rep = basis_permutation_symgroup_rep[operation_ix];
+    auto const &rep = unitcellcoord_symgroup_rep[operation_ix];
     std::vector<Index> permutation(total_sites);
     for (Index old_l = 0; old_l < total_sites; ++old_l) {
       UnitCellCoord const &old_ucc = bijk_index_converter(old_l);
@@ -115,7 +115,7 @@ SupercellSymInfo::SupercellSymInfo(
       factor_group_permutations(
           SupercellSymInfo_impl::make_factor_group_permutations(
               factor_group->head_group_index,
-              prim->sym_info.basis_permutation_symgroup_rep,
+              prim->sym_info.unitcellcoord_symgroup_rep,
               unitcellcoord_index_converter)) {}
 
 }  // namespace config
