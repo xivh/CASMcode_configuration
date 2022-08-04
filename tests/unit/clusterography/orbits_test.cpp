@@ -13,9 +13,25 @@
 #include "gtest/gtest.h"
 #include "teststructures.hh"
 
+// debug
+#include "casm/casm_io/container/stream_io.hh"
+#include "casm/crystallography/SymInfo.hh"
+#include "casm/crystallography/io/SymInfo_stream_io.hh"
+
 using namespace CASM;
 
 namespace test {
+
+void print(std::shared_ptr<clust::SymGroup const> const &factor_group,
+           xtal::Lattice const &lattice) {
+  xtal::SymInfoOptions opt{FRAC};
+  std::cout << "factor_group: " << std::endl;
+  for (auto const &op : factor_group->element) {
+    xtal::SymInfo syminfo{op, lattice};
+    std::cout << to_brief_unicode(syminfo, opt) << std::endl;
+  }
+  std::cout << std::endl;
+}
 
 void print(std::vector<std::set<CASM::clust::IntegralCluster>> const &orbits,
            xtal::BasicStructure const &prim) {
@@ -97,6 +113,24 @@ void print_local_prototypes(
     std::cout << orbit.size() << ", ";
   }
   std::cout << std::endl;
+}
+
+void print_phenomenal(clust::IntegralCluster const &cluster) {
+  std::cout << "phenomenal:" << std::endl;
+  for (auto const &site : cluster.elements()) {
+    std::cout << "{" << site.sublattice() << "," << site.unitcell()(0) << ","
+              << site.unitcell()(1) << "," << site.unitcell()(2) << "}"
+              << std::endl;
+  }
+}
+
+void print_neighborhood(std::set<xtal::UnitCellCoord> const &neighborhood) {
+  std::cout << "neighborhood:" << std::endl;
+  for (auto const &site : neighborhood) {
+    std::cout << "{" << site.sublattice() << "," << site.unitcell()(0) << ","
+              << site.unitcell()(1) << "," << site.unitcell()(2) << "}"
+              << std::endl;
+  }
 }
 
 }  // namespace test

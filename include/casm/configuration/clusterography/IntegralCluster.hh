@@ -82,7 +82,7 @@ IntegralCluster &apply(xtal::UnitCellCoordRep const &rep,
 
 /// \brief Apply symmetry to IntegralCluster
 IntegralCluster copy_apply(xtal::UnitCellCoordRep const &rep,
-                           IntegralCluster &cluster);
+                           IntegralCluster cluster);
 
 template <typename Iterator>
 IntegralCluster::IntegralCluster(Iterator begin, Iterator end)

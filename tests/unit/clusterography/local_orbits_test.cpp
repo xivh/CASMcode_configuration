@@ -45,11 +45,7 @@ TEST(LocalOrbitTest, Test1) {
       phenomenal, factor_group, prim->lattice().lat_column_mat(),
       factor_group_unitcellcoord_symgroup_rep);
   EXPECT_EQ(cluster_group->element.size(), 48);
-  std::cout << "cluster_group->head_group_index: ";
-  for (auto i : cluster_group->head_group_index) {
-    std::cout << i << ", ";
-  }
-  std::cout << std::endl;
+
   auto unitcellcoord_symgroup_rep =
       sym_info::make_unitcellcoord_symgroup_rep(cluster_group->element, *prim);
   clust::SiteFilterFunction site_filter = clust::dof_sites_filter();
@@ -85,14 +81,6 @@ TEST(LocalOrbitTest, Test2) {
       std::make_shared<xtal::BasicStructure const>(test::FCC_binary_prim());
   auto factor_group = sym_info::make_factor_group(*prim);
 
-  xtal::SymInfoOptions opt{FRAC};
-  std::cout << "factor_group: " << std::endl;
-  for (auto const &op : factor_group->element) {
-    xtal::SymInfo syminfo{op, prim->lattice()};
-    std::cout << to_brief_unicode(syminfo, opt) << std::endl;
-  }
-  std::cout << std::endl;
-
   auto factor_group_unitcellcoord_symgroup_rep =
       sym_info::make_unitcellcoord_symgroup_rep(factor_group->element, *prim);
   clust::IntegralCluster phenomenal(
@@ -101,19 +89,6 @@ TEST(LocalOrbitTest, Test2) {
       phenomenal, factor_group, prim->lattice().lat_column_mat(),
       factor_group_unitcellcoord_symgroup_rep);
   EXPECT_EQ(cluster_group->element.size(), 8);
-
-  std::cout << "cluster_group->head_group_index: ";
-  for (auto i : cluster_group->head_group_index) {
-    std::cout << i << ", ";
-  }
-  std::cout << std::endl;
-
-  std::cout << "cluster_group: " << std::endl;
-  for (auto const &op : cluster_group->element) {
-    xtal::SymInfo syminfo{op, prim->lattice()};
-    std::cout << to_brief_unicode(syminfo, opt) << std::endl;
-  }
-  std::cout << std::endl;
 
   auto unitcellcoord_symgroup_rep =
       sym_info::make_unitcellcoord_symgroup_rep(cluster_group->element, *prim);
