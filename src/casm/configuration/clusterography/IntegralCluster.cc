@@ -8,6 +8,10 @@ namespace clust {
 IntegralCluster::IntegralCluster() {}
 
 IntegralCluster::IntegralCluster(
+    std::initializer_list<xtal::UnitCellCoord> elements)
+    : m_element(elements) {}
+
+IntegralCluster::IntegralCluster(
     std::vector<xtal::UnitCellCoord> const &elements)
     : m_element(elements) {}
 

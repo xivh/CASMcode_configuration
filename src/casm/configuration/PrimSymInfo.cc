@@ -12,12 +12,25 @@ namespace config {
 /// \brief Constructor
 ///
 /// Notes:
-/// - `std::vector<SymOp> fg_element = xtal::make_factor_group(basicstructure);`
-/// - Uses basicstructure.lattice().tol() for symmetry finding
-PrimSymInfo::PrimSymInfo(BasicStructure const &prim) {
+/// - Uses `sym_info::make_factor_group(prim);`
+PrimSymInfo::PrimSymInfo(BasicStructure const &prim)
+    : PrimSymInfo(sym_info::make_factor_group(prim), prim) {}
+
+/// \brief Construct using factor group in given order
+///
+/// Notes:
+/// - Uses `sym_info::use_factor_group(factor_group_elements, prim);`
+PrimSymInfo::PrimSymInfo(std::vector<xtal::SymOp> const &factor_group_elements,
+                         BasicStructure const &prim)
+    : PrimSymInfo(sym_info::use_factor_group(factor_group_elements, prim),
+                  prim) {}
+
+/// \brief Construct using given factor group
+PrimSymInfo::PrimSymInfo(std::shared_ptr<SymGroup const> const &_factor_group,
+                         BasicStructure const &prim)
+    : factor_group(_factor_group) {
   using namespace sym_info;
 
-  this->factor_group = make_factor_group(prim);
   this->point_group = make_point_group(prim, this->factor_group);
 
   this->unitcellcoord_symgroup_rep =

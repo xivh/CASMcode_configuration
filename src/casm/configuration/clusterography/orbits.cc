@@ -175,7 +175,9 @@ std::shared_ptr<SymGroup const> make_cluster_group(
 ///     should be included in the generated clusters
 /// \param max_length The value `max_length[branch]` is the
 ///     maximum site-to-site distance for clusters of size == branch.
-///     The values for `branch==0` and `branch==1` are ignored.
+///     The values for `branch==0` and `branch==1` are ignored. The
+///     size of max_length sets the maximum number of sites
+///     in a cluster.
 /// \param custom_generators A vector of custom clusters to be
 ///     included regardless of site_filter and max_length. Includes
 ///     an option to specify that subclusters should also be included.
@@ -380,14 +382,16 @@ std::vector<std::shared_ptr<SymGroup const>> make_local_cluster_groups(
 ///     should be included in the generated clusters
 /// \param max_length The value `max_length[branch]` is the
 ///     maximum site-to-site distance for clusters of size == branch.
-///     The values for `branch==0` and `branch==1` are ignored.
+///     The values for `branch==0` and `branch==1` are ignored. The
+///     size of max_length sets the maximum number of sites
+///     in a cluster.
 /// \param custom_generators A vector of custom clusters to be
 ///     included regardless of site_filter and max_length. Includes
 ///     an option to specify that subclusters should also be included.
 /// \param phenomenal The cluster around which local clusters are
 ///     generated.
 /// \param cutoff_radius The value `cutoff_radius[branch]` is the
-///     maximum phenomal-site-to-cluster-site distance for clusters
+///     maximum phenomenal-site-to-cluster-site distance for clusters
 ///     of size == branch. The value for `branch==0` is ignored.
 /// \param include_phenomenal_sites If true, include the phenomenal
 ///     cluster sites in the local clusters (default=false).
@@ -454,8 +458,10 @@ std::vector<std::set<IntegralCluster>> make_local_orbits(
 
   // include null cluster (it has been the convention in CASM)
   IntegralCluster null_cluster;
-  final.emplace(ClusterInvariants(null_cluster, *prim), null_cluster);
-  prev_branch.emplace(ClusterInvariants(null_cluster, *prim), null_cluster);
+  final.emplace(ClusterInvariants(null_cluster, phenomenal, *prim),
+                null_cluster);
+  prev_branch.emplace(ClusterInvariants(null_cluster, phenomenal, *prim),
+                      null_cluster);
 
   // function to make a cluster canonical
   auto _make_canonical = [&](IntegralCluster const &cluster) {
@@ -489,7 +495,7 @@ std::vector<std::set<IntegralCluster>> make_local_orbits(
           continue;
         }
         test_cluster.elements().push_back(integral_site);
-        ClusterInvariants invariants(test_cluster, *prim);
+        ClusterInvariants invariants(test_cluster, phenomenal, *prim);
         if (!cluster_filter(invariants, test_cluster)) {
           continue;
         }
@@ -513,14 +519,14 @@ std::vector<std::set<IntegralCluster>> make_local_orbits(
     auto const &prototype = custom_generator.prototype;
 
     IntegralCluster test_cluster = _make_canonical(prototype);
-    final.emplace(ClusterInvariants(test_cluster, *prim),
+    final.emplace(ClusterInvariants(test_cluster, phenomenal, *prim),
                   std::move(test_cluster));
 
     if (custom_generator.include_subclusters) {
       SubClusterCounter counter(prototype);
       while (counter.valid()) {
         IntegralCluster test_cluster = _make_canonical(counter.value());
-        final.emplace(ClusterInvariants(test_cluster, *prim),
+        final.emplace(ClusterInvariants(test_cluster, phenomenal, *prim),
                       std::move(test_cluster));
         counter.next();
       }

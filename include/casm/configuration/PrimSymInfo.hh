@@ -13,7 +13,16 @@ namespace config {
 /// \brief Data structure describing how prim DoF values transform under
 /// application of symmetry
 struct PrimSymInfo {
-  PrimSymInfo(xtal::BasicStructure const &basicstructure);
+  /// \brief Constructor
+  PrimSymInfo(xtal::BasicStructure const &prim);
+
+  /// \brief Construct using factor group in given order
+  PrimSymInfo(std::vector<xtal::SymOp> const &factor_group_elements,
+              xtal::BasicStructure const &prim);
+
+  /// \brief Construct using given factor group
+  PrimSymInfo(std::shared_ptr<SymGroup const> const &_factor_group,
+              BasicStructure const &prim);
 
   /// \brief Structure factor group
   std::shared_ptr<SymGroup const> factor_group;

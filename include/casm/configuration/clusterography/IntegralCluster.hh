@@ -51,6 +51,8 @@ class IntegralCluster
 
   explicit IntegralCluster();
 
+  explicit IntegralCluster(std::initializer_list<xtal::UnitCellCoord> elements);
+
   explicit IntegralCluster(std::vector<xtal::UnitCellCoord> const &elements);
 
   explicit IntegralCluster(std::vector<xtal::UnitCellCoord> &&elements);

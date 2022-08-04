@@ -2,6 +2,7 @@
 
 #include "casm/casm_io/container/json_io.hh"
 #include "casm/casm_io/json/jsonParser.hh"
+#include "casm/configuration/clusterography/ClusterInvariants.hh"
 #include "casm/configuration/clusterography/ClusterSpecs.hh"
 #include "casm/configuration/clusterography/io/json/IntegralCluster_json_io.hh"
 #include "casm/configuration/group/Group.hh"
@@ -42,6 +43,46 @@ void print_prototypes(
     jsonParser tjson;
     to_json(orbit.size(), tjson["orbit_size"]);
     to_json(*orbit.begin(), tjson["prototype"], prim);
+    json.push_back(tjson);
+  }
+  std::cout << json << std::endl;
+  std::cout << "orbits.size(): " << orbits.size() << std::endl;
+  std::cout << "cluster_size: ";
+  for (auto const &orbit : orbits) {
+    std::cout << orbit.begin()->size() << ", ";
+  }
+  std::cout << std::endl;
+  std::cout << "orbit_size: ";
+  for (auto const &orbit : orbits) {
+    std::cout << orbit.size() << ", ";
+  }
+  std::cout << std::endl;
+}
+
+void print_local_prototypes(
+    std::vector<std::set<CASM::clust::IntegralCluster>> const &orbits,
+    xtal::BasicStructure const &prim,
+    clust::IntegralCluster const &phenomenal) {
+  jsonParser json;
+  json.put_array();
+  for (auto const &orbit : orbits) {
+    jsonParser tjson;
+    to_json(orbit.size(), tjson["orbit_size"]);
+    to_json(*orbit.begin(), tjson["prototype"], prim);
+
+    clust::ClusterInvariants invariants(*orbit.begin(), phenomenal, prim);
+    if (invariants.phenomenal_displacement().size()) {
+      tjson["phenomenal_to_cluster"]["min_length"] =
+          invariants.phenomenal_displacement().front();
+      tjson["phenomenal_to_cluster"]["max_length"] =
+          invariants.phenomenal_displacement().back();
+    } else {
+      tjson["phenomenal_to_cluster"]["min_length"] = 0.0;
+      tjson["phenomenal_to_cluster"]["max_length"] = 0.0;
+    }
+    tjson["phenomenal_to_cluster"]["displacements"] =
+        invariants.phenomenal_displacement();
+
     json.push_back(tjson);
   }
   std::cout << json << std::endl;

@@ -5,6 +5,7 @@
 #include <set>
 
 #include "casm/configuration/group/definitions.hh"
+#include "casm/misc/algorithm.hh"
 
 namespace CASM {
 namespace group {
@@ -81,6 +82,11 @@ Group<ElementType> make_group(
     std::vector<ElementType> const &element,
     MultiplyFunctionType multiply_f = MultiplyFunctionType(),
     EqualToFunctionType equal_to_f = EqualToFunctionType());
+
+/// \brief Determine conjugacy classes
+template <typename ElementType>
+std::vector<std::vector<Index>> make_conjugacy_classes(
+    Group<ElementType> const &group);
 
 }  // namespace group
 }  // namespace CASM
@@ -272,6 +278,40 @@ Group<ElementType> make_group(std::vector<ElementType> const &element,
     }
   }
   return Group<ElementType>(element, multiplication_table);
+}
+
+/// \brief Determine conjugacy classes
+///
+/// \returns conjugacy_classes, where conjugacy_classes[i] is a vector of
+///     the indices of elements in class 'i'
+///
+template <typename ElementType>
+std::vector<std::vector<Index>> make_conjugacy_classes(
+    Group<ElementType> const &group) {
+  std::vector<std::vector<Index>> conjugacy_classes;
+
+  // check if operation i is in an existing class
+  auto is_in_existing_class = [&](Index i) {
+    for (auto const &cclass : conjugacy_classes) {
+      if (contains(cclass, i)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  Index group_size = group.element.size();
+  for (Index i = 0; i < group_size; i++) {
+    if (is_in_existing_class(i)) continue;
+
+    std::set<Index> curr_class;
+    for (Index j = 0; j < group_size; j++) {
+      curr_class.insert(group.mult(j, group.mult(i, group.inv(j))));
+    }
+    conjugacy_classes.emplace_back(curr_class.begin(), curr_class.end());
+  }
+
+  return conjugacy_classes;
 }
 
 }  // namespace group

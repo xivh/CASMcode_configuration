@@ -31,12 +31,22 @@ class ClusterInvariants {
   ClusterInvariants(IntegralCluster const &cluster,
                     xtal::BasicStructure const &basicstructure);
 
+  /// \brief Construct and calculate cluster invariants,
+  ///     including phenomenal cluster sites
+  ClusterInvariants(IntegralCluster const &cluster,
+                    IntegralCluster const &phenomenal,
+                    xtal::BasicStructure const &basicstructure);
+
   /// \brief Number of elements in the cluster
   int size() const;
 
   /// \brief const Access displacements between coordinates in the cluster,
   /// sorted in ascending order
   std::vector<double> const &displacement() const;
+
+  /// \brief const Access displacements between phenomenal and cluster
+  ///     coordinates, sorted in ascending order
+  std::vector<double> const &phenomenal_displacement() const;
 
  private:
   /// \brief Number of UnitCellCoords in cluster
@@ -45,6 +55,10 @@ class ClusterInvariants {
   /// \brief Displacement between each pair of UnitCellCoords, sorted in
   /// ascending order
   std::vector<double> m_disp;
+
+  /// \brief Displacements between phenomenal and cluster
+  ///     coordinates, sorted in ascending order
+  std::vector<double> m_phenom_disp;
 };
 
 /// \brief Check if ClusterInvariants are equal

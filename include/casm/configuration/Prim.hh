@@ -12,7 +12,12 @@ namespace config {
 /// allowed degrees of freedom (DoF), and also symmetry representations
 /// used for all configurations with the same prim. All members are const.
 struct Prim {
+  /// \brief Constructor
   Prim(std::shared_ptr<BasicStructure const> const &_basicstructure);
+
+  /// \brief Construct using factor group in given order
+  Prim(std::vector<xtal::SymOp> const &factor_group_elements,
+       std::shared_ptr<BasicStructure const> const &_basicstructure);
 
   /// \brief The BasicStructure specifies the primitive crystal structure
   /// (lattice and basis) and allowed degrees of freedom (DoF)
