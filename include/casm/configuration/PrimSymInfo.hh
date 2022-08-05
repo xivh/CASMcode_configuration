@@ -71,7 +71,8 @@ struct PrimSymInfo {
   /// Index atom_position_index_after = atom_position_symgroup_rep
   ///                                       .at(group_element_index)
   ///                                       .at(sublattice_index_before)
-  ///                                       .at(occupant_index_before);
+  ///                                       .at(occupant_index_before)
+  ///                                       .at(atom_position_index_before);
   /// \endcode
   ///
   /// Note:

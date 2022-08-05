@@ -18,6 +18,8 @@
 #ifndef CASM_clust_definitions
 #define CASM_clust_definitions
 
+#include <string>
+
 namespace CASM {
 template <typename T>
 struct traits;

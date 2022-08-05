@@ -80,7 +80,7 @@ std::set<IntegralCluster> make_prim_periodic_orbit(
 /// \param unitcellcoord_symgroup_rep Symmetry group representation (as
 ///     xtal::UnitCellCoordRep) of the factor group.
 ///
-/// \returns Cluster invariant groups, where prim_periodic_cluster_groups[i], is
+/// \returns Cluster invariant groups, where cluster_groups[i] is
 ///     the SymGroup whose operations leave the sites of the i-th cluster in the
 ///     orbit invariant (up to a permutation).
 std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
@@ -149,8 +149,7 @@ std::shared_ptr<SymGroup const> make_cluster_group(
   std::vector<xtal::SymOp> elements;
   std::set<Index> indices;
   for (Index i = 0; i < factor_group->element.size(); ++i) {
-    IntegralCluster tclust = cluster;
-    apply(unitcellcoord_symgroup_rep[i], tclust);
+    IntegralCluster tclust = copy_apply(unitcellcoord_symgroup_rep[i], cluster);
     tclust.sort();
 
     xtal::UnitCell frac_trans = cluster[0].unitcell() - tclust[0].unitcell();
