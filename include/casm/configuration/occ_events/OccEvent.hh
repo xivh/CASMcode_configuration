@@ -93,8 +93,16 @@ OccEvent copy_reverse(OccEvent event);
 /// \brief Put event into standardized form with regard to permutation/reversal
 OccEvent &standardize(OccEvent &occ_event);
 
+/// \brief Make an OccEvent from before and after positions
+OccEvent make_occevent(std::vector<OccPosition> const &position_before,
+                       std::vector<OccPosition> const &position_after);
+
 /// \brief Make clust::IntegralCluster from first position in each trajectory
 clust::IntegralCluster make_cluster(OccEvent const &event);
+
+/// \brief Make {cluster, {occ_init, occ_final}} from OccEvent
+std::pair<clust::IntegralCluster, std::vector<std::vector<int>>>
+make_cluster_occupation(OccEvent const &event);
 
 /// \brief Apply SymOp to OccEvent
 OccEvent &apply(OccEventRep const &rep, OccEvent &occ_event);

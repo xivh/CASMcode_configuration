@@ -14,6 +14,17 @@ namespace occ_events {
 /// A single occupant trajectory as a vector of OccPosition
 struct OccTrajectory
     : public Comparisons<xtal::Translatable<CRTPBase<OccTrajectory>>> {
+  explicit OccTrajectory();
+
+  explicit OccTrajectory(std::initializer_list<OccPosition> _position);
+
+  explicit OccTrajectory(std::vector<OccPosition> const &_position);
+
+  explicit OccTrajectory(std::vector<OccPosition> &&_position);
+
+  template <typename Iterator>
+  OccTrajectory(Iterator begin, Iterator end);
+
   /// A vector of OccPosition
   std::vector<OccPosition> position;
 
@@ -29,6 +40,12 @@ OccTrajectory &apply(OccEventRep const &rep, OccTrajectory &occ_trajectory);
 
 /// \brief Apply SymOp to OccTrajectory
 OccTrajectory copy_apply(OccEventRep const &rep, OccTrajectory occ_trajectory);
+
+// --- Implementation ---
+
+template <typename Iterator>
+OccTrajectory::OccTrajectory(Iterator begin, Iterator end)
+    : position(begin, end) {}
 
 }  // namespace occ_events
 }  // namespace CASM

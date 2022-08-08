@@ -39,12 +39,8 @@ std::shared_ptr<SymGroup const> make_occevent_group(
 
 // /// \brief Make orbits of OccEvent, with periodic symmetry of a prim
 // std::vector<std::set<OccEvent>> make_prim_periodic_orbits(
-//     std::shared_ptr<xtal::BasicStructure const> const &prim,
-//     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep,
-//     sym_info::OccSymGroupRep const &occ_symgroup_rep,
-//     sym_info::AtomPositionSymGroupRep const &atom_position_symgroup_rep,
-//     SiteFilterFunction site_filter, std::vector<double> const &max_length,
-//     std::vector<IntegralClusterOrbitGenerator> const &custom_generators);
+//     OccSystem const &system, std::vector<clust::IntegralCluster> const
+//     &prototypes, std::vector<OccEventRep> const &occevent_symgroup_rep);
 
 }  // namespace occ_events
 }  // namespace CASM

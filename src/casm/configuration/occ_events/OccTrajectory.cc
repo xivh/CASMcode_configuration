@@ -5,6 +5,17 @@
 namespace CASM {
 namespace occ_events {
 
+OccTrajectory::OccTrajectory() {}
+
+OccTrajectory::OccTrajectory(std::initializer_list<OccPosition> _position)
+    : position(_position) {}
+
+OccTrajectory::OccTrajectory(std::vector<OccPosition> const &_position)
+    : position(_position) {}
+
+OccTrajectory::OccTrajectory(std::vector<OccPosition> &&_position)
+    : position(std::move(_position)) {}
+
 /// \brief Translate the OccEvent by a UnitCell translation
 OccTrajectory &OccTrajectory::operator+=(xtal::UnitCell trans) {
   for (auto it = this->position.begin(); it != this->position.end(); ++it) {

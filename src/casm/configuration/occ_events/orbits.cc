@@ -161,5 +161,93 @@ std::shared_ptr<SymGroup const> make_occevent_group(
   return std::make_shared<SymGroup>(factor_group, elements, indices);
 }
 
+// /// \brief Make orbits of OccEvent, with periodic symmetry of a prim
+// std::vector<std::set<OccEvent>> make_prim_periodic_orbits(
+//     OccSystem const &system,
+//     std::vector<IntegralCluster> const &prototypes,
+//     std::vector<OccEventRep> const &occevent_symgroup_rep) {
+//
+//   // function to make an OccEvent canonical
+//   auto _make_canonical = [&](OccEvent const &event) {
+//     return group::make_canonical_element(
+//         event, occevent_symgroup_rep.begin(),
+//         occevent_symgroup_rep.end(), std::less<OccEvent>(),
+//         prim_periodic_occevent_copy_apply);
+//   };
+//
+//   typedef std::pair<OccEventInvariants, OccEvent> pair_type;
+//   CompareCluster_f compare_f(system.prim->lattice().tol());
+//   std::set<pair_type, CompareOccEvent_f> prototypes(compare_f);
+//
+//   // temporary variable that gets re-used when checking if a
+//   // proposed event is atom conserving
+//   Eigen::VectorXi count;
+//
+//   for (auto const &cluster_orbit : cluster_orbits) {
+//
+//     if (!cluster_orbit.size()) {
+//       OccEvent null_event;
+//       OccEventInvariants invariants(null_event, system);
+//       prototypes.emplace(std::move(invariants), std::move(null_event));
+//     }
+//
+//     IntegralCluster const &cluster = *cluster_orbit->begin();
+//
+//     Counter<vector<int>> occ_init_counter = _make_occ_counter(cluster,
+//     *system.prim);
+//
+//     while (occ_init_counter.valid()) {
+//
+//       Counter<vector<int>> occ_final_counter = _make_occ_counter(cluster,
+//       *system.prim); while (occ_final_counter.valid()) {
+//         std::vector<int> const &occ_init = occ_init_counter.value();
+//         std::vector<int> const &occ_final = occ_final_counter.value();
+//
+//         if (!system.is_atom_conserving(count, cluster, occ_init, occ_final))
+//         {
+//           ++occ_final_counter;
+//           continue;
+//         }
+//
+//         auto position_before = system.make_positions(cluster, occ_init);
+//         auto position_after = position_before;
+//         std::sort(position_after.begin(), position_after.end());
+//
+//         // make permutations to loop over all trajectories from the initial
+//         to final occupations do {
+//           if () {
+//             continue;
+//           }
+//
+//         }
+//         while(std::next_permutation(position_after.begin(),
+//         position_after.end()));
+//
+//         ++occ_final_counter;
+//       } // while occ_final_counter.valid()
+//
+//       ++occ_init_counter
+//     } // while occ_init_counter.valid()s
+//
+//
+//
+//       sym_info::Permutation permutation(cluster.size());
+//       std::iota(permutation.begin(), permutation.end(), 0);
+//       do {
+//         OccEvent tevent = _make_occ_event(
+//             cluster, occ_counter.value(), permutation);
+//         OccEventInvariants invariants(tevent, system);
+//         if (!event_filter(invariants, tevent)) {
+//           continue;
+//         }
+//         tevent = _make_canonical(tevent);
+//         prototypes.emplace(std::move(invariants), std::move(tevent));
+//       } while(std::next_permutation(permutation.begin(), permutation.end()));
+//       ++occ_counter;
+//     }
+//
+//   }
+// }
+
 }  // namespace occ_events
 }  // namespace CASM

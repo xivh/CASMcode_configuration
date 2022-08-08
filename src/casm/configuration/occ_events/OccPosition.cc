@@ -17,6 +17,31 @@ OccPosition::OccPosition(bool _is_in_resevoir, bool _is_atom,
       occupant_index(_occupant_index),
       atom_position_index(_atom_position_index) {}
 
+OccPosition OccPosition::molecule_in_resevoir(Index _occupant_index) {
+  return OccPosition(true, false, xtal::UnitCellCoord(0, 0, 0, 0),
+                     _occupant_index, -1);
+}
+
+/// \brief Only used for single-atom molecules
+OccPosition OccPosition::atom_in_resevoir(Index _occupant_index) {
+  return OccPosition(true, true, xtal::UnitCellCoord(0, 0, 0, 0),
+                     _occupant_index, 0);
+}
+
+OccPosition OccPosition::molecule(
+    xtal::UnitCellCoord const &_integral_site_coordinate,
+    Index _occupant_index) {
+  return OccPosition(false, false, _integral_site_coordinate, _occupant_index,
+                     -1);
+}
+
+OccPosition OccPosition::atom(
+    xtal::UnitCellCoord const &_integral_site_coordinate, Index _occupant_index,
+    Index _atom_position_index) {
+  return OccPosition(false, true, _integral_site_coordinate, _occupant_index,
+                     _atom_position_index);
+}
+
 /// \brief Translate the OccPosition by a UnitCell translation
 OccPosition &OccPosition::operator+=(xtal::UnitCell trans) {
   this->integral_site_coordinate += trans;

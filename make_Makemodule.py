@@ -831,6 +831,12 @@ def main():
             "ldadd": [
                 "libcasm_configuration.la"
             ],
+        },
+        {
+            "directory": "tests/unit/occ_events",
+            "ldadd": [
+                "libcasm_configuration.la"
+            ],
         }
     ])
     target = os.path.join("tests", "unit", "Makemodule.am")

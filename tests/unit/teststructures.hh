@@ -81,6 +81,7 @@ inline CASM::xtal::BasicStructure FCC_binary_prim() {
   struc.push_back(
       Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
            std::vector<Molecule>{A, B}));
+  struc.set_unique_names({{"A", "B"}});
 
   return struc;
 }
@@ -103,6 +104,7 @@ inline CASM::xtal::BasicStructure FCC_ternary_prim() {
   struc.push_back(
       Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
            std::vector<Molecule>{A, B, C}));
+  struc.set_unique_names({{"A", "B", "C"}});
 
   return struc;
 }
@@ -125,6 +127,7 @@ inline CASM::xtal::BasicStructure FCC_binary_disp_prim() {
   struc.push_back(
       Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
            std::vector<Molecule>{A, B}, std::vector<SiteDoFSet>{disp_dofset}));
+  struc.set_unique_names({{"A", "B"}});
 
   return struc;
 }
@@ -145,6 +148,7 @@ inline CASM::xtal::BasicStructure SimpleCubic_GLstrain_prim() {
   struc.push_back(
       Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
            std::vector<Molecule>{A}));
+  struc.set_unique_names({{"A"}});
 
   // Add global DoF
   // GLstrain: Green-Lagrange strain
@@ -169,6 +173,7 @@ inline CASM::xtal::BasicStructure SimpleCubic_disp_prim() {
   Site site{Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
             std::vector<Molecule>{A}, std::vector<SiteDoFSet>{disp_dofset}};
   struc.push_back(site);
+  struc.set_unique_names({{"A"}});
 
   return struc;
 }
@@ -199,6 +204,7 @@ inline CASM::xtal::BasicStructure SimpleCubic_ising_prim() {
   Site site{Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
             std::vector<Molecule>{A_up, A_down}};
   struc.push_back(site);
+  struc.set_unique_names({{"A.up", "A.down"}});
 
   return struc;
 }
@@ -257,6 +263,7 @@ inline CASM::xtal::BasicStructure FCC_dimer_prim() {
                       AtomPosition(Eigen::Vector3d(0.0, 0.4, 0.0), "A")});
   Molecule A2z("A2", {AtomPosition(Eigen::Vector3d(0.0, 0.0, -0.4), "A"),
                       AtomPosition(Eigen::Vector3d(0.0, 0.0, 0.4), "A")});
+  struc.set_unique_names({{"A2.x", "A2.y", "A2.z"}});
 
   struc.push_back(
       Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),

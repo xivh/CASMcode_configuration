@@ -1,5 +1,6 @@
 #include "casm/configuration/occ_events/OccEventInvariants.hh"
 
+#include "casm/configuration/clusterography/IntegralCluster.hh"
 #include "casm/configuration/occ_events/OccEvent.hh"
 #include "casm/configuration/occ_events/OccSystem.hh"
 #include "casm/crystallography/BasicStructure.hh"
@@ -9,26 +10,6 @@ namespace CASM {
 namespace occ_events {
 
 namespace {
-
-// Only uses first position in each trajectory
-std::map<std::string, Index> make_molecule_count(OccEvent const &event,
-                                                 OccSystem const &system) {
-  std::map<std::string, Index> molecule_count;
-  for (auto const &traj : event) {
-    if (!traj.position.size()) {
-      throw std::runtime_error(
-          "Error in `make_molecule_count`: Empty trajectory");
-    }
-    std::string molecule_name = system.get_name(traj.position[0]);
-    auto it = molecule_count.find(molecule_name);
-    if (it == molecule_count.end()) {
-      molecule_count[molecule_name] = 1;
-    } else {
-      it->second++;
-    }
-  }
-  return molecule_count;
-}
 
 // Determines coordinate for each occupant (site coordinate for Mol, atom
 // position for component atoms of molecules, skips resevoir positions) and
@@ -82,8 +63,15 @@ std::vector<double> make_sorted_distances(OccEvent const &event,
 OccEventInvariants::OccEventInvariants(OccEvent const &event,
                                        OccSystem const &system) {
   m_size = event.size();
-  m_molecule_count = make_molecule_count(event, system);
   m_distances = make_sorted_distances(event, system);
+
+  // {cluster, {occ_init, occ_final}}
+  auto pair = make_cluster_occupation(event);
+  Eigen::VectorXi count;
+  system.molecule_count(count, pair.first, pair.second[0]);
+  m_molecule_count.insert(count);
+  system.molecule_count(count, pair.first, pair.second[1]);
+  m_molecule_count.insert(count);
 }
 
 /// Number of elements in the OccEvent
@@ -95,7 +83,8 @@ std::vector<double> const &OccEventInvariants::distances() const {
 }
 
 /// Count of each molecule type involved in the OccEvent
-std::map<std::string, Index> OccEventInvariants::molecule_count() const {
+std::set<Eigen::VectorXi, LexicographicalCompare> const &
+OccEventInvariants::molecule_count() const {
   return m_molecule_count;
 }
 
@@ -117,7 +106,11 @@ bool compare(OccEventInvariants const &A, OccEventInvariants const &B,
     return A.size() < B.size();
   }
   if (A.molecule_count() != B.molecule_count()) {
-    return A.molecule_count() < B.molecule_count();
+    // return A.molecule_count() < B.molecule_count();
+    return std::lexicographical_compare(
+        A.molecule_count().begin(), A.molecule_count().end(),
+        B.molecule_count().begin(), B.molecule_count().end(),
+        LexicographicalCompare());
   }
 
   // all distances
@@ -133,6 +126,17 @@ bool compare(OccEventInvariants const &A, OccEventInvariants const &B,
     }
   }
   return false;
+}
+
+bool CompareOccEvent_f::operator()(pair_type const &A,
+                                   pair_type const &B) const {
+  if (compare(A.first, B.first, xtal_tol)) {
+    return true;
+  }
+  if (compare(B.first, A.first, xtal_tol)) {
+    return false;
+  }
+  return A.second < B.second;
 }
 
 }  // namespace occ_events

@@ -21,6 +21,10 @@ struct OccEventRep {
   sym_info::AtomPositionSymOpRep atom_position_rep;
 };
 
+std::vector<OccEventRep> make_occevent_symgroup_rep(
+    std::vector<xtal::SymOp> const &group_elements,
+    xtal::BasicStructure const &prim);
+
 }  // namespace occ_events
 }  // namespace CASM
 

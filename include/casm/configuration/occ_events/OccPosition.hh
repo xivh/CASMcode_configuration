@@ -12,13 +12,25 @@ namespace occ_events {
 ///
 /// - Allows specifying a single-atom or multi-atom molecule
 /// - Allows specifying a single atom inside a multi-atom molecule
-/// - Allows specifying molecules "in the resevoir" for describing (semi)
-///   grand canonical Monte Carlo events
+/// - Allows specifying atoms/molecules "in the resevoir" for
+///   describing (semi) grand canonical Monte Carlo events
 struct OccPosition
     : public Comparisons<xtal::Translatable<CRTPBase<OccPosition>>> {
   OccPosition(bool _is_in_resevoir, bool _is_atom,
               xtal::UnitCellCoord const &_integral_site_coordinate,
               Index _occupant_index, Index _atom_position_index);
+
+  static OccPosition molecule_in_resevoir(Index _occupant_index);
+
+  /// \brief Only used for single-atom molecules
+  static OccPosition atom_in_resevoir(Index _occupant_index);
+
+  static OccPosition molecule(
+      xtal::UnitCellCoord const &_integral_site_coordinate,
+      Index _occupant_index);
+
+  static OccPosition atom(xtal::UnitCellCoord const &_integral_site_coordinate,
+                          Index _occupant_index, Index _atom_position_index);
 
   /// If true, indicates molecule/atom in resevoir. If false,
   /// indicates a molecule/atom on integral_site_coordinate
@@ -41,7 +53,8 @@ struct OccPosition
 
   /// - If is_atom==true && is_in_resevoir==false: Index of atom position
   ///   in Molecule::atoms()
-  /// - Otherwise: Ignored
+  /// - If is_atom==true && is_in_resevoir==true: When indicating a Molecule
+  ///   used to represent a single atom, set to zero 0.
   Index atom_position_index;
 
   /// Translate theOccPosition by a UnitCell translation
