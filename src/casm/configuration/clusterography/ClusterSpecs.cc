@@ -194,7 +194,7 @@ class MaxLengthClusterFilter {
     if (clust.size() <= 1) {
       return true;
     }
-    return invariants.displacement().back() < max_length;
+    return invariants.distances().back() < max_length;
   }
 
  private:

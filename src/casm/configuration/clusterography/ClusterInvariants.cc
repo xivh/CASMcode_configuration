@@ -18,13 +18,13 @@ ClusterInvariants::ClusterInvariants(
   // calculate distances between points
   for (int i = 0; i < m_size; i++) {
     for (int j = i + 1; j < m_size; j++) {
-      m_disp.push_back((cluster[i].coordinate(basicstructure) -
-                        cluster[j].coordinate(basicstructure))
-                           .const_cart()
-                           .norm());
+      m_distances.push_back((cluster[i].coordinate(basicstructure) -
+                             cluster[j].coordinate(basicstructure))
+                                .const_cart()
+                                .norm());
     }
   }
-  std::sort(m_disp.begin(), m_disp.end());
+  std::sort(m_distances.begin(), m_distances.end());
 }
 
 /// \brief Construct and calculate cluster invariants,
@@ -38,55 +38,54 @@ ClusterInvariants::ClusterInvariants(
   // calculate distances between points
   for (int i = 0; i < m_size; i++) {
     for (int j = i + 1; j < m_size; j++) {
-      m_disp.push_back((cluster[i].coordinate(basicstructure) -
-                        cluster[j].coordinate(basicstructure))
-                           .const_cart()
-                           .norm());
+      m_distances.push_back((cluster[i].coordinate(basicstructure) -
+                             cluster[j].coordinate(basicstructure))
+                                .const_cart()
+                                .norm());
     }
   }
-  std::sort(m_disp.begin(), m_disp.end());
+  std::sort(m_distances.begin(), m_distances.end());
 
   // calculate distances between points and phenom sites
   for (int i = 0; i < cluster.size(); i++) {
     for (int j = 0; j < phenomenal.size(); j++) {
-      m_phenom_disp.push_back((cluster[i].coordinate(basicstructure) -
-                               phenomenal[j].coordinate(basicstructure))
-                                  .const_cart()
-                                  .norm());
+      m_phenom_distances.push_back((cluster[i].coordinate(basicstructure) -
+                                    phenomenal[j].coordinate(basicstructure))
+                                       .const_cart()
+                                       .norm());
     }
   }
-  std::sort(m_phenom_disp.begin(), m_phenom_disp.end());
+  std::sort(m_phenom_distances.begin(), m_phenom_distances.end());
 }
 
 /// \brief Number of elements in the cluster
 int ClusterInvariants::size() const { return m_size; }
 
-/// \brief const Access displacements between coordinates in the cluster, sorted
+/// \brief const Access distances between coordinates in the cluster, sorted
 /// in ascending order
-const std::vector<double> &ClusterInvariants::displacement() const {
-  return m_disp;
+const std::vector<double> &ClusterInvariants::distances() const {
+  return m_distances;
 }
 
-/// \brief const Access displacements between phenomenal and cluster
+/// \brief const Access distances between phenomenal and cluster
 /// coordinates,
 ///     sorted in ascending order
-const std::vector<double> &ClusterInvariants::phenomenal_displacement() const {
-  return m_phenom_disp;
+const std::vector<double> &ClusterInvariants::phenomenal_distances() const {
+  return m_phenom_distances;
 }
 
 /// \brief Check if ClusterInvariants are equal
 bool almost_equal(ClusterInvariants const &A, ClusterInvariants const &B,
                   double tol) {
   return A.size() == B.size() &&
-         std::equal(A.displacement().cbegin(), A.displacement().cend(),
-                    B.displacement().cbegin(),
+         std::equal(A.distances().cbegin(), A.distances().cend(),
+                    B.distances().cbegin(),
                     [&](double a, double b) {
                       return CASM::almost_equal(a, b, tol);
                     }) &&
          std::equal(
-             A.phenomenal_displacement().cbegin(),
-             A.phenomenal_displacement().cend(),
-             B.phenomenal_displacement().cbegin(),
+             A.phenomenal_distances().cbegin(), A.phenomenal_distances().cend(),
+             B.phenomenal_distances().cbegin(),
              [&](double a, double b) { return CASM::almost_equal(a, b, tol); });
   ;
 }
@@ -96,8 +95,8 @@ bool almost_equal(ClusterInvariants const &A, ClusterInvariants const &B,
 /// \returns True if A < B, to specified tolerance
 ///
 /// - First compares by number of sites in cluster
-/// - Then compare all displacements, from longest to shortest
-/// - Then compare all phenomenal - cluster displacements, from longest to
+/// - Then compare all distances, from longest to shortest
+/// - Then compare all phenomenal - cluster distances, from longest to
 /// shortest
 bool compare(ClusterInvariants const &A, ClusterInvariants const &B,
              double tol) {
@@ -109,29 +108,29 @@ bool compare(ClusterInvariants const &A, ClusterInvariants const &B,
     return false;
   }
 
-  // all cluster displacements
-  for (int i = A.displacement().size() - 1; i >= 0; i--) {
-    if (CASM::almost_equal(A.displacement()[i], B.displacement()[i], tol)) {
+  // all cluster distances
+  for (int i = A.distances().size() - 1; i >= 0; i--) {
+    if (CASM::almost_equal(A.distances()[i], B.distances()[i], tol)) {
       continue;
     }
-    if (A.displacement()[i] < B.displacement()[i]) {
+    if (A.distances()[i] < B.distances()[i]) {
       return true;
     }
-    if (A.displacement()[i] > B.displacement()[i]) {
+    if (A.distances()[i] > B.distances()[i]) {
       return false;
     }
   }
 
-  // all cluster-phenom displacements
-  for (int i = A.phenomenal_displacement().size() - 1; i >= 0; i--) {
-    if (CASM::almost_equal(A.phenomenal_displacement()[i],
-                           B.phenomenal_displacement()[i], tol)) {
+  // all cluster-phenom distances
+  for (int i = A.phenomenal_distances().size() - 1; i >= 0; i--) {
+    if (CASM::almost_equal(A.phenomenal_distances()[i],
+                           B.phenomenal_distances()[i], tol)) {
       continue;
     }
-    if (A.phenomenal_displacement()[i] < B.phenomenal_displacement()[i]) {
+    if (A.phenomenal_distances()[i] < B.phenomenal_distances()[i]) {
       return true;
     }
-    if (A.phenomenal_displacement()[i] > B.phenomenal_displacement()[i]) {
+    if (A.phenomenal_distances()[i] > B.phenomenal_distances()[i]) {
       return false;
     }
   }

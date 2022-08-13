@@ -40,25 +40,25 @@ class ClusterInvariants {
   /// \brief Number of elements in the cluster
   int size() const;
 
-  /// \brief const Access displacements between coordinates in the cluster,
+  /// \brief const Access distances between coordinates in the cluster,
   /// sorted in ascending order
-  std::vector<double> const &displacement() const;
+  std::vector<double> const &distances() const;
 
-  /// \brief const Access displacements between phenomenal and cluster
+  /// \brief const Access distances between phenomenal and cluster
   ///     coordinates, sorted in ascending order
-  std::vector<double> const &phenomenal_displacement() const;
+  std::vector<double> const &phenomenal_distances() const;
 
  private:
   /// \brief Number of UnitCellCoords in cluster
   int m_size;
 
-  /// \brief Displacement between each pair of UnitCellCoords, sorted in
+  /// \brief Distances between each pair of UnitCellCoords, sorted in
   /// ascending order
-  std::vector<double> m_disp;
+  std::vector<double> m_distances;
 
-  /// \brief Displacements between phenomenal and cluster
+  /// \brief Distances between phenomenal and cluster
   ///     coordinates, sorted in ascending order
-  std::vector<double> m_phenom_disp;
+  std::vector<double> m_phenom_distances;
 };
 
 /// \brief Check if ClusterInvariants are equal

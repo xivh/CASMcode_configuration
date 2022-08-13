@@ -28,16 +28,18 @@ namespace CASM {
 /// \endcode
 jsonParser &to_json(clust::IntegralCluster const &clust, jsonParser &json,
                     xtal::BasicStructure const &prim) {
-  json.put_obj();
   clust::ClusterInvariants invariants{clust, prim};
-  if (invariants.displacement().size()) {
-    json["min_length"] = invariants.displacement().front();
-    json["max_length"] = invariants.displacement().back();
+  if (invariants.distances().size()) {
+    json["min_length"] = invariants.distances().front();
+    json["max_length"] = invariants.distances().back();
   } else {
     json["min_length"] = 0.0;
     json["max_length"] = 0.0;
   }
-  json["displacements"] = invariants.displacement();
+  json["distances"] = invariants.distances();
+  if (invariants.phenomenal_distances().size()) {
+    json["phenomenal_distances"] = invariants.phenomenal_distances();
+  }
   json["sites"].put_array(clust.begin(), clust.end());
   return json;
 }

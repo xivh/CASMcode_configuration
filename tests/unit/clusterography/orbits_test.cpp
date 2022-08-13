@@ -87,17 +87,17 @@ void print_local_prototypes(
     to_json(*orbit.begin(), tjson["prototype"], prim);
 
     clust::ClusterInvariants invariants(*orbit.begin(), phenomenal, prim);
-    if (invariants.phenomenal_displacement().size()) {
+    if (invariants.phenomenal_distances().size()) {
       tjson["phenomenal_to_cluster"]["min_length"] =
-          invariants.phenomenal_displacement().front();
+          invariants.phenomenal_distances().front();
       tjson["phenomenal_to_cluster"]["max_length"] =
-          invariants.phenomenal_displacement().back();
+          invariants.phenomenal_distances().back();
     } else {
       tjson["phenomenal_to_cluster"]["min_length"] = 0.0;
       tjson["phenomenal_to_cluster"]["max_length"] = 0.0;
     }
-    tjson["phenomenal_to_cluster"]["displacements"] =
-        invariants.phenomenal_displacement();
+    tjson["phenomenal_to_cluster"]["distances"] =
+        invariants.phenomenal_distances();
 
     json.push_back(tjson);
   }
