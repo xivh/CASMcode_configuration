@@ -236,7 +236,8 @@ Group<ElementType>::Group(
 ///
 /// \params _head_group The group that is the head group of this subgroup.
 ///     the members of the subgroup.
-/// \params _element Group elements, expected to be closed and sorted as desired
+/// \params _element Group elements, expected to be closed and in order
+///     consistent with _head_group_index.
 /// \params _head_group_index Contains indices into `_head_group->element` of
 ///     the members of the subgroup.
 ///

@@ -164,11 +164,9 @@ TEST_F(CopyConfigurationFCCTest, CopyTransformTest1) {
   auto end = config::SupercellSymOp::end(supercell);
 
   for (auto it = begin; it != end; ++it) {
-    Index factor_group_index = it.factor_group_index();
-    xtal::UnitCell translation =
-        supercell->unitcell_index_converter(it.translation_index());
-    config::Configuration test_a = copy_configuration(
-        factor_group_index, translation, configuration, supercell);
+    config::Configuration test_a =
+        copy_configuration(it.prim_factor_group_index(), it.translation_frac(),
+                           configuration, supercell);
     config::Configuration test_b = copy_apply(*it, configuration);
     EXPECT_TRUE(almost_equal(test_a.dof_values.occupation,
                              test_b.dof_values.occupation));
@@ -195,11 +193,9 @@ TEST_F(CopyConfigurationFCCTest, CopyTransformTest2) {
   // 2-site configuration, and copying the result into a 4-site configuration
   // should result in the same occupation
   for (auto it = begin; it != end; ++it) {
-    Index factor_group_index = it.factor_group_index();
-    xtal::UnitCell translation =
-        supercell->unitcell_index_converter(it.translation_index());
-    config::Configuration test_a = copy_configuration(
-        factor_group_index, translation, configuration_yz, supercell);
+    config::Configuration test_a =
+        copy_configuration(it.prim_factor_group_index(), it.translation_frac(),
+                           configuration_yz, supercell);
     config::Configuration test_b = copy_apply(*it, configuration);
     EXPECT_TRUE(almost_equal(test_a.dof_values.occupation,
                              test_b.dof_values.occupation));

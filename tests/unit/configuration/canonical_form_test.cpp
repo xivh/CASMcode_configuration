@@ -118,13 +118,13 @@ TEST_F(CanonicalFormFCCTest2, Test1) {
 
   {
     config::SupercellSymOp op = from_canonical(configuration, begin, end);
-    EXPECT_EQ(op.factor_group_index(), 0);
+    EXPECT_EQ(op.supercell_factor_group_index(), 0);
     EXPECT_EQ(op.translation_index(), 3);
   }
 
   {
     config::SupercellSymOp op = to_canonical(configuration, begin, end);
-    EXPECT_EQ(op.factor_group_index(), 0);
+    EXPECT_EQ(op.supercell_factor_group_index(), 0);
     EXPECT_EQ(op.translation_index(), 1);
   }
 }

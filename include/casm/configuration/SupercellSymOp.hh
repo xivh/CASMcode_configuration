@@ -31,8 +31,8 @@ namespace config {
 ///
 ///   for( t=0; t<sym_info.translation_permutations.size(); t++) {
 ///     sym_info::Permutation const &trans_permute =
-///     sym_info.translation_permutations[t]; Container after =
-///     copy_apply(trans_permute,
+///         sym_info.translation_permutations[t];
+///     Container after = copy_apply(trans_permute,
 ///                           copy_apply(factor_group_permute, before));
 ///   }
 /// }
@@ -50,7 +50,17 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
 
   /// Construct SupercellSymOp
   SupercellSymOp(std::shared_ptr<Supercell const> const &_supercell,
-                 Index _factor_group_index, Index _translation_index);
+                 Index _supercell_factor_group_index, Index _translation_index);
+
+  /// Construct SupercellSymOp
+  SupercellSymOp(std::shared_ptr<Supercell const> const &_supercell,
+                 Index _supercell_factor_group_index,
+                 xtal::UnitCell const &_translation_frac);
+
+  /// Construct SupercellSymOp
+  SupercellSymOp(std::shared_ptr<Supercell const> const &_supercell,
+                 Index _supercell_factor_group_index,
+                 Eigen::Vector3d const &_translation_cart);
 
   /// \brief Make supercell symop begin iterator
   static SupercellSymOp begin(
@@ -69,9 +79,13 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
 
   std::shared_ptr<Supercell const> const &supercell() const;
 
-  Index factor_group_index() const;
+  Index supercell_factor_group_index() const;
+
+  Index prim_factor_group_index() const;
 
   Index translation_index() const;
+
+  xtal::UnitCell translation_frac() const;
 
   /// \brief Returns the index of the site containing the site DoF values that
   ///     will be permuted onto site i
@@ -122,8 +136,39 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
   bool eq_impl(const SupercellSymOp &iter) const;
 
   std::shared_ptr<Supercell const> m_supercell;
-  Index m_factor_group_index;
+
+  /// \brief Supercell factor group index
+  ///
+  /// This is an index into:
+  /// - m_supercell->sym_info.factor_group_permutations
+  /// - m_supercell->sym_info.factor_group->element
+  ///
+  /// To get the prim factor group index for this operation do:
+  /// \code
+  /// Index prim_fg_index = m_supercell->sym_info.factor_group->
+  ///                           head_group_index[m_supercell_factor_group_index];
+  /// \endcode
+  Index m_supercell_factor_group_index;
+
+  /// \brief Lattice translation index
+  ///
+  /// This is an index into:
+  /// - m_supercell->sym_info.translation_permutations
+  ///
+  /// The corresponding lattice translation, fractional with respect to the
+  /// prim lattice, can be obtained with:
+  /// \code
+  /// xtal::UnitCell translation_frac =
+  ///     m_supercell->unitcell_index_converter(m_translation_index);
+  /// \code
   Index m_translation_index;
+
+  /// \brief Total number of translations
+  ///
+  /// This is equal to the total number of unit cells in the supercell:
+  /// - m_supercell->sym_info.translation_permutations.size()
+  /// - m_supercell->unitcell_index_converter.total_sites()
+  /// - m_supercell->superlattice.size()
   Index m_N_translation;
 };
 
@@ -148,6 +193,18 @@ xtal::UnitCellCoord &apply(SupercellSymOp const &op,
 ///     xtal::UnitCellCoord
 xtal::UnitCellCoord copy_apply(SupercellSymOp const &op,
                                xtal::UnitCellCoord unitcellcoord);
+
+/// \brief Make SupercellSymOp group rep for local property symmetry in a
+/// supercell
+std::vector<SupercellSymOp> make_local_supercell_symgroup_rep(
+    std::shared_ptr<SymGroup const> const &local_prim_subgroup,
+    std::shared_ptr<Supercell const> const &supercell);
+
+/// \brief Make SymGroup from SupercellSymOp group rep for local property
+///     symmetry in a supercell
+std::shared_ptr<SymGroup const> make_local_symgroup(
+    std::vector<SupercellSymOp> const &local_supercell_symgroup_rep,
+    std::shared_ptr<Supercell const> const &supercell);
 
 }  // namespace config
 }  // namespace CASM

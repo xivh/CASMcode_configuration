@@ -183,8 +183,8 @@ class AnisoOccupation {
   }
 
   void _update_A(SupercellSymOp const &A, Eigen::VectorXi const &before) const {
-    if (A.factor_group_index() != m_fg_index_A || !m_tmp_valid) {
-      m_fg_index_A = A.factor_group_index();
+    if (A.supercell_factor_group_index() != m_fg_index_A || !m_tmp_valid) {
+      m_fg_index_A = A.supercell_factor_group_index();
       Index l = 0;
       PrimSymInfo const &prim_sym_info = A.supercell()->prim->sym_info;
       SupercellSymInfo const &supercell_sym_info = A.supercell()->sym_info;
@@ -201,8 +201,8 @@ class AnisoOccupation {
   }
 
   void _update_B(SupercellSymOp const &B, Eigen::VectorXi const &before) const {
-    if (B.factor_group_index() != m_fg_index_B || !m_tmp_valid) {
-      m_fg_index_B = B.factor_group_index();
+    if (B.supercell_factor_group_index() != m_fg_index_B || !m_tmp_valid) {
+      m_fg_index_B = B.supercell_factor_group_index();
       Index l = 0;
       PrimSymInfo const &prim_sym_info = B.supercell()->prim->sym_info;
       SupercellSymInfo const &supercell_sym_info = B.supercell()->sym_info;
@@ -346,9 +346,9 @@ class Local {
 
   void _update_A(SupercellSymOp const &A, Eigen::MatrixXd const &before) const {
     using clexulator::sublattice_block;
-    if (A.factor_group_index() != m_fg_index_A || !m_tmp_valid) {
+    if (A.supercell_factor_group_index() != m_fg_index_A || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = A.supercell()->prim->sym_info;
-      m_fg_index_A = A.factor_group_index();
+      m_fg_index_A = A.supercell_factor_group_index();
       SupercellSymInfo const &supercell_sym_info = A.supercell()->sym_info;
       Index prim_fg_index =
           supercell_sym_info.factor_group->head_group_index[m_fg_index_A];
@@ -364,9 +364,9 @@ class Local {
 
   void _update_B(SupercellSymOp const &B, Eigen::MatrixXd const &before) const {
     using clexulator::sublattice_block;
-    if (B.factor_group_index() != m_fg_index_B || !m_tmp_valid) {
+    if (B.supercell_factor_group_index() != m_fg_index_B || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = B.supercell()->prim->sym_info;
-      m_fg_index_B = B.factor_group_index();
+      m_fg_index_B = B.supercell_factor_group_index();
       SupercellSymInfo const &supercell_sym_info = B.supercell()->sym_info;
       Index prim_fg_index =
           supercell_sym_info.factor_group->head_group_index[m_fg_index_B];
@@ -505,9 +505,9 @@ class Global {
 
  private:
   void _update_A(SupercellSymOp const &A, Eigen::VectorXd const &before) const {
-    if (A.factor_group_index() != m_fg_index_A || !m_tmp_valid) {
+    if (A.supercell_factor_group_index() != m_fg_index_A || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = A.supercell()->prim->sym_info;
-      m_fg_index_A = A.factor_group_index();
+      m_fg_index_A = A.supercell_factor_group_index();
       SupercellSymInfo const &supercell_sym_info = A.supercell()->sym_info;
       Index prim_fg_index =
           supercell_sym_info.factor_group->head_group_index[m_fg_index_A];
@@ -518,9 +518,9 @@ class Global {
   }
 
   void _update_B(SupercellSymOp const &B, Eigen::VectorXd const &before) const {
-    if (B.factor_group_index() != m_fg_index_B || !m_tmp_valid) {
+    if (B.supercell_factor_group_index() != m_fg_index_B || !m_tmp_valid) {
       PrimSymInfo const &prim_sym_info = B.supercell()->prim->sym_info;
-      m_fg_index_B = B.factor_group_index();
+      m_fg_index_B = B.supercell_factor_group_index();
       SupercellSymInfo const &supercell_sym_info = B.supercell()->sym_info;
       Index prim_fg_index =
           supercell_sym_info.factor_group->head_group_index[m_fg_index_B];

@@ -14,16 +14,47 @@ namespace config {
 
 /// Default invalid SupercellSymOp, not equal to end iterator
 SupercellSymOp::SupercellSymOp()
-    : m_factor_group_index(), m_translation_index() {}
+    : m_supercell_factor_group_index(), m_translation_index() {}
 
 /// Construct SupercellSymOp
+///
+/// \param _supercell Supercell
+/// \param _supercell_factor_group_index Supercell factor group index
+/// \param _translation_index Index into
+/// SupercellSymInfo.translation_permutations
 SupercellSymOp::SupercellSymOp(
     std::shared_ptr<Supercell const> const &_supercell,
-    Index _factor_group_index, Index _translation_index)
+    Index _supercell_factor_group_index, Index _translation_index)
     : m_supercell(_supercell),
-      m_factor_group_index(_factor_group_index),
+      m_supercell_factor_group_index(_supercell_factor_group_index),
       m_translation_index(_translation_index),
       m_N_translation(m_supercell->sym_info.translation_permutations.size()) {}
+
+/// Construct SupercellSymOp
+///
+/// \param _supercell Supercell
+/// \param _supercell_factor_group_index Supercell factor group index
+/// \param _translation_frac A lattice translation, in fractional coordinates
+SupercellSymOp::SupercellSymOp(
+    std::shared_ptr<Supercell const> const &_supercell,
+    Index _supercell_factor_group_index,
+    xtal::UnitCell const &_translation_frac)
+    : SupercellSymOp(_supercell, _supercell_factor_group_index,
+                     _supercell->unitcell_index_converter(_translation_frac)) {}
+
+/// Construct SupercellSymOp
+///
+/// \param _supercell Supercell
+/// \param _supercell_factor_group_index Supercell factor group index
+/// \param _translation_cart A lattice translation, in Cartesian coordinates
+SupercellSymOp::SupercellSymOp(
+    std::shared_ptr<Supercell const> const &_supercell,
+    Index _supercell_factor_group_index,
+    Eigen::Vector3d const &_translation_cart)
+    : SupercellSymOp(
+          _supercell, _supercell_factor_group_index,
+          UnitCell::from_cartesian(_translation_cart,
+                                   _supercell->superlattice.prim_lattice())) {}
 
 /// \brief Make supercell symop begin iterator
 SupercellSymOp SupercellSymOp::begin(
@@ -54,11 +85,35 @@ std::shared_ptr<Supercell const> const &SupercellSymOp::supercell() const {
   return m_supercell;
 }
 
-Index SupercellSymOp::factor_group_index() const {
-  return m_factor_group_index;
+/// \brief Supercell factor group index
+///
+/// This is an index into:
+/// - supercell()->sym_info.factor_group->element
+/// - supercell()->sym_info.factor_group_permutations
+Index SupercellSymOp::supercell_factor_group_index() const {
+  return m_supercell_factor_group_index;
 }
 
+/// \brief Prim factor group index
+///
+/// This is an index into:
+/// - supercell()->prim->sym_info.factor_group->element
+Index SupercellSymOp::prim_factor_group_index() const {
+  return m_supercell->sym_info.factor_group
+      ->head_group_index[m_supercell_factor_group_index];
+}
+
+/// \brief Lattice translation index
+///
+/// This is an index into:
+/// - m_supercell->sym_info.translation_permutations
 Index SupercellSymOp::translation_index() const { return m_translation_index; }
+
+/// \brief Lattice translation in fractional coordinates of the prim lattice
+/// vectors
+xtal::UnitCell SupercellSymOp::translation_frac() const {
+  return m_supercell->unitcell_index_converter(m_translation_index);
+}
 
 /// \brief Returns the index of the site containing the site DoF values that
 ///     will be permuted onto site i
@@ -68,7 +123,7 @@ Index SupercellSymOp::translation_index() const { return m_translation_index; }
 Index SupercellSymOp::permute_index(Index i) const {
   SupercellSymInfo const &sym_info = m_supercell->sym_info;
   auto const &fg_perm =
-      sym_info.factor_group_permutations[m_factor_group_index];
+      sym_info.factor_group_permutations[m_supercell_factor_group_index];
   auto const &trans_perm =
       sym_info.translation_permutations[m_translation_index];
   return fg_perm[trans_perm[i]];
@@ -87,7 +142,7 @@ SupercellSymOp &SupercellSymOp::operator++() {
   m_translation_index++;
   if (m_translation_index == m_N_translation) {
     m_translation_index = 0;
-    m_factor_group_index++;
+    m_supercell_factor_group_index++;
   }
   return *this;
 }
@@ -102,7 +157,7 @@ SupercellSymOp SupercellSymOp::operator++(int) {
 /// \brief prefix --SupercellSymOp
 SupercellSymOp &SupercellSymOp::operator--() {
   if (m_translation_index == 0) {
-    m_factor_group_index--;
+    m_supercell_factor_group_index--;
     m_translation_index = m_N_translation;
   }
   m_translation_index--;
@@ -135,8 +190,8 @@ SymOp SupercellSymOp::to_symop() const {
   Eigen::Vector3d translation_cart =
       prim_lat_column_mat * translation_frac.cast<double>();
 
-  SymOp const &fg_op =
-      this->m_supercell->sym_info.factor_group->element[m_factor_group_index];
+  SymOp const &fg_op = this->m_supercell->sym_info.factor_group
+                           ->element[m_supercell_factor_group_index];
 
   return SymOp{fg_op.matrix, translation_cart + fg_op.translation,
                fg_op.is_time_reversal_active};
@@ -147,21 +202,24 @@ SymOp SupercellSymOp::to_symop() const {
 sym_info::Permutation SupercellSymOp::combined_permute() const {
   SupercellSymInfo const &sym_info = m_supercell->sym_info;
   return CASM::sym_info::combined_permute(
-      sym_info.factor_group_permutations[m_factor_group_index],  // first
-      sym_info.translation_permutations[m_translation_index]);   // second
+      sym_info
+          .factor_group_permutations[m_supercell_factor_group_index],  // first
+      sym_info.translation_permutations[m_translation_index]);         // second
 }
 
 /// \brief Returns the inverse supercell operation
 SupercellSymOp SupercellSymOp::inverse() const {
-  // Copy *this, then update m_factor_group_index and m_translation_index
+  // Copy *this, then update m_supercell_factor_group_index and
+  // m_translation_index
   SupercellSymOp inverse_op(*this);
 
   // Finding the inverse factor_group operation is straightforward
   SymGroup const &supercell_factor_group =
       *this->m_supercell->sym_info.factor_group;
   Index inverse_fg_index =
-      supercell_factor_group.inverse_index[this->m_factor_group_index];
-  inverse_op.m_factor_group_index = inverse_fg_index;
+      supercell_factor_group
+          .inverse_index[this->m_supercell_factor_group_index];
+  inverse_op.m_supercell_factor_group_index = inverse_fg_index;
 
   // New translation can be found comparing the translation for the inverse of
   // the "total sym_op" of *this to the inverse of the untranslated sym_op
@@ -187,15 +245,17 @@ SupercellSymOp SupercellSymOp::inverse() const {
 /// \brief Returns the supercell operation equivalent to applying first RHS
 /// and then *this
 SupercellSymOp SupercellSymOp::operator*(SupercellSymOp const &RHS) const {
-  // Copy *this, then update m_factor_group_index and m_translation_index
+  // Copy *this, then update m_supercell_factor_group_index and
+  // m_translation_index
   SupercellSymOp product_op(*this);
 
   // Finding the factor_group product is straightforward
   SymGroup const &supercell_factor_group =
       *this->m_supercell->sym_info.factor_group;
-  product_op.m_factor_group_index =
-      supercell_factor_group.multiplication_table[this->m_factor_group_index]
-                                                 [RHS.m_factor_group_index];
+  product_op.m_supercell_factor_group_index =
+      supercell_factor_group
+          .multiplication_table[this->m_supercell_factor_group_index]
+                               [RHS.m_supercell_factor_group_index];
 
   // New translation can be found comparing the translation for the product of
   // the "total sym_op" to the just the product factor group op translation
@@ -203,7 +263,7 @@ SupercellSymOp SupercellSymOp::operator*(SupercellSymOp const &RHS) const {
   // Find the translation (cartesian coordinates)
   SymOp total_product_op = this->to_symop() * RHS.to_symop();
   SymOp const &product_fg_op =
-      supercell_factor_group.element[product_op.m_factor_group_index];
+      supercell_factor_group.element[product_op.m_supercell_factor_group_index];
   Eigen::Vector3d translation_cart =
       total_product_op.translation - product_fg_op.translation;
 
@@ -222,16 +282,18 @@ SupercellSymOp SupercellSymOp::operator*(SupercellSymOp const &RHS) const {
 /// \brief Less than comparison (used to implement operator<() and other
 /// standard comparisons via Comparisons)
 bool SupercellSymOp::operator<(SupercellSymOp const &RHS) const {
-  if (this->m_factor_group_index == RHS.m_factor_group_index) {
+  if (this->m_supercell_factor_group_index ==
+      RHS.m_supercell_factor_group_index) {
     return this->m_translation_index < RHS.m_translation_index;
   }
-  return this->m_factor_group_index < RHS.m_factor_group_index;
+  return this->m_supercell_factor_group_index <
+         RHS.m_supercell_factor_group_index;
 }
 
 /// \brief Equality comparison (used to implement operator==)
 bool SupercellSymOp::eq_impl(SupercellSymOp const &RHS) const {
   if (m_supercell == RHS.m_supercell &&
-      m_factor_group_index == RHS.m_factor_group_index &&
+      m_supercell_factor_group_index == RHS.m_supercell_factor_group_index &&
       m_translation_index == RHS.m_translation_index) {
     return true;
   }
@@ -261,7 +323,7 @@ ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values) {
   Index n_sublat = prim.basicstructure->basis().size();
   Index n_sites = n_vol * n_sublat;
 
-  Index supercell_fg_index = op.factor_group_index();
+  Index supercell_fg_index = op.supercell_factor_group_index();
   Index prim_fg_index =
       supercell_sym_info.factor_group->head_group_index[supercell_fg_index];
 
@@ -335,7 +397,8 @@ xtal::UnitCellCoord &apply(SupercellSymOp const &op,
 
   UnitCellCoordRep const &fg_op =
       op.supercell()
-          ->prim->sym_info.unitcellcoord_symgroup_rep[op.factor_group_index()];
+          ->prim->sym_info
+          .unitcellcoord_symgroup_rep[op.prim_factor_group_index()];
 
   apply(fg_op, unitcellcoord);
   unitcellcoord += translation_frac;
@@ -348,6 +411,95 @@ xtal::UnitCellCoord copy_apply(SupercellSymOp const &op,
                                xtal::UnitCellCoord unitcellcoord) {
   apply(op, unitcellcoord);
   return unitcellcoord;
+}
+
+/// \brief Make SupercellSymOp group rep for local property symmetry in a
+/// supercell
+///
+/// \brief local_prim_subgroup A subgroup of prim->sym_info->factor_group.
+///     Must be a local property group, in which each prim factor group
+///     operation only appears once.
+/// \brief supercell The supercell for which the supercell symgroup
+///     group is being generated.
+///
+/// \returns supercell_symgroup_rep, the SupercellSymOp consistent with both
+///     the supercell and the prim_subgroup
+std::vector<SupercellSymOp> make_local_supercell_symgroup_rep(
+    std::shared_ptr<SymGroup const> const &local_prim_subgroup,
+    std::shared_ptr<Supercell const> const &supercell) {
+  std::vector<SupercellSymOp> result;
+
+  if (local_prim_subgroup->head_group !=
+      supercell->sym_info.factor_group->head_group) {
+    throw std::runtime_error(
+        "Error in make_local_supercell_symgroup_rep: do not share the same "
+        "prim factor group");
+  }
+
+  SymGroup const &local_group = *local_prim_subgroup;
+  SymGroup const &prim_factor_group = *local_group.head_group;
+  SymGroup const &supercell_factor_group = *supercell->sym_info.factor_group;
+
+  std::map<Index, Index> prim_to_supercell_fg_index;
+  Index supercell_fg_index = 0;
+  for (Index prim_fg_index : supercell_factor_group.head_group_index) {
+    prim_to_supercell_fg_index[prim_fg_index] = supercell_fg_index;
+    ++supercell_fg_index;
+  }
+
+  // Iterate over local group operations
+  for (Index i = 0; i < local_group.element.size(); ++i) {
+    Index prim_fg_index = local_group.head_group_index[i];
+    auto it = prim_to_supercell_fg_index.find(prim_fg_index);
+
+    // If local group operation is in supercell factor group
+    if (it != prim_to_supercell_fg_index.end()) {
+      // Determine lattice translation and use it to construct SupercellSymOp
+      Eigen::Vector3d translation_cart =
+          local_group.element[i].translation -
+          prim_factor_group.element[prim_fg_index].translation;
+      result.emplace_back(supercell,
+                          it->second,  // supercell_fg_index
+                          translation_cart);
+    }
+  }
+
+  return result;
+}
+
+/// \brief Make SymGroup from SupercellSymOp group rep for local property
+///     symmetry in a supercell
+std::shared_ptr<SymGroup const> make_local_symgroup(
+    std::vector<SupercellSymOp> const &local_supercell_symgroup_rep,
+    std::shared_ptr<Supercell const> const &supercell) {
+  std::shared_ptr<SymGroup const> prim_factor_group =
+      supercell->prim->sym_info.factor_group;
+  std::shared_ptr<SymGroup const> supercell_factor_group =
+      supercell->sym_info.factor_group;
+
+  std::map<Index, xtal::SymOp> index_and_element;
+  for (auto const &supercell_symop : local_supercell_symgroup_rep) {
+    Index supercell_fg_index = supercell_symop.supercell_factor_group_index();
+    Index prim_fg_index =
+        supercell_factor_group->head_group_index[supercell_fg_index];
+    auto result =
+        index_and_element.emplace(prim_fg_index, supercell_symop.to_symop());
+    if (!result.second) {
+      throw std::runtime_error(
+          "Error in config::make_local_symgroup: not a local property group, "
+          "repeated prim factor group index.");
+    }
+  }
+
+  std::vector<xtal::SymOp> element;
+  std::set<Index> head_group_index;
+  for (auto const &pair : index_and_element) {
+    head_group_index.emplace(pair.first);
+    element.push_back(pair.second);
+  }
+
+  return std::make_shared<SymGroup const>(prim_factor_group, element,
+                                          head_group_index);
 }
 
 }  // namespace config

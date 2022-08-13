@@ -18,7 +18,8 @@ Configuration copy_configuration(
 
 /// \brief Copy transformed configuration DoF values into a supercell
 Configuration copy_configuration(
-    Index factor_group_index, UnitCell translation, Configuration const &motif,
+    Index prim_factor_group_index, UnitCell translation,
+    Configuration const &motif,
     std::shared_ptr<Supercell const> const &supercell,
     UnitCell const &origin = UnitCell(0, 0, 0));
 

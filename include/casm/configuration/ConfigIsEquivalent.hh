@@ -200,7 +200,7 @@ inline bool ConfigIsEquivalent::operator()(SupercellSymOp const &A) const {
 /// \brief Check if A*config == B*config, store A*config < B*config
 inline bool ConfigIsEquivalent::operator()(SupercellSymOp const &A,
                                            SupercellSymOp const &B) const {
-  if (A.factor_group_index() != B.factor_group_index()) {
+  if (A.supercell_factor_group_index() != B.supercell_factor_group_index()) {
     for (auto const &dof_is_equiv_f : m_global_equivs) {
       ConfigDoFIsEquivalent::Global const &f = dof_is_equiv_f.second;
       if (!f(A, B)) {
