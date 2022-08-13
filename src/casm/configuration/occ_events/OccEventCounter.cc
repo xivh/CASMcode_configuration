@@ -19,7 +19,11 @@ class PrototypeClusterCounter : public SingleStepBase<OccEventCounterData> {
       return false;
     }
     ++data()->prototype_index;
-    return is_finished();
+    bool result = !is_finished();
+    if (result) {
+      data()->cluster = data()->prototypes[data()->prototype_index];
+    }
+    return result;
   }
 
   /// \brief Return true if in invalid / finished state
@@ -30,22 +34,49 @@ class PrototypeClusterCounter : public SingleStepBase<OccEventCounterData> {
   /// \brief Return true if in a not-finished && allowed state
   bool is_allowed() const override {
     if (this->fails_min_cluster_size()) {
+      _fails("cluster:min_cluster_size");
       return false;
     }
     if (this->fails_max_cluster_size()) {
+      _fails("cluster:max_cluster_size");
       return false;
     }
     if (this->fails_required_cluster_size()) {
+      _fails("cluster:required_cluster_size");
       return false;
     }
     if (this->fails_excluded_sublattices()) {
+      _fails("cluster:excluded_sublattices");
       return false;
     }
     if (this->fails_required_sublattices()) {
+      _fails("cluster:required_sublattices");
       return false;
     }
 
+    // customizeable filter
+    if (data()->params.cluster_filter &&
+        !data()->params.cluster_filter(*data())) {
+      _fails("cluster:filter");
+      return false;
+    }
+
+    _passes();
     return true;
+  }
+
+  void _fails(std::string what) const {
+    if (!data()->params.save_state_info) {
+      return;
+    }
+    OccEventCounterStateInfo state_info;
+    state_info.cluster = data()->cluster;
+    state_info.fails = what;
+    data()->info.push_back(state_info);
+  }
+
+  void _passes() const {
+    // continue;
   }
 
   /// \brief Check if cluster size is at minimum a
@@ -141,40 +172,103 @@ class OccInitCounter : public SingleStepBase<OccEventCounterData> {
 
   /// \brief Return true if in a not-finished && allowed state
   bool is_allowed() const override {
+    // occ init
+    if (this->fails_required_occ_init()) {
+      _fails("occ_init:required_occ_init");
+      return false;
+    }
+
     // atom count
     if (this->fails_required_init_atom_count()) {
+      _fails("occ_init:required_init_atom_count");
       return false;
     }
     if (this->fails_min_init_atom_count()) {
+      _fails("occ_init:min_init_atom_count");
       return false;
     }
     if (this->fails_max_init_atom_count()) {
+      _fails("occ_init:max_init_atom_count");
       return false;
     }
 
     // molecule count
     if (this->fails_required_init_molecule_count()) {
+      _fails("occ_init:required_init_molecule_count");
       return false;
     }
     if (this->fails_min_init_molecule_count()) {
+      _fails("occ_init:min_init_molecule_count");
       return false;
     }
     if (this->fails_max_init_molecule_count()) {
+      _fails("occ_init:max_init_molecule_count");
       return false;
     }
 
     // orientation count
     if (this->fails_required_init_orientation_count()) {
+      _fails("occ_init:required_init_orientation_count");
       return false;
     }
     if (this->fails_min_init_orientation_count()) {
+      _fails("occ_init:min_init_orientation_count");
       return false;
     }
     if (this->fails_max_init_orientation_count()) {
+      _fails("occ_init:max_init_orientation_count");
       return false;
     }
 
+    // customizeable filter
+    if (data()->params.occ_init_filter &&
+        !data()->params.occ_init_filter(*data())) {
+      _fails("occ_init:filter");
+      return false;
+    }
+
+    _passes();
     return true;
+  }
+
+  void _fails(std::string what) const {
+    if (!data()->params.print_state_info && !data()->params.save_state_info) {
+      return;
+    }
+    OccEventCounterStateInfo state_info;
+    state_info.cluster = data()->cluster;
+    state_info.occ_init = data()->occ_init_counter();
+    state_info.fails = what;
+    if (data()->params.print_state_info) {
+      data()->params.print_state_info(state_info);
+    }
+    if (data()->params.save_state_info) {
+      data()->info.push_back(state_info);
+    }
+  }
+
+  void _passes() const {
+    // continue
+  }
+
+  /// \brief Check if initial occupation satisifies
+  ///     required occupation (required_occ_init)
+  bool fails_required_occ_init() const {
+    if (!data()->params.required_init_atom_count.has_value()) {
+      return false;
+    }
+    std::vector<int> const &occ_init = data()->occ_init_counter();
+    Eigen::VectorXi const &required_occ_init =
+        *data()->params.required_occ_init;
+    if (occ_init.size() != required_occ_init.size()) {
+      return true;
+    }
+    for (Index i = 0; i < data()->cluster.size(); ++i) {
+      if (occ_init[i] != required_occ_init[i]) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// \brief Check if initial occupation satisifies
@@ -235,6 +329,7 @@ class OccInitCounter : public SingleStepBase<OccEventCounterData> {
     if (!data()->params.required_init_molecule_count.has_value()) {
       return false;
     }
+    // data()->params.required_init_molecule_count->transpose() << std::endl;
     data()->system->molecule_count(m_count, data()->cluster,
                                    data()->occ_init_counter());
     return m_count != *data()->params.required_init_molecule_count;
@@ -362,19 +457,124 @@ class OccFinalCounter : public SingleStepBase<OccEventCounterData> {
 
   /// \brief Return true if in a not-finished && allowed state
   bool is_allowed() const override {
+    // occ final
+    if (this->fails_required_occ_final()) {
+      _fails("occ_init:required_occ_final");
+      return false;
+    }
+
     if (this->fails_allow_reverse_occ()) {
+      _fails("occ_final:allow_reverse_occ");
       return false;
     }
+    // std::cout << "OccFinalCounter is_allowed 1" << std::endl;
     if (this->fails_require_atom_conservation()) {
+      _fails("occ_final:require_atom_conservation");
       return false;
     }
+    // std::cout << "OccFinalCounter is_allowed 2" << std::endl;
     if (this->fails_require_molecule_conservation()) {
+      _fails("occ_final:require_molecule_conservation");
       return false;
     }
+    // std::cout << "OccFinalCounter is_allowed 3" << std::endl;
     if (this->fails_allow_subcluster_events()) {
+      _fails("occ_final:allow_subcluster_events:occ_final");
       return false;
     }
+
+    // atom count
+    if (this->fails_required_final_atom_count()) {
+      _fails("occ_final:required_final_atom_count");
+      return false;
+    }
+    if (this->fails_min_final_atom_count()) {
+      _fails("occ_final:min_final_atom_count");
+      return false;
+    }
+    if (this->fails_max_final_atom_count()) {
+      _fails("occ_final:max_final_atom_count");
+      return false;
+    }
+
+    // molecule count
+    if (this->fails_required_final_molecule_count()) {
+      _fails("occ_final:required_final_molecule_count");
+      return false;
+    }
+    if (this->fails_min_final_molecule_count()) {
+      _fails("occ_final:min_final_molecule_count");
+      return false;
+    }
+    if (this->fails_max_final_molecule_count()) {
+      _fails("occ_final:max_final_molecule_count");
+      return false;
+    }
+
+    // orientation count
+    if (this->fails_required_final_orientation_count()) {
+      _fails("occ_final:required_final_orientation_count");
+      return false;
+    }
+    if (this->fails_min_final_orientation_count()) {
+      _fails("occ_final:min_final_orientation_count");
+      return false;
+    }
+    if (this->fails_max_final_orientation_count()) {
+      _fails("occ_final:max_final_orientation_count");
+      return false;
+    }
+
+    // customizeable filter
+    if (data()->params.occ_final_filter &&
+        !data()->params.occ_final_filter(*data())) {
+      _fails("occ_final:filter");
+      return false;
+    }
+
+    _passes();
     return true;
+  }
+
+  void _fails(std::string what) const {
+    if (!data()->params.print_state_info && !data()->params.save_state_info) {
+      return;
+    }
+    OccEventCounterStateInfo state_info;
+    state_info.cluster = data()->cluster;
+    state_info.occ_init = data()->occ_init_counter();
+    state_info.occ_final = data()->occ_final_counter();
+    state_info.fails = what;
+    if (data()->params.print_state_info) {
+      data()->params.print_state_info(state_info);
+    }
+    if (data()->params.save_state_info) {
+      data()->info.push_back(state_info);
+    }
+  }
+
+  void _passes() const {
+    // continue
+  }
+
+  /// \brief Check if final occupation satisifies
+  ///     required occupation (required_occ_final)
+  bool fails_required_occ_final() const {
+    if (!data()->params.required_occ_final.has_value()) {
+      return false;
+    }
+    std::vector<int> const &occ_final = data()->occ_final_counter();
+    Eigen::VectorXi const &required_occ_final =
+        *data()->params.required_occ_final;
+    if (occ_final.size() != required_occ_final.size()) {
+      return true;
+    }
+    for (Index i = 0; i < data()->cluster.size(); ++i) {
+      if (occ_final[i] != required_occ_final[i]) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// \brief Check if occ_final < occ_init to skip generating an event
@@ -588,10 +788,12 @@ class OccFinalCounter : public SingleStepBase<OccEventCounterData> {
 };
 
 /// \brief Inner-most step: iterate over OccPosition permutations
-class PositionFinalCounter : public SingleStepBase<OccEventCounterData> {
+class TrajectoryCounter : public SingleStepBase<OccEventCounterData> {
  public:
-  PositionFinalCounter(std::shared_ptr<OccEventCounterData> _data)
-      : SingleStepBase<OccEventCounterData>(_data) {}
+  TrajectoryCounter(std::shared_ptr<OccEventCounterData> _data)
+      : SingleStepBase<OccEventCounterData>(_data) {
+    data()->trajectory_finished = true;
+  }
 
   /// \brief Advance state, return true if post-state is not finished
   ///
@@ -603,34 +805,92 @@ class PositionFinalCounter : public SingleStepBase<OccEventCounterData> {
     if (valid) {
       data()->occ_event =
           make_occevent(data()->position_init, data()->position_final);
+    } else {
+      data()->position_init.clear();
+      data()->position_final.clear();
+      data()->trajectory_finished = true;
     }
-    return valid;
+    return !is_finished();
   }
 
   /// \brief Return true if in finished state
-  bool is_finished() const override {
-    return !data()->occ_final_counter.valid();
-  }
+  bool is_finished() const override { return data()->trajectory_finished; }
 
   /// \brief Return true if in a not-finished && allowed state
   bool is_allowed() const override {
     if (this->fails_require_chemical_type_conserving_trajectories()) {
+      _fails("trajectory:require_chemical_type_conserving_trajectories");
+      return false;
+    }
+    if (this->fails_skip_direct_exchange()) {
+      _fails("trajectory:skip_direct_exchange");
       return false;
     }
     if (this->fails_allow_subcluster_events()) {
+      _fails("trajectory:allow_subcluster_events");
       return false;
     }
     if (this->fails_do_not_allow_breakup()) {
+      _fails("trajectory:do_not_allow_breakup");
       return false;
     }
     if (this->fails_do_not_allow_indivisible_molecule_breakup()) {
+      _fails("trajectory:do_not_allow_indivisible_molecule_breakup");
       return false;
     }
     if (this->fails_require_no_molecules_remain_in_resevoir()) {
+      _fails("trajectory:require_no_molecules_remain_in_resevoir");
       return false;
     }
 
+    // customizeable filter
+    if (data()->params.trajectory_filter &&
+        !data()->params.trajectory_filter(*data())) {
+      _fails("trajectory:filter");
+      return false;
+    }
+
+    _passes();
     return true;
+  }
+
+  void _fails(std::string what) const {
+    if (!data()->params.print_state_info && !data()->params.save_state_info) {
+      return;
+    }
+    OccEventCounterStateInfo state_info;
+    state_info.cluster = data()->cluster;
+    state_info.occ_init = data()->occ_init_counter();
+    state_info.occ_final = data()->occ_final_counter();
+    state_info.position_init = data()->position_init;
+    state_info.position_final = data()->position_final;
+    state_info.occ_event = data()->occ_event;
+    state_info.fails = what;
+    if (data()->params.print_state_info) {
+      data()->params.print_state_info(state_info);
+    }
+    if (data()->params.save_state_info) {
+      data()->info.push_back(state_info);
+    }
+  }
+
+  void _passes() const {
+    if (!data()->params.print_state_info && !data()->params.save_state_info) {
+      return;
+    }
+    OccEventCounterStateInfo state_info;
+    state_info.cluster = data()->cluster;
+    state_info.occ_init = data()->occ_init_counter();
+    state_info.occ_final = data()->occ_final_counter();
+    state_info.position_init = data()->position_init;
+    state_info.position_final = data()->position_final;
+    state_info.occ_event = data()->occ_event;
+    if (data()->params.print_state_info) {
+      data()->params.print_state_info(state_info);
+    }
+    if (data()->params.save_state_info) {
+      data()->info.push_back(state_info);
+    }
   }
 
   /// \brief Check for trajectories in which the atom/molecule type
@@ -641,6 +901,15 @@ class PositionFinalCounter : public SingleStepBase<OccEventCounterData> {
                true &&
            !data()->system->is_chemical_type_conserving(data()->position_init,
                                                         data()->position_final);
+  }
+
+  /// \brief Check for trajectories in which two atoms
+  ///     directly exchange sites. Do not skip atom-vacancy exchange.
+  ///     (skip_direct_exchange)
+  bool fails_skip_direct_exchange() const {
+    return data()->params.skip_direct_exchange &&
+           data()->system->is_direct_exchange(data()->position_init,
+                                              data()->position_final);
   }
 
   /// \brief Check if event can be described using a subcluster, because
@@ -683,6 +952,8 @@ class PositionFinalCounter : public SingleStepBase<OccEventCounterData> {
   ///     sorted so that all permutations of `position_final` can be
   ///     generated.
   void initialize() const override {
+    data()->trajectory_finished = false;
+
     data()->system->make_occ_positions(
         data()->position_init, m_count, data()->cluster,
         data()->occ_init_counter(), data()->occ_final_counter(),
@@ -694,6 +965,9 @@ class PositionFinalCounter : public SingleStepBase<OccEventCounterData> {
         data()->params.require_atom_conservation);
 
     std::sort(data()->position_final.begin(), data()->position_final.end());
+
+    data()->occ_event =
+        make_occevent(data()->position_init, data()->position_final);
   }
 
  private:
@@ -711,7 +985,7 @@ class PositionFinalCounter : public SingleStepBase<OccEventCounterData> {
 /// \param params, Options controlling the events generated.
 ///
 OccEventCounter::OccEventCounter(
-    std::shared_ptr<OccSystem> const &system,
+    std::shared_ptr<OccSystem const> const &system,
     std::vector<clust::IntegralCluster> const &prototypes,
     OccEventCounterParameters const &params) {
   // make shared data structure
@@ -725,7 +999,7 @@ OccEventCounter::OccEventCounter(
   StepVector steps;
 
   // inner-most step: iterate over OccPosition permutations
-  steps.emplace_back(std::make_unique<PositionFinalCounter>(m_data));
+  steps.emplace_back(std::make_unique<TrajectoryCounter>(m_data));
 
   // iterate over final cluster occupation
   steps.emplace_back(std::make_unique<OccFinalCounter>(m_data));
@@ -740,6 +1014,10 @@ OccEventCounter::OccEventCounter(
   // in a Counter-like fashion, skipping invalid or unallowed events
   m_stepper = std::make_unique<MultiStepMethod<OccEventCounterData>>(
       m_data, std::move(steps));
+}
+
+std::shared_ptr<OccEventCounterData> const &OccEventCounter::data() const {
+  return m_data;
 }
 
 /// \brief Advance to the next allowed OccEvent

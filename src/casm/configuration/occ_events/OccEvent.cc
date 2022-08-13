@@ -169,7 +169,9 @@ clust::IntegralCluster make_cluster(OccEvent const &event) {
 /// - Throws if any inconsistency in site occupation
 std::pair<clust::IntegralCluster, std::vector<std::vector<int>>>
 make_cluster_occupation(OccEvent const &event) {
-  std::pair<clust::IntegralCluster, std::vector<std::vector<int>>> result;
+  std::pair<clust::IntegralCluster, std::vector<std::vector<int>>> result(
+      clust::IntegralCluster(),
+      std::vector<std::vector<int>>(2, std::vector<int>()));
   if (!event.size()) {
     return result;
   }

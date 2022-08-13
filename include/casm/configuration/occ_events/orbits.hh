@@ -9,6 +9,7 @@
 
 namespace CASM {
 namespace occ_events {
+struct OccEventCounterParameters;
 
 /// \brief Copy OccEvent and apply symmetry operation transformation
 OccEvent prim_periodic_occevent_copy_apply(OccEventRep const &rep,
@@ -24,6 +25,12 @@ std::set<OccEvent> make_prim_periodic_orbit(
     OccEvent const &orbit_element,
     std::vector<OccEventRep> const &occevent_symgroup_rep);
 
+/// \brief Generate equivalent OccEvent, translated to origin unit cell,
+///     in a given order
+std::vector<OccEvent> make_prim_periodic_equivalents(
+    OccEvent const &prototype, std::vector<Index> const &symop_indices,
+    std::vector<OccEventRep> const &occevent_symgroup_rep);
+
 /// \brief Make groups that leave OccEvent orbit elements invariant
 std::vector<std::shared_ptr<SymGroup const>> make_occevent_groups(
     std::set<OccEvent> const &orbit,
@@ -37,10 +44,22 @@ std::shared_ptr<SymGroup const> make_occevent_group(
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<OccEventRep> const &occevent_symgroup_rep);
 
-// /// \brief Make orbits of OccEvent, with periodic symmetry of a prim
-// std::vector<std::set<OccEvent>> make_prim_periodic_orbits(
-//     OccSystem const &system, std::vector<clust::IntegralCluster> const
-//     &prototypes, std::vector<OccEventRep> const &occevent_symgroup_rep);
+/// \brief Make prototypes of distinct orbits of OccEvent, with periodic
+///     symmetry of a prim
+std::vector<OccEvent> make_prim_periodic_occevent_prototypes(
+    std::shared_ptr<OccSystem const> const &system,
+    std::vector<clust::IntegralCluster> const &clusters,
+    std::vector<OccEventRep> const &occevent_symgroup_rep,
+    OccEventCounterParameters const &params,
+    std::vector<OccEvent> const &custom_events = {});
+
+/// \brief Make orbits of OccEvent, with periodic symmetry of a prim
+std::vector<std::set<OccEvent>> make_prim_periodic_occevent_orbits(
+    std::shared_ptr<OccSystem const> const &system,
+    std::vector<clust::IntegralCluster> const &clusters,
+    std::vector<OccEventRep> const &occevent_symgroup_rep,
+    OccEventCounterParameters const &params,
+    std::vector<OccEvent> const &custom_events = {});
 
 }  // namespace occ_events
 }  // namespace CASM

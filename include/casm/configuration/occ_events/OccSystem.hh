@@ -115,11 +115,21 @@ struct OccSystem {
 
   OccPosition make_molecule_position(
       xtal::UnitCellCoord const &integral_site_coordinate,
+      Index occupant_index) const;
+
+  OccPosition make_atom_position(
+      xtal::UnitCellCoord const &integral_site_coordinate, Index occupant_index,
+      Index atom_position_index) const;
+
+  OccPosition make_molecule_position(
+      xtal::UnitCellCoord const &integral_site_coordinate,
       std::string orientation_name) const;
 
-  OccPosition make_atomic_position(
+  OccPosition make_atom_position(
       xtal::UnitCellCoord const &integral_site_coordinate,
       std::string orientation_name, Index atom_position_index) const;
+
+  OccPosition make_molecule_in_resevoir_position(Index chemical_index) const;
 
   OccPosition make_molecule_in_resevoir_position(
       std::string chemical_name) const;
@@ -134,6 +144,43 @@ struct OccSystem {
                           bool require_atom_conservation) const;
 
   // --- Get OccPosition info ---
+
+  std::string get_chemical_name(
+      xtal::UnitCellCoord const &integral_site_coordinate,
+      Index occupant_index) const {
+    return chemical_name_list
+        [occupant_to_chemical_index[integral_site_coordinate.sublattice()]
+                                   [occupant_index]];
+  }
+
+  std::string get_orientation_name(
+      xtal::UnitCellCoord const &integral_site_coordinate,
+      Index occupant_index) const {
+    return orientation_name_list
+        [occupant_to_orientation_index[integral_site_coordinate.sublattice()]
+                                      [occupant_index]];
+  }
+
+  std::string get_atom_name(xtal::UnitCellCoord const &integral_site_coordinate,
+                            Index occupant_index,
+                            Index atom_position_index) const {
+    return atom_name_list
+        [atom_position_to_name_index[integral_site_coordinate.sublattice()]
+                                    [occupant_index][atom_position_index]];
+  }
+
+  std::vector<std::string> get_atom_names(
+      xtal::UnitCellCoord const &integral_site_coordinate,
+      Index occupant_index) const {
+    std::vector<std::string> atom_names;
+    auto const &indices =
+        atom_position_to_name_index[integral_site_coordinate.sublattice()]
+                                   [occupant_index];
+    for (auto const &atom_name_index : indices) {
+      atom_names.push_back(atom_name_list[atom_name_index]);
+    }
+    return atom_names;
+  }
 
   /// Valid if p is valid
   std::string get_chemical_name(OccPosition const &p) const {
@@ -184,6 +231,10 @@ struct OccSystem {
     return is_indivisible_chemical_list[get_chemical_index(p)];
   }
 
+  bool is_vacancy(OccPosition const &p) const {
+    return is_vacancy_list[get_chemical_index(p)];
+  }
+
   // --- Occupation checks ---
 
   /// \brief Count molecules occupying cluster sites
@@ -227,6 +278,11 @@ struct OccSystem {
   bool is_chemical_type_conserving(
       std::vector<OccPosition> const &position_before,
       std::vector<OccPosition> const &position_after) const;
+
+  /// \brief Check for trajectories in which two atoms
+  ///     directly exchange sites. Does not include atom-vacancy exchange.
+  bool is_direct_exchange(std::vector<OccPosition> const &position_before,
+                          std::vector<OccPosition> const &position_after) const;
 
   /// \brief Return true if before and after position are both in resevoir
   bool is_any_unchanging_resevoir_type(

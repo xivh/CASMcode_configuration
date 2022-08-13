@@ -272,6 +272,36 @@ inline CASM::xtal::BasicStructure FCC_dimer_prim() {
   return struc;
 }
 
+inline CASM::xtal::BasicStructure FCC_dumbbell_prim() {
+  using namespace CASM;
+  using namespace CASM::xtal;
+
+  // lattice vectors as cols
+  Eigen::Matrix3d lat;
+  lat << 0.0, 2.0, 2.0, 2.0, 0.0, 2.0, 2.0, 2.0, 0.0;
+
+  BasicStructure struc{Lattice{lat}};
+  struc.set_title("FCC_dumbbell");
+
+  Molecule A = Molecule::make_atom("A");
+  Molecule A2x("A2_dumbbell",
+               {AtomPosition(Eigen::Vector3d(-0.4, 0.0, 0.0), "A"),
+                AtomPosition(Eigen::Vector3d(0.4, 0.0, 0.0), "A")});
+  Molecule A2y("A2_dumbbell",
+               {AtomPosition(Eigen::Vector3d(0.0, -0.4, 0.0), "A"),
+                AtomPosition(Eigen::Vector3d(0.0, 0.4, 0.0), "A")});
+  Molecule A2z("A2_dumbbell",
+               {AtomPosition(Eigen::Vector3d(0.0, 0.0, -0.4), "A"),
+                AtomPosition(Eigen::Vector3d(0.0, 0.0, 0.4), "A")});
+  struc.set_unique_names({{"A", "A2.x", "A2.y", "A2.z"}});
+
+  struc.push_back(
+      Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
+           std::vector<Molecule>{A, A2x, A2y, A2z}, std::vector<SiteDoFSet>{}));
+
+  return struc;
+}
+
 }  // namespace test
 
 #endif

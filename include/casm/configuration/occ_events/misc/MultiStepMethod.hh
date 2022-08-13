@@ -8,12 +8,15 @@ namespace CASM {
 template <typename SharedDataType>
 class SingleStepBase {
  public:
+  /// \brief Construct method with access to shared data
   SingleStepBase(std::shared_ptr<SharedDataType> _data) : m_data(_data) {}
 
   virtual ~SingleStepBase() {}
 
+  /// \brief Access shared data
   std::shared_ptr<SharedDataType> &data() { return m_data; }
 
+  /// \brief Access shared data
   std::shared_ptr<SharedDataType> const &data() const { return m_data; }
 
   /// \brief Advance state, return true if post-state is not finished
@@ -34,6 +37,9 @@ class SingleStepBase {
 
 /// \brief A "Counter"-like class, allows iterating over nested loops,
 ///     skipping invalid states, and separating the logic for each step
+///
+/// See `SingleStepBase` for the methods that each individual step must
+/// implement.
 template <typename SharedDataType>
 class MultiStepMethod {
  public:
@@ -63,12 +69,44 @@ class MultiStepMethod {
     if (!steps().size()) {
       return;
     }
-    for (auto rit = steps().rbegin(); rit != steps().rend(); ++rit) {
-      (*rit)->initialize();
-    }
-    if (!(*steps().begin())->is_allowed()) {
-      advance();
-    }
+
+    auto rbegin = steps().rbegin();
+    auto rend = steps().rend();
+
+    // begin at outer-most step and initialize it
+    auto ptr = rbegin;
+    (*ptr)->initialize();
+    do {
+      // advance current step until it is allowed (or finished)
+      while (!(*ptr)->is_finished() && !(*ptr)->is_allowed()) {
+        (*ptr)->advance();
+      }
+
+      // if finished
+      if ((*ptr)->is_finished()) {
+        // if outer-most step: then all are finished (none allowed)
+        if (ptr == rbegin) {
+          return;
+        }
+        // otherwise, move to a more-outer step and advance
+        else {
+          --ptr;
+          (*ptr)->advance();
+        }
+      }
+      // else, current step is allowed
+      else {
+        // move to a more-inner step
+        ++ptr;
+
+        // if we aren't past the inner-most step, initialize the step
+        if (ptr != rend) {
+          (*ptr)->initialize();
+        }
+      }
+      // if past the inner-most step, then we're ready at the
+      // first allowed value
+    } while (ptr != rend);
   }
 
   /// \brief Access shared data
@@ -97,27 +135,50 @@ class MultiStepMethod {
     if (!steps().size() || (*steps().rbegin())->is_finished()) {
       return false;
     }
-    bool is_valid;
+    bool is_finished;
     bool is_allowed;
     auto begin = steps().begin();
     auto end = steps().end();
+
+    // begin at the inner-most step
     auto ptr = begin;
     do {
+      // advance until finished or allowed
       do {
-        is_valid = (*ptr)->advance();
-        is_allowed = (*ptr)->is_allowed();
-      } while (is_valid && !is_allowed);
+        (*ptr)->advance();
+        is_finished = (*ptr)->is_finished();
+        if (!is_finished) {
+          is_allowed = (*ptr)->is_allowed();
+        }
+      } while (!is_finished && !is_allowed);
 
-      if (is_valid) {
+      // while not finished and allowed
+      while (!is_finished && is_allowed) {
+        // if at inner-most step,
+        // then we're ready at the next allowed value
         if (ptr == begin) {
           return true;
-        } else {
-          --ptr;
-          (*ptr)->initialize();
         }
-      } else {
-        ++ptr;
+        // else, move to more-inner step and initialize
+        --ptr;
+        (*ptr)->initialize();
+        is_finished = (*ptr)->is_finished();
+        if (!is_finished) {
+          is_allowed = (*ptr)->is_allowed();
+        }
       }
+
+      // if step is not valid,
+      // then move to more outer-step,
+      // which must be valid and allowed
+      if (is_finished) {
+        ++ptr;
+        is_finished = false;
+        is_allowed = true;
+      }
+
+      // if we're past the outer-most step,
+      // then we're all finished, otherwise continue
     } while (ptr != end);
 
     return false;
@@ -129,7 +190,8 @@ class MultiStepMethod {
     if (!steps().size()) {
       return true;
     }
-    return (*steps().rbegin())->is_finished();
+    bool result = (*steps().rbegin())->is_finished();
+    return result;
   }
 
  private:

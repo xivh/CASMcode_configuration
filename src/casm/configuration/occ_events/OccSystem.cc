@@ -5,6 +5,12 @@
 #include "casm/crystallography/BasicStructure.hh"
 #include "casm/misc/algorithm.hh"
 
+// debug
+#include "casm/casm_io/container/json_io.hh"
+#include "casm/casm_io/container/stream_io.hh"
+#include "casm/casm_io/json/jsonParser.hh"
+#include "casm/configuration/occ_events/io/json/OccSystem_json_io.hh"
+
 namespace CASM {
 namespace occ_events {
 
@@ -103,6 +109,52 @@ OccSystem::OccSystem(std::shared_ptr<xtal::BasicStructure const> const &_prim,
   }
 }
 
+OccPosition OccSystem::make_molecule_position(
+    xtal::UnitCellCoord const &integral_site_coordinate,
+    Index occupant_index) const {
+  Index b = integral_site_coordinate.sublattice();
+  if (b < 0 || b >= this->prim->basis().size()) {
+    throw std::runtime_error(
+        "Error in OccSystem::make_molecule_position: Invalid "
+        "integral_site_coordinate");
+  }
+  std::vector<xtal::Molecule> const &occupant_dof =
+      this->prim->basis()[b].occupant_dof();
+  if (occupant_index < 0 || occupant_index >= occupant_dof.size()) {
+    throw std::runtime_error(
+        "Error in OccSystem::make_molecule_position: Invalid occupant_index");
+  }
+
+  return OccPosition{false, false, integral_site_coordinate, occupant_index,
+                     -1};
+}
+
+OccPosition OccSystem::make_atom_position(
+    xtal::UnitCellCoord const &integral_site_coordinate, Index occupant_index,
+    Index atom_position_index) const {
+  Index b = integral_site_coordinate.sublattice();
+  if (b < 0 || b >= this->prim->basis().size()) {
+    throw std::runtime_error(
+        "Error in OccSystem::make_molecule_position: Invalid "
+        "integral_site_coordinate");
+  }
+  std::vector<xtal::Molecule> const &occupant_dof =
+      this->prim->basis()[b].occupant_dof();
+  if (occupant_index < 0 || occupant_index >= occupant_dof.size()) {
+    throw std::runtime_error(
+        "Error in OccSystem::make_molecule_position: Invalid occupant_index");
+  }
+  xtal::Molecule const &mol = occupant_dof[occupant_index];
+  if (atom_position_index < 0 || atom_position_index >= mol.size()) {
+    throw std::runtime_error(
+        "Error in OccSystem::make_molecule_position: Invalid "
+        "atom_position_index");
+  }
+
+  return OccPosition{false, true, integral_site_coordinate, occupant_index,
+                     atom_position_index};
+}
+
 /// Make an OccPosition for a molecule (single atom or multi-atom)
 OccPosition OccSystem::make_molecule_position(
     xtal::UnitCellCoord const &integral_site_coordinate,
@@ -140,7 +192,7 @@ OccPosition OccSystem::make_molecule_position(
 }
 
 /// Make an OccPosition for a single atom in a multi-atom molecule
-OccPosition OccSystem::make_atomic_position(
+OccPosition OccSystem::make_atom_position(
     xtal::UnitCellCoord const &integral_site_coordinate,
     std::string orientation_name, Index atom_position_index) const {
   Index b = integral_site_coordinate.sublattice();
@@ -171,16 +223,30 @@ OccPosition OccSystem::make_atomic_position(
                      atom_position_index};
 }
 
+OccPosition OccSystem::make_molecule_in_resevoir_position(
+    Index occupant_index) const {
+  if (occupant_index < 0 || occupant_index >= this->chemical_name_list.size()) {
+    throw std::runtime_error(
+        "Error in OccSystem::make_molecule_in_resevoir_position: Invalid "
+        "OccPosition "
+        "occupant_index");
+  }
+  return OccPosition{true, false, xtal::UnitCellCoord{0, 0, 0, 0},
+                     occupant_index, -1};
+}
+
 /// Make an OccPosition that indicates occupant in the resevoir
 OccPosition OccSystem::make_molecule_in_resevoir_position(
     std::string chemical_name) const {
   Index occupant_index = find_index(this->chemical_name_list, chemical_name);
   if (occupant_index < 0 || occupant_index >= this->chemical_name_list.size()) {
     throw std::runtime_error(
-        "Error in OccSystem::make_resevoir_position: Invalid OccPosition "
+        "Error in OccSystem::make_molecule_in_resevoir_position: Invalid "
+        "OccPosition "
         "chemical_name");
   }
-  return OccPosition{true, false, xtal::UnitCellCoord{}, occupant_index, -1};
+  return OccPosition{true, false, xtal::UnitCellCoord{0, 0, 0, 0},
+                     occupant_index, -1};
 }
 
 /// Make an OccPosition that indicates atomic molecule in the resevoir
@@ -189,10 +255,12 @@ OccPosition OccSystem::make_atom_in_resevoir_position(
   Index occupant_index = find_index(this->chemical_name_list, chemical_name);
   if (occupant_index < 0 || occupant_index >= this->chemical_name_list.size()) {
     throw std::runtime_error(
-        "Error in OccSystem::make_resevoir_position: Invalid OccPosition "
+        "Error in OccSystem::make_atom_in_resevoir_position: Invalid "
+        "OccPosition "
         "chemical_name");
   }
-  return OccPosition{true, true, xtal::UnitCellCoord{}, occupant_index, 0};
+  return OccPosition{true, true, xtal::UnitCellCoord{0, 0, 0, 0},
+                     occupant_index, 0};
 }
 
 /// \brief Populate OccPosition vector based on cluster and occupation
@@ -264,7 +332,8 @@ Eigen::Vector3d OccSystem::get_cartesian_coordinate(
         "Error in OccSystem::get_cartesian_coordinate: Invalid OccPosition "
         "occupant_index");
   }
-  Eigen::Vector3d coord = site.const_cart();
+  Eigen::Vector3d coord =
+      pos.integral_site_coordinate.coordinate(*this->prim).cart();
   if (!pos.is_atom) {
     return coord;
   }
@@ -449,6 +518,29 @@ bool OccSystem::is_chemical_type_conserving(
   return true;
 }
 
+/// \brief Check for trajectories in which two atoms
+///     directly exchange sites. Does not include atom-vacancy exchange.
+bool OccSystem::is_direct_exchange(
+    std::vector<OccPosition> const &position_before,
+    std::vector<OccPosition> const &position_after) const {
+  auto const &before = position_before;
+  auto const &after = position_after;
+  for (Index i = 0; i < before.size() - 1; ++i) {
+    if (this->is_vacancy(before[i]) || this->is_vacancy(after[i])) {
+      continue;
+    }
+    for (Index j = i + 1; j < after.size(); ++j) {
+      if (this->is_vacancy(before[j]) || this->is_vacancy(after[j])) {
+        continue;
+      }
+      if (before[i] == after[j] && before[j] == after[i]) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /// \brief Return true if any site is a vacancy before and after the event
 bool OccSystem::is_any_unchanging_vacant_site(
     clust::IntegralCluster const &cluster, std::vector<int> const &occ_init,
@@ -582,52 +674,53 @@ bool OccSystem::is_indivisible_molecule_breakup(
     std::vector<OccPosition> const &position_before,
     std::vector<OccPosition> const &position_after) const {
   std::map<xtal::UnitCellCoord, std::set<xtal::UnitCellCoord>> init_to_final;
-  for (auto const &p1 : position_before) {
-    if (p1.is_in_resevoir || !is_indivisible(p1)) {
-      continue;
+
+  auto _reset = [&](std::vector<OccPosition> const &position_before,
+                    std::vector<OccPosition> const &position_after) {
+    init_to_final.clear();
+    for (auto const &p1 : position_before) {
+      if (p1.is_in_resevoir || !is_indivisible(p1)) {
+        continue;
+      }
+      init_to_final[p1.integral_site_coordinate].clear();
     }
-    init_to_final[p1.integral_site_coordinate].clear();
+  };
+
+  auto _count = [&](std::vector<OccPosition> const &position_before,
+                    std::vector<OccPosition> const &position_after) {
+    auto p2_it = position_after.begin();
+    for (auto const &p1 : position_before) {
+      auto const &p2 = *p2_it;
+      if (p1.is_in_resevoir || !is_indivisible(p1)) {
+        continue;
+      }
+
+      init_to_final[p1.integral_site_coordinate].insert(
+          p2.integral_site_coordinate);
+      ++p2_it;
+    }
+  };
+
+  auto _check = [&]() {
+    for (auto const &pair : init_to_final) {
+      if (pair.second.size() > 1) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // -- check forward --
+  _reset(position_before, position_after);
+  _count(position_before, position_after);
+  if (_check()) {
+    return true;
   }
 
-  for (auto const &p2 : position_after) {
-    if (p2.is_in_resevoir || !is_indivisible(p2)) {
-      continue;
-    }
-    init_to_final[p2.integral_site_coordinate].clear();
-  }
-
-  // iterate over trajectories and insert init site -> final site
-  auto p2_it = position_after.begin();
-  for (auto const &p1 : position_before) {
-    auto const &p2 = *p2_it;
-    if (p1.is_in_resevoir || !is_indivisible(p1)) {
-      continue;
-    }
-
-    init_to_final[p1.integral_site_coordinate].insert(
-        p2.integral_site_coordinate);
-    ++p2_it;
-  }
-
-  // iterate over trajectories and insert init site <- final site
-  auto p1_it = position_before.begin();
-  for (auto const &p2 : position_after) {
-    auto const &p1 = *p1_it;
-    if (p2.is_in_resevoir || !is_indivisible(p2)) {
-      continue;
-    }
-
-    init_to_final[p2.integral_site_coordinate].insert(
-        p1.integral_site_coordinate);
-    ++p1_it;
-  }
-
-  for (auto const &pair : init_to_final) {
-    if (pair.second.size() > 1) {
-      return true;
-    }
-  }
-  return false;
+  // -- check reverse --
+  _reset(position_after, position_before);
+  _count(position_after, position_before);
+  return _check();
 }
 
 /// \brief Check if a molecule is contained in a list, in given orientation
@@ -745,7 +838,7 @@ std::vector<std::string> make_atom_name_list(xtal::BasicStructure const &prim) {
     for (auto const &mol : site.occupant_dof()) {
       for (auto const &atom : mol.atoms()) {
         Index atom_name_index = find_index(atom_name_list, atom.name());
-        if (atom_name_index == -1) {
+        if (atom_name_index == atom_name_list.size()) {
           atom_name_index = atom_name_list.size();
           atom_name_list.push_back(atom.name());
         }

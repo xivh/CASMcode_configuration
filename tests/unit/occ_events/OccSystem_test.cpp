@@ -185,7 +185,7 @@ TEST(MakeAtomicComponentPositionTest, Test1) {
 
   occ_events::OccSystem system(prim, chemical_name_list);
   occ_events::OccPosition occ_position =
-      system.make_atomic_position(xtal::UnitCellCoord(0, 1, 0, 0), "A2.y", 1);
+      system.make_atom_position(xtal::UnitCellCoord(0, 1, 0, 0), "A2.y", 1);
 
   EXPECT_EQ(occ_position.is_in_resevoir, false);
   EXPECT_EQ(occ_position.is_atom, true);
