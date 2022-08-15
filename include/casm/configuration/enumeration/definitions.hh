@@ -1,10 +1,11 @@
 // The `casm/configuration/enumeration` module supports
-// enumeration of Configuration, IntegralCluster, OccEvents,
-// etc.
+// enumeration of Configuration
 //
 // This module provides:
 // - Enumeration methods:
 //   - ConfigEnumAllOccupations: for occupation enumeration
+//   - make_distinct_local_perturbations: for local environment
+//     enumeration
 // - Filters:
 //   - ConfigurationFilter:
 //     - AllConfigurationFilter: allow all configurations
@@ -16,14 +17,17 @@
 //     - ChainedConfigurationFilter: allow only configurations
 //       that pass multiple filters
 //
-// - make_prim_periodic_orbit: function to construct an orbit of
-//   IntegralCluster obeying the periodic translation symmetry of
-//   a primitive crystal structure
-// - make_local_orbit: function to construct an orbit of
-//   IntegralCluster without translation symmetry
 //
 // Allowed dependencies:
 // - CASMcode_global
 // - CASMcode_crystallography
 // - CASMcode_clexulator
-// - CASMcode_configuration
+// - CASMcode_configuration (top level)
+//
+// Included indirectly:
+// - CASMcode_configuration/group
+// - CASMcode_configuration/sym_info
+//
+// Do not include:
+// - CASMcode_configuration/clusterography
+// - CASMcode_configuration/occ_events

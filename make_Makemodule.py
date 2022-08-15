@@ -833,6 +833,12 @@ def main():
             ],
         },
         {
+            "directory": "tests/unit/enumeration",
+            "ldadd": [
+                "libcasm_configuration.la"
+            ],
+        },
+        {
             "directory": "tests/unit/occ_events",
             "ldadd": [
                 "libcasm_configuration.la"

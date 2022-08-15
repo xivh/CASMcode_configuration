@@ -1,0 +1,191 @@
+#include "casm/configuration/clusterography/io/json/ClusterSpecs_json_io.hh"
+
+#include "casm/casm_io/Log.hh"
+#include "casm/casm_io/container/json_io.hh"
+#include "casm/casm_io/json/InputParser.hh"
+#include "casm/casm_io/json/InputParser_impl.hh"
+#include "casm/casm_io/json/jsonParser.hh"
+#include "casm/casm_io/json/optional.hh"
+#include "casm/configuration/clusterography/ClusterInvariants.hh"
+#include "casm/configuration/clusterography/ClusterSpecs.hh"
+#include "casm/configuration/clusterography/IntegralCluster.hh"
+#include "casm/configuration/clusterography/io/json/IntegralClusterOrbitGenerator_json_io.hh"
+#include "casm/configuration/clusterography/io/json/IntegralCluster_json_io.hh"
+#include "casm/configuration/clusterography/orbits.hh"
+#include "casm/configuration/group/Group.hh"
+#include "casm/crystallography/BasicStructure.hh"
+#include "casm/crystallography/UnitCellCoordRep.hh"
+#include "casm/crystallography/io/UnitCellCoordIO.hh"
+#include "casm/global/enum/json_io.hh"
+
+namespace CASM {
+
+/// \brief Write ClusterSpecs to JSON object
+jsonParser &to_json(clust::ClusterSpecs const &cluster_specs, jsonParser &json,
+                    xtal::BasicStructure const &prim) {
+  // generating_group
+  json["generating_group"] = cluster_specs.generating_group->head_group_index;
+
+  // site_filter:
+  // - dof_sites_filter only for now
+
+  // orbit_branch_specs
+  json["orbit_branch_specs"];
+  for (Index i = 0; i < cluster_specs.max_length.size(); ++i) {
+    std::string branch = std::to_string(i);
+    json["orbit_branch_specs"][branch]["max_length"] =
+        cluster_specs.max_length[i];
+    if (i < cluster_specs.cutoff_radius.size()) {
+      json["orbit_branch_specs"][branch]["cutoff_radius"] =
+          cluster_specs.cutoff_radius[i];
+    }
+  }
+
+  // orbit_specs
+  if (cluster_specs.custom_generators.size()) {
+    to_json(cluster_specs.custom_generators, json["orbit_specs"], prim);
+  }
+
+  // phenomenal
+  if (cluster_specs.phenomenal.has_value()) {
+    to_json(*cluster_specs.phenomenal, json["phenomenal"], prim);
+  }
+
+  // include_phenomenal_sites
+  if (cluster_specs.include_phenomenal_sites) {
+    to_json(cluster_specs.include_phenomenal_sites,
+            json["include_phenomenal_sites"]);
+  }
+  return json;
+}
+
+/// \brief Read from JSON
+void from_json(
+    clust::ClusterSpecs &cluster_specs, jsonParser const &json,
+    std::shared_ptr<xtal::BasicStructure const> const &prim,
+    std::shared_ptr<clust::SymGroup const> const &prim_factor_group,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  cluster_specs = jsonConstructor<clust::ClusterSpecs>::from_json(
+      json, prim, prim_factor_group, unitcellcoord_symgroup_rep);
+}
+
+/// \brief Construct from JSON
+clust::ClusterSpecs jsonConstructor<clust::ClusterSpecs>::from_json(
+    jsonParser const &json,
+    std::shared_ptr<xtal::BasicStructure const> const &prim,
+    std::shared_ptr<clust::SymGroup const> const &prim_factor_group,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  InputParser<clust::ClusterSpecs> parser{json, prim, prim_factor_group,
+                                          unitcellcoord_symgroup_rep};
+  std::stringstream ss;
+  ss << "Error: Invalid cluster_specs JSON object";
+  report_and_throw_if_invalid(parser, err_log(), std::runtime_error{ss.str()});
+  return *parser.value;
+}
+
+/// \brief Parse ClusterSpecs from JSON
+void parse(
+    InputParser<clust::ClusterSpecs> &parser,
+    std::shared_ptr<xtal::BasicStructure const> const &prim,
+    std::shared_ptr<clust::SymGroup const> const &prim_factor_group,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  // get phenomenal (optional)
+  std::optional<clust::IntegralCluster> phenomenal;
+  parser.optional(phenomenal, "phenomenal", *prim);
+
+  // get include_phenomenal_sites (optional)
+  bool include_phenomenal_sites = false;
+  parser.optional(include_phenomenal_sites, "include_phenomenal_sites");
+
+  // get generating_group (optional)
+  std::shared_ptr<clust::SymGroup const> generating_group;
+  std::set<Index> head_group_index;
+  if (parser.self.contains("generating_group")) {
+    parser.optional(head_group_index, "generating_group");
+  } else {
+    for (Index i : prim_factor_group->head_group_index) {
+      head_group_index.insert(i);
+    }
+  }
+  if (phenomenal.has_value()) {
+    // need to get elements consistent with phenomenal cluster invariance
+    std::vector<xtal::SymOp> element;
+
+    std::vector<xtal::SymOp> cluster_group_elements;
+    for (Index i : head_group_index) {
+      cluster_group_elements.push_back(clust::make_cluster_group_element(
+          *phenomenal, prim->lattice().lat_column_mat(),
+          prim_factor_group->element[i], unitcellcoord_symgroup_rep[i]));
+    }
+  } else {
+    std::vector<xtal::SymOp> element;
+    for (Index i : head_group_index) {
+      element.push_back(prim_factor_group->element[i]);
+    }
+    generating_group = std::make_shared<clust::SymGroup const>(
+        prim_factor_group, element, head_group_index);
+  }
+
+  // site_filter:
+  // - dof_sites_filter only for now
+  clust::SiteFilterFunction site_filter = clust::dof_sites_filter();
+
+  // orbit_branch_specs
+  std::vector<double> max_length;
+  std::vector<double> cutoff_radius;
+  if (parser.self.contains("orbit_branch_specs")) {
+    int i = 0;
+    std::string branch = std::to_string(i);
+    max_length.push_back(0.0);
+    cutoff_radius.push_back(0.0);
+
+    bool has_cutoff_radius = false;
+    while (parser.self["orbit_branch_specs"].contains(branch)) {
+      // check if any branch includes "cutoff_radius"
+      jsonParser const &j = parser.self["orbit_branch_specs"][branch];
+      if (j.contains("cutoff_radius")) {
+        has_cutoff_radius = true;
+      }
+
+      // read "max_length" & "cutoff_radius" (defaults = 0.0)
+      fs::path option = fs::path("orbit_branch_specs") / branch;
+      double _max_length = 0.0;
+      parser.optional(_max_length, option / "max_length");
+      double _cutoff_radius = 0.0;
+      parser.optional(_cutoff_radius, option / "cutoff_radius");
+
+      // store
+      max_length.push_back(_max_length);
+      cutoff_radius.push_back(_cutoff_radius);
+    }
+
+    // if "cutoff_radius" never included in input, clear
+    if (!has_cutoff_radius) {
+      cutoff_radius.clear();
+    }
+  }
+
+  // orbit_specs (optional)
+  // empty by default
+  std::vector<clust::IntegralClusterOrbitGenerator> default_custom_generators;
+  auto custom_generators_parser =
+      parser.subparse_else<std::vector<clust::IntegralClusterOrbitGenerator>>(
+          "orbit_specs", default_custom_generators, *prim);
+
+  if (!parser.valid()) {
+    return;
+  }
+  parser.value =
+      notstd::make_unique<clust::ClusterSpecs>(prim, generating_group);
+
+  parser.value->site_filter = site_filter;
+  parser.value->max_length = max_length;
+  parser.value->custom_generators = *custom_generators_parser->value;
+
+  // --- Local clusters only ---
+  parser.value->phenomenal = phenomenal;
+  parser.value->include_phenomenal_sites = include_phenomenal_sites;
+  parser.value->cutoff_radius = cutoff_radius;
+}
+
+}  // namespace CASM

@@ -1,5 +1,6 @@
 #include "casm/configuration/clusterography/IntegralCluster.hh"
 
+#include "casm/crystallography/LinearIndexConverter.hh"
 #include "casm/crystallography/UnitCellCoordRep.hh"
 
 namespace CASM {
@@ -50,6 +51,30 @@ IntegralCluster copy_apply(xtal::UnitCellCoordRep const &rep,
                            IntegralCluster cluster) {
   apply(rep, cluster);
   return cluster;
+}
+
+/// \brief Convert IntegralCluster to vector of linear site
+///     indices in a supercell
+std::vector<Index> to_index_vector(
+    IntegralCluster const &cluster,
+    xtal::UnitCellCoordIndexConverter const &converter) {
+  std::vector<Index> index_vector;
+  for (auto const &site : cluster) {
+    index_vector.push_back(converter(site));
+  }
+  return index_vector;
+}
+
+/// \brief Convert IntegralCluster to set of linear site
+///     indices in a supercell
+std::set<Index> to_index_set(
+    IntegralCluster const &cluster,
+    xtal::UnitCellCoordIndexConverter const &converter) {
+  std::set<Index> index_set;
+  for (auto const &site : cluster) {
+    index_set.insert(converter(site));
+  }
+  return index_set;
 }
 
 }  // namespace clust

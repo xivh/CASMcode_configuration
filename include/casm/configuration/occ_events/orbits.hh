@@ -15,11 +15,6 @@ struct OccEventCounterParameters;
 OccEvent prim_periodic_occevent_copy_apply(OccEventRep const &rep,
                                            OccEvent occ_event);
 
-/// \brief Find translation that leave OccEvent invariant after
-///     transformation, up to a permutation/reversal
-xtal::UnitCell prim_periodic_occevent_frac_translation(OccEventRep const &rep,
-                                                       OccEvent occ_event);
-
 /// \brief Make an orbit of OccEvent, with periodic symmetry of a prim
 std::set<OccEvent> make_prim_periodic_orbit(
     OccEvent const &orbit_element,

@@ -52,6 +52,21 @@ OrbitElementType make_canonical_element(OrbitElementType const &orbit_element,
   return best;
 }
 
+template <typename OrbitElementContainer, typename GroupElementIt,
+          typename CompareType, typename CopyApplyType>
+std::set<typename OrbitElementContainer::value_type, CompareType>
+make_orbit_generators(OrbitElementContainer const &container,
+                      GroupElementIt group_begin, GroupElementIt group_end,
+                      CompareType compare_f, CopyApplyType copy_apply_f) {
+  std::set<typename OrbitElementContainer::value_type, CompareType> generators(
+      compare_f);
+  for (auto const &value : container) {
+    generators.emplace(make_canonical_element(value, group_begin, group_end,
+                                              compare_f, copy_apply_f));
+  }
+  return generators;
+}
+
 /// \brief Make the orbit equivalence map
 ///
 /// Generate a lookup table for which group elements applied to the

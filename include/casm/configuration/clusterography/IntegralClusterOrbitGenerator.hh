@@ -17,8 +17,8 @@ namespace clust {
 ///
 /// \ingroup Clusterography
 struct IntegralClusterOrbitGenerator {
-  IntegralClusterOrbitGenerator(IntegralCluster const &_prototype,
-                                bool _include_subclusters = true);
+  explicit IntegralClusterOrbitGenerator(IntegralCluster const &_prototype,
+                                         bool _include_subclusters = true);
 
   IntegralCluster prototype;
   bool include_subclusters;

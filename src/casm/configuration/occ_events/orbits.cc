@@ -1,6 +1,7 @@
 #include "casm/configuration/occ_events/orbits.hh"
 
 #include "casm/configuration/clusterography/IntegralCluster.hh"
+#include "casm/configuration/clusterography/orbits.hh"
 #include "casm/configuration/group/Group.hh"
 #include "casm/configuration/group/orbits.hh"
 #include "casm/configuration/group/subgroups.hh"
@@ -31,32 +32,6 @@ OccEvent prim_periodic_occevent_copy_apply(OccEventRep const &rep,
   occ_event -= cluster[0].unitcell();
   standardize(occ_event);
   return occ_event;
-}
-
-/// \brief Find translation that leave OccEvent invariant after
-///     transformation, up to a permutation/reversal
-///
-/// \param rep, Symmetry operation representation to be applied
-/// \param occ_event, OccEvent to transform
-///
-/// \return translation, such that translation * op * occ_event is
-///     an OccEvent identical to the original, up
-///     to a permutation/reversal
-
-xtal::UnitCell prim_periodic_occevent_frac_translation(OccEventRep const &rep,
-                                                       OccEvent occ_event) {
-  if (!occ_event.size()) {
-    return xtal::UnitCell(0, 0, 0);
-  }
-  clust::IntegralCluster cluster = make_cluster(occ_event);
-  xtal::UnitCell pos_init = cluster[0].unitcell();
-
-  apply(rep, occ_event);
-
-  cluster = make_cluster(occ_event);
-  xtal::UnitCell pos_final = cluster[0].unitcell();
-
-  return pos_init - pos_final;
 }
 
 /// \brief Make an orbit of OccEvent, with periodic symmetry of a prim
@@ -134,21 +109,12 @@ std::vector<std::shared_ptr<SymGroup const>> make_occevent_groups(
   auto subgroup_indices_it = subgroup_indices.begin();
   auto subgroup_indices_end = subgroup_indices.end();
 
-  // return xtal::SymOp, translation * factor_group->element[j], which leaves
-  // *orbit_it invariant
-  auto make_occevent_group_element = [&](Index j) {
-    return xtal::SymOp(Eigen::Matrix3d::Identity(),
-                       lat_column_mat * prim_periodic_occevent_frac_translation(
-                                            occevent_symgroup_rep[j], *orbit_it)
-                                            .cast<double>(),
-                       false) *
-           factor_group->element[j];
-  };
-
   while (subgroup_indices_it != subgroup_indices_end) {
     std::vector<xtal::SymOp> occevent_group_elements;
     for (Index j : *subgroup_indices_it) {
-      occevent_group_elements.push_back(make_occevent_group_element(j));
+      occevent_group_elements.push_back(clust::make_cluster_group_element(
+          make_cluster(*orbit_it), lat_column_mat, factor_group->element[j],
+          occevent_symgroup_rep[j].unitcellcoord_rep));
     }
     occevent_groups.emplace_back(std::make_shared<SymGroup>(
         factor_group, occevent_group_elements, *subgroup_indices_it));

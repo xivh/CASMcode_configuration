@@ -219,14 +219,13 @@ TEST(PrimPeriodicOrbitTest, Test4) {
   clust::SiteFilterFunction site_filter = clust::dof_sites_filter();
   std::vector<double> max_length = {};
   std::vector<clust::IntegralClusterOrbitGenerator> custom_generators = {
-      clust::IntegralClusterOrbitGenerator({
-          clust::IntegralCluster({
-              xtal::UnitCellCoord(0, 0, 0, 0),
-              xtal::UnitCellCoord(0, 0, 0, 1),
-              xtal::UnitCellCoord(0, 0, 1, 0),
-          }),
-          true  // include_subclusters
-      })};
+      clust::IntegralClusterOrbitGenerator(clust::IntegralCluster({
+                                               xtal::UnitCellCoord(0, 0, 0, 0),
+                                               xtal::UnitCellCoord(0, 0, 0, 1),
+                                               xtal::UnitCellCoord(0, 0, 1, 0),
+                                           }),
+                                           true  // include_subclusters
+                                           )};
 
   auto orbits =
       make_prim_periodic_orbits(prim, unitcellcoord_symgroup_rep, site_filter,

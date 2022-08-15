@@ -31,11 +31,18 @@
 // - CASMcode_global
 // - CASMcode_crystallography
 // - CASMcode_clexulator
+// - CASMcode_configuration/group
+// - CASMcode_configuration/sym_info
+//
+// Not allowed:
+// - CASMcode_configuration/clusterography
+// - CASMcode_configuration/occ_events
 
 #ifndef CASM_config_definitions
 #define CASM_config_definitions
 
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "casm/global/eigen.hh"
@@ -81,6 +88,7 @@ struct Prim;
 struct PrimSymInfo;
 struct Supercell;
 struct SupercellSymInfo;
+class SupercellSymOp;
 
 typedef long Index;
 typedef std::string DoFKey;

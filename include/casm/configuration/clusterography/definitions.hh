@@ -31,6 +31,7 @@ struct SymOp;
 class UnitCell;
 class UnitCellCoord;
 struct UnitCellCoordRep;
+class UnitCellCoordIndexConverter;
 }  // namespace xtal
 
 namespace group {
@@ -44,6 +45,7 @@ typedef long Index;
 typedef std::string DoFKey;
 
 class ClusterInvariants;
+struct ClusterSpecs;
 template <typename Base>
 class GenericCluster;
 class IntegralCluster;

@@ -1,5 +1,3 @@
-#include "casm/casm_io/container/json_io.hh"
-#include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/group/Group.hh"
 #include "casm/configuration/occ_events/OccEventCounter.hh"
 #include "casm/configuration/occ_events/OccEventRep.hh"

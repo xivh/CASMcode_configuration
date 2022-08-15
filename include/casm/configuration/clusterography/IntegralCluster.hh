@@ -1,6 +1,7 @@
 #ifndef CASM_clust_IntegralCluster
 #define CASM_clust_IntegralCluster
 
+#include <set>
 #include <vector>
 
 #include "casm/configuration/clusterography/GenericCluster.hh"
@@ -83,6 +84,18 @@ IntegralCluster &apply(xtal::UnitCellCoordRep const &rep,
 /// \brief Apply symmetry to IntegralCluster
 IntegralCluster copy_apply(xtal::UnitCellCoordRep const &rep,
                            IntegralCluster cluster);
+
+/// \brief Convert IntegralCluster to vector of linear site
+///     indices in a supercell
+std::vector<Index> to_index_vector(
+    IntegralCluster const &cluster,
+    xtal::UnitCellCoordIndexConverter const &converter);
+
+/// \brief Convert IntegralCluster to set of linear site
+///     indices in a supercell
+std::set<Index> to_index_set(
+    IntegralCluster const &cluster,
+    xtal::UnitCellCoordIndexConverter const &converter);
 
 template <typename Iterator>
 IntegralCluster::IntegralCluster(Iterator begin, Iterator end)

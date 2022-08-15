@@ -23,6 +23,13 @@ Configuration copy_configuration(
     std::shared_ptr<Supercell const> const &supercell,
     UnitCell const &origin = UnitCell(0, 0, 0));
 
+/// \brief Make all equivalent configurations with respect to the prim factor
+/// group
+///     that fill a supercell
+std::vector<Configuration> make_all_super_configurations(
+    Configuration const &motif,
+    std::shared_ptr<Supercell const> const &supercell);
+
 /// \brief Return true if no translations within the supercell result in the
 ///     same configuration
 bool is_primitive(Configuration const &configuration);

@@ -8,11 +8,6 @@
 #include "casm/global/eigen.hh"
 
 namespace CASM {
-
-namespace xtal {
-struct UnitCellCoordRep;
-}
-
 namespace clust {
 
 class IntegralCluster;
@@ -30,6 +25,13 @@ xtal::UnitCell prim_periodic_integral_cluster_frac_translation(
 std::set<IntegralCluster> make_prim_periodic_orbit(
     IntegralCluster const &orbit_element,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
+
+/// \brief Return xtal::SymOp that leaves phenomenal invariant, and is a
+///     combination of a factor group operation and a lattice translation
+xtal::SymOp make_cluster_group_element(
+    IntegralCluster const &phenomenal, Eigen::Matrix3d const &lat_column_mat,
+    xtal::SymOp const &factor_group_op,
+    xtal::UnitCellCoordRep const &unitcellcoord_rep);
 
 /// \brief Make groups that leave cluster orbit elements invariant
 std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
@@ -51,6 +53,12 @@ std::vector<std::set<IntegralCluster>> make_prim_periodic_orbits(
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep,
     SiteFilterFunction site_filter, std::vector<double> const &max_length,
     std::vector<IntegralClusterOrbitGenerator> const &custom_generators);
+
+/// \brief Convert orbits of IntegralCluster to orbits of linear site
+///     indices in a supercell
+std::vector<std::set<std::set<Index>>> make_orbits_as_indices(
+    std::vector<std::set<IntegralCluster>> const &orbits,
+    xtal::UnitCellCoordIndexConverter const &converter);
 
 // --- Local-cluster orbits ---
 

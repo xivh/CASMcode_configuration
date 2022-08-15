@@ -9,6 +9,7 @@
 #include "casm/configuration/group/subgroups.hh"
 #include "casm/configuration/sym_info/unitcellcoord_sym_info.hh"
 #include "casm/crystallography/BasicStructure.hh"
+#include "casm/crystallography/LinearIndexConverter.hh"
 #include "casm/crystallography/SymType.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "casm/crystallography/UnitCellCoordRep.hh"
@@ -72,6 +73,21 @@ std::set<IntegralCluster> make_prim_periodic_orbit(
                            prim_periodic_integral_cluster_copy_apply);
 }
 
+/// \brief Return xtal::SymOp that leaves phenomenal invariant, and is a
+///     combination of a factor group operation and a lattice translation
+xtal::SymOp make_cluster_group_element(
+    IntegralCluster const &phenomenal, Eigen::Matrix3d const &lat_column_mat,
+    xtal::SymOp const &factor_group_op,
+    xtal::UnitCellCoordRep const &unitcellcoord_rep) {
+  return xtal::SymOp(
+             Eigen::Matrix3d::Identity(),
+             lat_column_mat * prim_periodic_integral_cluster_frac_translation(
+                                  unitcellcoord_rep, phenomenal)
+                                  .cast<double>(),
+             false) *
+         factor_group_op;
+};
+
 /// \brief Make groups that leave cluster orbit elements invariant
 ///
 /// \param orbit A cluster orbit
@@ -109,22 +125,12 @@ std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
   auto subgroup_indices_it = subgroup_indices.begin();
   auto subgroup_indices_end = subgroup_indices.end();
 
-  // return xtal::SymOp, translation * factor_group->element[j], which leaves
-  // *orbit_it invariant
-  auto make_cluster_group_element = [&](Index j) {
-    return xtal::SymOp(
-               Eigen::Matrix3d::Identity(),
-               lat_column_mat * prim_periodic_integral_cluster_frac_translation(
-                                    unitcellcoord_symgroup_rep[j], *orbit_it)
-                                    .cast<double>(),
-               false) *
-           factor_group->element[j];
-  };
-
   while (subgroup_indices_it != subgroup_indices_end) {
     std::vector<xtal::SymOp> cluster_group_elements;
     for (Index j : *subgroup_indices_it) {
-      cluster_group_elements.push_back(make_cluster_group_element(j));
+      cluster_group_elements.push_back(make_cluster_group_element(
+          *orbit_it, lat_column_mat, factor_group->element[j],
+          unitcellcoord_symgroup_rep[j]));
     }
     cluster_groups.emplace_back(std::make_shared<SymGroup>(
         factor_group, cluster_group_elements, *subgroup_indices_it));
@@ -271,7 +277,6 @@ std::vector<std::set<IntegralCluster>> make_prim_periodic_orbits(
 
     if (custom_generator.include_subclusters) {
       SubClusterCounter counter(prototype);
-      Index i = 0;
       while (counter.valid()) {
         IntegralCluster test_cluster = _make_canonical(counter.value());
         final.emplace(ClusterInvariants(test_cluster, *prim),
@@ -289,6 +294,46 @@ std::vector<std::set<IntegralCluster>> make_prim_periodic_orbits(
   }
 
   return orbits;
+}
+
+/// \brief Convert orbits of IntegralCluster to orbits of linear site
+///     indices in a supercell
+///
+/// \param orbits Cluster orbits
+/// \param converter A UnitCellCoordIndexConverter for the supercell in
+///     which linear site indices will be generated
+///
+/// \param orbits_as_indices, A vector of sets of clusters
+///     converted to supercell site indices
+///
+/// Notes:
+/// - The results include the sites of all clusters in the input orbits,
+///   but clusters may be re-ordered within the original orbit
+/// - The imposition of the supercell and periodic boundary conditions
+///   may break orbits or cause clusters to alias (no longer be unique
+///   because periodic boundary conditions map them onto each other).
+/// - This method does *not* determine the new orbits, it only does the
+///   conversion from IntegralCluster to site indices in a supercell.
+std::vector<std::set<std::set<Index>>> make_orbits_as_indices(
+    std::vector<std::set<IntegralCluster>> const &orbits,
+    xtal::UnitCellCoordIndexConverter const &converter) {
+  /// Convert IntegralCluster to supercell site indices
+  auto make_site_indices = [&](IntegralCluster const &cluster) {
+    std::set<Index> site_indices;
+    for (auto const &site : cluster) {
+      site_indices.insert(converter(site));
+    }
+    return site_indices;
+  };
+  std::vector<std::set<std::set<Index>>> orbits_as_indices;
+  for (auto const &orbit : orbits) {
+    std::set<std::set<Index>> indices_orbit;
+    for (auto const &cluster : orbit) {
+      indices_orbit.insert(make_site_indices(cluster));
+    }
+    orbits_as_indices.push_back(indices_orbit);
+  }
+  return orbits_as_indices;
 }
 
 // --- Local-cluster orbits ---

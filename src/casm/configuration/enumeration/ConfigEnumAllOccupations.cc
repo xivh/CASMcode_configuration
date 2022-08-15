@@ -49,7 +49,7 @@ Configuration const &ConfigEnumAllOccupations::value() const {
 
 /// \brief Generate the next Configuration
 void ConfigEnumAllOccupations::advance() {
-  while (++m_counter) {
+  if (++m_counter) {
     _set_occupation(m_current, m_sites, m_counter);
   }
 }
