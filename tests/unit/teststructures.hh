@@ -86,6 +86,29 @@ inline CASM::xtal::BasicStructure FCC_binary_prim() {
   return struc;
 }
 
+inline CASM::xtal::BasicStructure FCC_binary_vacancy_prim() {
+  using namespace CASM;
+  using namespace CASM::xtal;
+
+  // lattice vectors as cols
+  Eigen::Matrix3d lat;
+  lat << 0.0, 2.0, 2.0, 2.0, 0.0, 2.0, 2.0, 2.0, 0.0;
+
+  BasicStructure struc{Lattice{lat}};
+  struc.set_title("FCC_binary_vacancy");
+
+  Molecule A = Molecule::make_atom("A");
+  Molecule B = Molecule::make_atom("B");
+  Molecule Va = Molecule::make_vacancy();
+
+  struc.push_back(
+      Site(Coordinate(Eigen::Vector3d::Zero(), struc.lattice(), CART),
+           std::vector<Molecule>{A, B, Va}));
+  struc.set_unique_names({{"A", "B", "Va"}});
+
+  return struc;
+}
+
 inline CASM::xtal::BasicStructure FCC_ternary_prim() {
   using namespace CASM;
   using namespace CASM::xtal;
