@@ -1,6 +1,7 @@
 #include "casm/configuration/occ_events/io/json/OccSystem_json_io.hh"
 
 #include "casm/casm_io/container/json_io.hh"
+#include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/occ_events/OccSystem.hh"
 
@@ -23,6 +24,22 @@ jsonParser &to_json(occ_events::OccSystem const &system, jsonParser &json) {
   to_json(system.orientation_to_occupant_index,
           json["orientation_to_occupant_index"]);
   return json;
+}
+
+void parse(InputParser<occ_events::OccSystem> &parser,
+           std::shared_ptr<xtal::BasicStructure const> const &prim) {
+  std::vector<std::string> chemical_name_list;
+  parser.require(chemical_name_list, "chemical_name_list");
+
+  std::set<std::string> vacancy_name_list;
+  parser.require(vacancy_name_list, "vacancy_name_list");
+
+  if (!parser.valid()) {
+    return;
+  }
+
+  parser.value = std::make_unique<occ_events::OccSystem>(
+      prim, chemical_name_list, vacancy_name_list);
 }
 
 }  // namespace CASM

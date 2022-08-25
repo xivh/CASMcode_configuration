@@ -33,6 +33,18 @@ xtal::SymOp make_cluster_group_element(
     xtal::SymOp const &factor_group_op,
     xtal::UnitCellCoordRep const &unitcellcoord_rep);
 
+/// \brief Find translation necessary to construct an equivalence map operation
+xtal::UnitCell equivalence_map_translation(xtal::UnitCellCoordRep const &op,
+                                           IntegralCluster prototype,
+                                           IntegralCluster const &equivalent);
+
+/// \brief Return xtal::SymOp that maps prototype to equivalent, and is a
+///     combination of a factor group operation and a lattice translation
+xtal::SymOp make_equivalence_map_op(
+    IntegralCluster const &prototype, IntegralCluster const &equivalent,
+    Eigen::Matrix3d const &lat_column_mat, xtal::SymOp const &factor_group_op,
+    xtal::UnitCellCoordRep const &unitcellcoord_rep);
+
 /// \brief Make groups that leave cluster orbit elements invariant
 std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
     std::set<IntegralCluster> const &orbit,

@@ -15,6 +15,7 @@
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/occ_events/io/json/OccEvent_json_io.hh"
+#include "casm/configuration/occ_events/io/json/OccSystem_json_io.hh"
 #include "casm/crystallography/io/BasicStructureIO.hh"
 
 using namespace CASM;
@@ -76,6 +77,7 @@ TEST_F(CustomEventOrbitTest, Test1) {
   jsonParser json;
   to_json(*prim, json["prim"], FRAC);
   _put_desc(*factor_group, json["factor_group"]);
+  to_json(*system, json["event_system"]);
   to_json(orbit, json["orbit"], *system, factor_group, occevent_symgroup_rep,
           options);
   std::cout << json << std::endl;
