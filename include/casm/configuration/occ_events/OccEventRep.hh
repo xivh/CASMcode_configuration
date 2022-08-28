@@ -25,6 +25,12 @@ std::vector<OccEventRep> make_occevent_symgroup_rep(
     std::vector<xtal::SymOp> const &group_elements,
     xtal::BasicStructure const &prim);
 
+std::vector<OccEventRep> make_occevent_symgroup_rep(
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep,
+    std::vector<sym_info::OccSymOpRep> const &occ_symgroup_rep,
+    std::vector<sym_info::AtomPositionSymOpRep> const
+        &atom_position_symgroup_rep);
+
 }  // namespace occ_events
 }  // namespace CASM
 

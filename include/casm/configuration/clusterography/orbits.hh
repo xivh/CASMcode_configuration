@@ -36,7 +36,7 @@ xtal::SymOp make_cluster_group_element(
 /// \brief Find translation necessary to construct an equivalence map operation
 xtal::UnitCell equivalence_map_translation(xtal::UnitCellCoordRep const &op,
                                            IntegralCluster prototype,
-                                           IntegralCluster const &equivalent);
+                                           IntegralCluster equivalent);
 
 /// \brief Return xtal::SymOp that maps prototype to equivalent, and is a
 ///     combination of a factor group operation and a lattice translation

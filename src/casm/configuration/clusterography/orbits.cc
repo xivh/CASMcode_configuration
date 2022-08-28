@@ -92,13 +92,13 @@ xtal::SymOp make_cluster_group_element(
 ///
 /// \param op, Symmetry operation representation to be applied
 /// \param prototype, Prototype cluster to transform
-/// \param equivalent, Cluster to match. Must be sorted.
+/// \param equivalent, Cluster to match
 ///
 /// \return translation, such that translation * op * prototype is a
 ///     cluster with the same sites as the equivalent
 xtal::UnitCell equivalence_map_translation(xtal::UnitCellCoordRep const &op,
                                            IntegralCluster prototype,
-                                           IntegralCluster const &equivalent) {
+                                           IntegralCluster equivalent) {
   if (prototype.size() != equivalent.size()) {
     throw std::runtime_error(
         "Error in equivalence_map_translation: cluster sizes do not match.");
@@ -106,6 +106,7 @@ xtal::UnitCell equivalence_map_translation(xtal::UnitCellCoordRep const &op,
   if (!prototype.size()) {
     return xtal::UnitCell(0, 0, 0);
   }
+  equivalent.sort();
   apply(op, prototype);
   prototype.sort();
   xtal::UnitCell trans = equivalent[0].unitcell() - prototype[0].unitcell();
