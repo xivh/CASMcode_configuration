@@ -328,6 +328,7 @@ void parse(InputParser<occ_events::OccEvent> &parser,
 
   if (!parser.self.contains("trajectories")) {
     parser.error.insert("Error: expected JSON array for OccEvent");
+    return;
   }
 
   if (!parser.self["trajectories"].is_array()) {
@@ -339,10 +340,8 @@ void parse(InputParser<occ_events::OccEvent> &parser,
   parser.value = notstd::make_unique<occ_events::OccEvent>();
   occ_events::OccEvent &event = *parser.value;
   for (Index i = 0; i < parser.self["trajectories"].size(); ++i) {
-    fs::path path{"trajectories"};
-    path /= std::to_string(i);
-    auto shared_subparser =
-        parser.subparse<occ_events::OccTrajectory>(path, system);
+    auto shared_subparser = parser.subparse<occ_events::OccTrajectory>(
+        fs::path("trajectories") / std::to_string(i), system);
     if (!shared_subparser->valid()) {
       parser.value.reset();
       return;
