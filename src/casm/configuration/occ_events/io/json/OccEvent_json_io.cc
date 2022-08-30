@@ -50,24 +50,34 @@ void parse_non_resevoir_position(InputParser<occ_events::OccPosition> &parser,
   Index b = integral_site_coordinate.sublattice();
   if (b < 0 || b >= system.prim->basis().size()) {
     parser.error.insert("Error: Invalid coordinate");
+    return;
   }
 
   // parse "occupant_index"
   Index occupant_index;
   parser.require(occupant_index, "occupant_index");
+  if (occupant_index < 0 ||
+      occupant_index >= system.atom_position_to_name_index[b].size()) {
+    parser.error.insert("Error: Invalid occupant_index");
+    return;
+  }
+  Index mol_size = system.atom_position_to_name_index[b][occupant_index].size();
 
   std::unique_ptr<occ_events::OccPosition> p;
   try {
-    if (parser.self.contains("atom_position_index")) {
+    if (parser.self.contains("molecule")) {
+      p = std::make_unique<occ_events::OccPosition>(
+          system.make_molecule_position(integral_site_coordinate,
+                                        occupant_index));
+    } else if (mol_size == 1) {
+      p = std::make_unique<occ_events::OccPosition>(
+          system.make_atom_position(integral_site_coordinate, occupant_index));
+    } else {
       // parse "atom_position_index"
       Index atom_position_index = -1;
       parser.require(atom_position_index, "atom_position_index");
       p = std::make_unique<occ_events::OccPosition>(system.make_atom_position(
           integral_site_coordinate, occupant_index, atom_position_index));
-    } else {
-      p = std::make_unique<occ_events::OccPosition>(
-          system.make_molecule_position(integral_site_coordinate,
-                                        occupant_index));
     }
   } catch (std::exception &e) {
     parser.error.insert(e.what());
@@ -98,7 +108,12 @@ jsonParser &to_json(occ_events::OccPosition const &pos, jsonParser &json,
     if (chemical_name != orientation_name) {
       json["orientation_name"] = orientation_name;
     }
-    if (pos.is_atom) {
+    Index b = pos.integral_site_coordinate.sublattice();
+    Index mol_size =
+        system.atom_position_to_name_index[b][pos.occupant_index].size();
+    if (!pos.is_atom) {
+      json["molecule"] = true;
+    } else if (mol_size > 1) {
       json["atom_position_index"] = pos.atom_position_index;
       json["atom_name"] = system.get_atom_name(pos);
     }

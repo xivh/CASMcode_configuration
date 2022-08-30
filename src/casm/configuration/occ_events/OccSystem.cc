@@ -191,7 +191,7 @@ OccPosition OccSystem::make_molecule_position(
                      -1};
 }
 
-/// Make an OccPosition for a single atom in a multi-atom molecule
+/// Make an OccPosition for an atom in a molecule
 OccPosition OccSystem::make_atom_position(
     xtal::UnitCellCoord const &integral_site_coordinate,
     std::string orientation_name, Index atom_position_index) const {

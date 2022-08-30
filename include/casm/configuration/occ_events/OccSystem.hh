@@ -119,7 +119,7 @@ struct OccSystem {
 
   OccPosition make_atom_position(
       xtal::UnitCellCoord const &integral_site_coordinate, Index occupant_index,
-      Index atom_position_index) const;
+      Index atom_position_index = 0) const;
 
   OccPosition make_molecule_position(
       xtal::UnitCellCoord const &integral_site_coordinate,
@@ -127,7 +127,7 @@ struct OccSystem {
 
   OccPosition make_atom_position(
       xtal::UnitCellCoord const &integral_site_coordinate,
-      std::string orientation_name, Index atom_position_index) const;
+      std::string orientation_name, Index atom_position_index = 0) const;
 
   OccPosition make_molecule_in_resevoir_position(Index chemical_index) const;
 
