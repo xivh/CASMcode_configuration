@@ -152,16 +152,16 @@ SupercellSymOp from_canonical(Configuration const &configuration,
   // to this
   ConfigCompare compare_f(configuration);
   auto _to_canonical = begin;
-  auto _from_canonical = _to_canonical.inverse();
+  auto _from_canonical = _to_canonical->inverse();
   for (auto it = begin; it < end; ++it) {
-    if (compare_f(_to_canonical, it)) {
+    if (compare_f(*_to_canonical, *it)) {
       _to_canonical = it;
-      _from_canonical = _to_canonical.inverse();
+      _from_canonical = _to_canonical->inverse();
     }
     // other permutations that result in canonical config may have a lower index
     // inverse
-    else if (!compare_f(it, _to_canonical)) {
-      auto it_inv = it.inverse();
+    else if (!compare_f(*it, *_to_canonical)) {
+      auto it_inv = it->inverse();
       if (it_inv < _from_canonical) {
         _from_canonical = it_inv;
       }

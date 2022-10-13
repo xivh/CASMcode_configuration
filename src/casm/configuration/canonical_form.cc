@@ -77,7 +77,8 @@ std::vector<std::shared_ptr<Supercell const>> make_equivalents(
   std::vector<SymOp> const &point_group = prim->sym_info.point_group->element;
 
   // function puts equivalent superlattice into canonical form
-  auto representation_prepare = [&](Lattice const &superlat) {
+  auto representation_prepare = [&](Lattice superlat) {
+    superlat.make_right_handed();
     std::vector<Index> invariant_subgroup_indices =
         xtal::invariant_subgroup_indices(superlat, point_group);
     std::vector<SymOp> invariant_subgroup;

@@ -206,6 +206,18 @@ std::shared_ptr<SymGroup const> make_local_symgroup(
     std::vector<SupercellSymOp> const &local_supercell_symgroup_rep,
     std::shared_ptr<Supercell const> const &supercell);
 
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of a particular global DoF
+std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
+    std::vector<SupercellSymOp> const &group, DoFKey key);
+
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of occupation DoF or a particular local DoF of
+///     amongst a subset of supercell sites
+std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
+    std::vector<SupercellSymOp> const &group, DoFKey key,
+    std::set<Index> const &site_indices);
+
 }  // namespace config
 }  // namespace CASM
 

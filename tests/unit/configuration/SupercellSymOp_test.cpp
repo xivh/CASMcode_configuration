@@ -3,6 +3,7 @@
 #include "casm/configuration/Configuration.hh"
 #include "casm/configuration/Prim.hh"
 #include "casm/configuration/Supercell.hh"
+#include "casm/configuration/canonical_form.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
 #include "gtest/gtest.h"
 #include "teststructures.hh"
@@ -57,6 +58,51 @@ TEST_F(SupercellSymOpFCCTest, Test3) {
     occ_count += transformed_dof_values.occupation;
   }
   EXPECT_TRUE(almost_equal(occ_count, Eigen::VectorXi::Constant(size, 48)));
+}
+
+TEST_F(SupercellSymOpFCCTest, Test4) {
+  config::Configuration configuration(supercell);
+  Index n_sites = supercell->unitcellcoord_index_converter.total_sites();
+
+  auto begin = config::SupercellSymOp::begin(supercell);
+  auto end = config::SupercellSymOp::end(supercell);
+  auto invariant_subgroup = make_invariant_subgroup(configuration, begin, end);
+  std::set<Index> site_indices;
+  for (Index l = 0; l < n_sites; ++l) {
+    site_indices.emplace(l);
+  }
+
+  std::vector<Eigen::MatrixXd> occ_matrix_rep =
+      make_local_dof_matrix_rep(invariant_subgroup, "occ", site_indices);
+
+  // for (Index i=0; i<occ_matrix_rep.size(); ++i) {
+  //   std::cout << "i: " << i << "\n" << occ_matrix_rep[i] << std::endl <<
+  //   std::endl;
+  // }
+  EXPECT_EQ(occ_matrix_rep.size(), 4 * 48);
+}
+
+TEST_F(SupercellSymOpFCCTest, Test5) {
+  config::Configuration configuration(supercell);
+  configuration.dof_values.occupation(0) = 1;
+  Index n_sites = supercell->unitcellcoord_index_converter.total_sites();
+
+  auto begin = config::SupercellSymOp::begin(supercell);
+  auto end = config::SupercellSymOp::end(supercell);
+  auto invariant_subgroup = make_invariant_subgroup(configuration, begin, end);
+  std::set<Index> site_indices;
+  for (Index l = 0; l < n_sites; ++l) {
+    site_indices.emplace(l);
+  }
+
+  std::vector<Eigen::MatrixXd> occ_matrix_rep =
+      make_local_dof_matrix_rep(invariant_subgroup, "occ", site_indices);
+
+  // for (Index i=0; i<occ_matrix_rep.size(); ++i) {
+  //   std::cout << "i: " << i << "\n" << occ_matrix_rep[i] << std::endl <<
+  //   std::endl;
+  // }
+  EXPECT_EQ(occ_matrix_rep.size(), 48);
 }
 
 class SupercellSymOpFCCTernaryGLStrainDispTest : public testing::Test {
@@ -169,6 +215,98 @@ TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestInverse) {
     EXPECT_TRUE(almost_equal(check.global_dof_values.at("GLstrain"),
                              dof_values.global_dof_values.at("GLstrain")));
   }
+}
+
+// Test make global matrix rep
+TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestGlobalMatrixRep1) {
+  config::Configuration configuration(supercell);
+  Index n_sites = supercell->unitcellcoord_index_converter.total_sites();
+
+  auto begin = config::SupercellSymOp::begin(supercell);
+  auto end = config::SupercellSymOp::end(supercell);
+  auto invariant_subgroup = make_invariant_subgroup(configuration, begin, end);
+  EXPECT_EQ(invariant_subgroup.size(), 4 * 48);
+
+  std::vector<Eigen::MatrixXd> GLstrain_matrix_rep =
+      make_global_dof_matrix_rep(invariant_subgroup, "GLstrain");
+
+  // for (Index i=0; i<GLstrain_matrix_rep.size(); ++i) {
+  //   std::cout << "i: " << i << "\n" << GLstrain_matrix_rep[i] << std::endl <<
+  //   std::endl;
+  // }
+  EXPECT_EQ(GLstrain_matrix_rep.size(), 48);
+}
+
+// Test make global matrix rep
+TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestGlobalMatrixRep2) {
+  config::Configuration configuration(supercell);
+  configuration.dof_values.occupation(0) = 1;
+  configuration.dof_values.occupation(1) = 1;
+  Index n_sites = supercell->unitcellcoord_index_converter.total_sites();
+
+  auto begin = config::SupercellSymOp::begin(supercell);
+  auto end = config::SupercellSymOp::end(supercell);
+  auto invariant_subgroup = make_invariant_subgroup(configuration, begin, end);
+  EXPECT_EQ(invariant_subgroup.size(), 2 * 16);
+
+  std::vector<Eigen::MatrixXd> GLstrain_matrix_rep =
+      make_global_dof_matrix_rep(invariant_subgroup, "GLstrain");
+
+  // for (Index i=0; i<GLstrain_matrix_rep.size(); ++i) {
+  //   std::cout << "i: " << i << "\n" << GLstrain_matrix_rep[i] << std::endl <<
+  //   std::endl;
+  // }
+  EXPECT_EQ(GLstrain_matrix_rep.size(), 16);
+}
+
+// Test make local matrix rep
+TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestLocalMatrixRep1) {
+  config::Configuration configuration(supercell);
+  Index n_sites = supercell->unitcellcoord_index_converter.total_sites();
+
+  auto begin = config::SupercellSymOp::begin(supercell);
+  auto end = config::SupercellSymOp::end(supercell);
+  std::set<Index> site_indices;
+  for (Index l = 0; l < n_sites; ++l) {
+    site_indices.emplace(l);
+  }
+  auto invariant_subgroup = make_invariant_subgroup(configuration, begin, end);
+  EXPECT_EQ(invariant_subgroup.size(), 4 * 48);
+
+  std::vector<Eigen::MatrixXd> disp_matrix_rep =
+      make_local_dof_matrix_rep(invariant_subgroup, "disp", site_indices);
+
+  // for (Index i=0; i<disp_matrix_rep.size(); ++i) {
+  //   std::cout << "i: " << i << "\n" << disp_matrix_rep[i] << std::endl <<
+  //   std::endl;
+  // }
+  EXPECT_EQ(disp_matrix_rep.size(), 4 * 48);
+}
+
+// Test make local matrix rep
+TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestLocalMatrixRep2) {
+  config::Configuration configuration(supercell);
+  configuration.dof_values.occupation(0) = 1;
+  configuration.dof_values.occupation(1) = 1;
+  Index n_sites = supercell->unitcellcoord_index_converter.total_sites();
+
+  auto begin = config::SupercellSymOp::begin(supercell);
+  auto end = config::SupercellSymOp::end(supercell);
+  std::set<Index> site_indices;
+  for (Index l = 0; l < n_sites; ++l) {
+    site_indices.emplace(l);
+  }
+  auto invariant_subgroup = make_invariant_subgroup(configuration, begin, end);
+  EXPECT_EQ(invariant_subgroup.size(), 2 * 16);
+
+  std::vector<Eigen::MatrixXd> disp_matrix_rep =
+      make_local_dof_matrix_rep(invariant_subgroup, "disp", site_indices);
+
+  // for (Index i=0; i<disp_matrix_rep.size(); ++i) {
+  //   std::cout << "i: " << i << "\n" << disp_matrix_rep[i] << std::endl <<
+  //   std::endl;
+  // }
+  EXPECT_EQ(disp_matrix_rep.size(), 2 * 16);
 }
 
 class SupercellSymOpSimpleCubicIsingTest : public testing::Test {

@@ -51,7 +51,7 @@ struct PrimSymInfo {
   ///
   /// Usage:
   /// \code
-  /// Index occupant_index_after = atom_position_symgroup_rep
+  /// Index occupant_index_after = occ_symgroup_rep
   ///                                  .at(group_element_index)
   ///                                  .at(sublattice_index_before)
   ///                                  .at(occupant_index_before);

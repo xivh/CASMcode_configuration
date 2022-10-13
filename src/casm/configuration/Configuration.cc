@@ -21,7 +21,9 @@ Configuration::Configuration(std::shared_ptr<Supercell const> const &_supercell,
 
 /// \brief Less than comparison of Configuration
 ///
-/// - Must have the same Supercell
+/// - Must have the same Prim
+/// - Supercell are compared first, then global DoF, then occupation DoF,
+///   then local continuous DoF
 bool Configuration::operator<(Configuration const &rhs) const {
   ConfigCompare compare(*this);
   return compare(rhs);
@@ -29,7 +31,7 @@ bool Configuration::operator<(Configuration const &rhs) const {
 
 /// \brief Equality comparison of Configuration
 ///
-/// - Must have the same Supercell
+/// - Must have the same Prim
 /// - Checks that all DoF are the same, within tolerance
 bool Configuration::eq_impl(Configuration const &rhs) const {
   if (supercell != rhs.supercell) {

@@ -5,7 +5,9 @@
 #include "casm/configuration/PrimSymInfo.hh"
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/SupercellSymInfo.hh"
+#include "casm/configuration/sym_info/definitions.hh"
 #include "casm/crystallography/SymType.hh"
+#include "casm/crystallography/SymTypeComparator.hh"
 
 namespace CASM {
 namespace config {
@@ -500,6 +502,166 @@ std::shared_ptr<SymGroup const> make_local_symgroup(
 
   return std::make_shared<SymGroup const>(prim_factor_group, element,
                                           head_group_index);
+}
+
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of a particular global DoF
+///
+/// \param group The group that is to be represented (this may be larger than a
+///     crystallographic factor group)
+/// \param key The type of global DoF to be transformed.
+///
+/// \returns matrix_rep The matrix representation of `group` which transforms
+///     the specified global DoF. Repeated elements are removed (the result
+///     is a point group representation) so the size of `matrix_rep` may be
+///     less the size of `group`.
+///
+std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
+    std::vector<SupercellSymOp> const &group, DoFKey key) {
+  Supercell const &supercell = *group.begin()->supercell();
+  Prim const &prim = *supercell.prim;
+  auto const &factor_group_element = prim.sym_info.factor_group->element;
+  double xtal_tol = prim.basicstructure->lattice().tol();
+
+  // Get prim factor group indices for the point group of `group`
+  std::set<Index> prim_factor_group_indices;
+  xtal::SymOpCompare_f is_equal(xtal_tol);
+  auto make_point_op = [](xtal::SymOp const &fg_op) {
+    return xtal::SymOp(get_matrix(fg_op), Eigen::Vector3d::Zero(),
+                       get_time_reversal(fg_op));
+  };
+  for (SupercellSymOp const &supercell_symop : group) {
+    Index prim_fg_index = supercell_symop.prim_factor_group_index();
+    xtal::SymOp point_op = make_point_op(factor_group_element[prim_fg_index]);
+    auto is_same_point_op = [&](Index other_prim_fg_index) {
+      return is_equal(point_op,
+                      make_point_op(factor_group_element[other_prim_fg_index]));
+    };
+    auto it = std::find_if(prim_factor_group_indices.begin(),
+                           prim_factor_group_indices.end(), is_same_point_op);
+    if (it == prim_factor_group_indices.end()) {
+      prim_factor_group_indices.insert(prim_fg_index);
+    }
+  }
+
+  sym_info::GlobalDoFSymGroupRep global_dof_symgroup_rep =
+      prim.sym_info.global_dof_symgroup_rep.at(key);
+
+  std::vector<Eigen::MatrixXd> result;
+  for (Index prim_factor_group_index : prim_factor_group_indices) {
+    Eigen::MatrixXd M = global_dof_symgroup_rep.at(prim_factor_group_index);
+    result.push_back(M);
+  }
+
+  std::cout << "make_global_dof_matrix_rep: " << group.size() << ","
+            << prim_factor_group_indices.size() << "," << result.size()
+            << std::endl;
+  return result;
+}
+
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of occupation DoF or a particular local DoF of
+///     amongst a subset of supercell sites
+///
+/// \param group The group that is to be represented (this may be larger than a
+///     crystallographic factor group)
+/// \param key The type of local DoF to be transformed. May be a local
+///     continuous DoF or "occ".
+/// \param site_indices Set of site indices that define the subset of sites
+///     where DoF will be transformed
+std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
+    std::vector<SupercellSymOp> const &group, DoFKey key,
+    std::set<Index> const &site_indices) {
+  Supercell const &supercell = *group.begin()->supercell();
+  Prim const &prim = *supercell.prim;
+
+  // Usage:
+  // \code
+  // Eigen::MatrixXd const &M =
+  //     local_dof_symgroup_rep.at(prim_fg_index).at(sublattice_index_before)
+  // Eigen::MatrixXd sublattice_local_dof_values_after =
+  //     M * sublattice_local_dof_values_before;
+  // \endcode
+  // Note:
+  // - For each group element there is one matrix representation per sublattice
+  // - Local DoF values transform using these symrep matrices *before*
+  //   permuting among sites.
+
+  sym_info::LocalDoFSymGroupRep local_dof_symgroup_rep;
+  if (key == "occ") {
+    // sym_info::Permutation perm =
+    //     occ_symgroup_rep.at(prim_fg_index).at(sublattice_index_before);
+    // convention is: occ_index_after = perm.at(occ_index_before)
+    // -> need to make permutation matrix using inverse(perm), P(perm[i],i)=1.0
+    // -> then, Eigen::VectorXd occ_indicator_after = P * occ_indicator_before;
+
+    sym_info::OccSymGroupRep const &occ_symgroup_rep =
+        prim.sym_info.occ_symgroup_rep;
+    for (sym_info::OccSymOpRep const &occ_symop_rep : occ_symgroup_rep) {
+      std::vector<Eigen::MatrixXd> occ_matrix_rep;
+      for (sym_info::Permutation const &perm : occ_symop_rep) {
+        occ_matrix_rep.push_back(sym_info::as_matrix(sym_info::inverse(perm)));
+      }
+      local_dof_symgroup_rep.push_back(occ_matrix_rep);
+    }
+  } else {
+    local_dof_symgroup_rep = prim.sym_info.local_dof_symgroup_rep.at(key);
+  }
+  if (local_dof_symgroup_rep.size() == 0) {
+    throw std::runtime_error(
+        "Error in make_collective_dof_matrix_rep: DoF symgroup rep has "
+        "size==0.");
+  }
+
+  std::vector<Eigen::MatrixXd> result;
+
+  // make map of site_index -> beginning row in basis for that site
+  // (number of rows per site == dof dimension on that site)
+  std::map<Index, Index> site_index_to_basis_index;
+  Index total_dim = 0;
+  for (Index site_index : site_indices) {
+    Index b = supercell.unitcellcoord_index_converter(site_index).sublattice();
+    Index site_dof_dim = local_dof_symgroup_rep.at(0).at(b).cols();
+    site_index_to_basis_index[site_index] = total_dim;
+    total_dim += site_dof_dim;
+  }
+
+  // make matrix rep, by filling in blocks with site dof symreps
+  Eigen::MatrixXd trep(total_dim, total_dim);
+  for (SupercellSymOp const &supercell_symop : group) {
+    trep.setZero();
+    for (Index site_index : site_indices) {
+      // "to_site" (after applying symmetry) determines row of block
+      // can't fail, because it was built from [begin, end)
+      Index to_site_index = site_index;
+      Index row = site_index_to_basis_index.find(to_site_index)->second;
+
+      // "from_site" (before applying symmetry) determines col of block
+      // could fail, if mismatch between [begin, end) and group
+      Index from_site_index = supercell_symop.permute_index(site_index);
+      auto col_it = site_index_to_basis_index.find(from_site_index);
+      if (col_it == site_index_to_basis_index.end()) {
+        throw std::runtime_error(
+            "Error in make_collective_dof_matrix_rep: Input group includes "
+            "permutations "
+            "between selected and unselected sites.");
+      }
+      Index col = col_it->second;
+
+      // "from_site" sublattice and factor group op index
+      // are used to lookup the site dof rep matrix
+      Index from_site_b =
+          supercell.unitcellcoord_index_converter(from_site_index).sublattice();
+      Index prim_factor_group_index = supercell_symop.prim_factor_group_index();
+      Eigen::MatrixXd U =
+          local_dof_symgroup_rep.at(prim_factor_group_index).at(from_site_b);
+
+      // insert matrix as block in collective dof symrep
+      trep.block(row, col, U.rows(), U.cols()) = U;
+    }
+    result.push_back(trep);
+  }
+  return result;
 }
 
 }  // namespace config

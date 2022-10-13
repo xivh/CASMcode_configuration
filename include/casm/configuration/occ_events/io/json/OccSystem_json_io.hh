@@ -15,7 +15,7 @@ template <typename T>
 class InputParser;
 class jsonParser;
 
-jsonParser &to_json(occ_events::OccSystem const &invariants, jsonParser &json);
+jsonParser &to_json(occ_events::OccSystem const &system, jsonParser &json);
 
 void parse(InputParser<occ_events::OccSystem> &parser,
            std::shared_ptr<xtal::BasicStructure const> const &prim);

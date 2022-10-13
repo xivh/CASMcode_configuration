@@ -102,6 +102,10 @@ Permutation inverse(Permutation const &perm);
 Permutation combined_permute(Permutation const &first,
                              Permutation const &second);
 
+/// \brief Return a permutation matrix, P, such that `P * before`
+///      is equivalent to `apply(perm, before)`
+Eigen::MatrixXd as_matrix(Permutation const &perm);
+
 // --- Inline definitions ---
 
 /// \brief Permute container
@@ -145,6 +149,17 @@ inline Permutation inverse(Permutation const &perm) {
 inline Permutation combined_permute(Permutation const &first,
                                     Permutation const &second) {
   return copy_apply(second, first);
+}
+
+/// \brief Return a permutation matrix, P, such that `P * before`
+///      is equivalent to `apply(perm, before)`
+inline Eigen::MatrixXd as_matrix(Permutation const &perm) {
+  Eigen::MatrixXd P(perm.size(), perm.size());
+  P.setZero();
+  for (Index i = 0; i < perm.size(); ++i) {
+    P(i, perm[i]) = 1.0;
+  }
+  return P;
 }
 
 }  // namespace sym_info

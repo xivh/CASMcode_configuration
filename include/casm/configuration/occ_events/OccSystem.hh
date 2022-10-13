@@ -69,10 +69,13 @@ struct OccSystem {
   /// \brief Check if molecule is vacancy (via chemical_index)
   std::vector<bool> is_vacancy_list;
 
-  /// \brief Names of the unique atomic components
+  /// \brief Names of the unique atomic components (by name)
   ///
   /// Notes:
   /// - `atom_name_index` indicates an index into this list
+  /// - This only distinguishes by atom `name`, not atom
+  ///   properties.
+  /// - TODO: `atom_type_list` to distinguish by fixed properties
   std::vector<std::string> atom_name_list;
 
   /// \brief Names of the unique molecular orientations
