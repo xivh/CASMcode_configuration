@@ -18,6 +18,7 @@
 #ifndef CASM_clust_definitions
 #define CASM_clust_definitions
 
+#include <functional>
 #include <string>
 
 namespace CASM {

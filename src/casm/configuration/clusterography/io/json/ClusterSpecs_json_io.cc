@@ -1,5 +1,7 @@
 #include "casm/configuration/clusterography/io/json/ClusterSpecs_json_io.hh"
 
+#include <optional>
+
 #include "casm/casm_io/Log.hh"
 #include "casm/casm_io/container/json_io.hh"
 #include "casm/casm_io/json/InputParser.hh"

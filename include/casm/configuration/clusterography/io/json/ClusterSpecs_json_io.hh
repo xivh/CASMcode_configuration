@@ -1,6 +1,8 @@
 #ifndef CASM_clust_ClusterSpecs_json_io
 #define CASM_clust_ClusterSpecs_json_io
 
+#include <memory>
+
 #include "casm/configuration/clusterography/definitions.hh"
 
 namespace CASM {

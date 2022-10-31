@@ -809,6 +809,13 @@ def _exit_on_bad_run_directory():
 
 def main():
 
+    ldadd = [
+        "-lcasm_global",
+        "-lcasm_clexulator",
+        "-lcasm_crystallography",
+    ]
+    ldadd_test = [ "libcasm_configuration.la" ] + ldadd
+
     # print("Create Makefile for ccasm program")
     # chunk = make_add_to_PROGRAMS(
     #     "ccasm",
@@ -822,27 +829,19 @@ def main():
     chunk = make_aggregated_unit_test([
         {
             "directory": "tests/unit/configuration",
-            "ldadd": [
-                "libcasm_configuration.la"
-            ],
+            "ldadd": ldadd_test,
         },
         {
             "directory": "tests/unit/clusterography",
-            "ldadd": [
-                "libcasm_configuration.la"
-            ],
+            "ldadd": ldadd_test,
         },
         {
             "directory": "tests/unit/enumeration",
-            "ldadd": [
-                "libcasm_configuration.la"
-            ],
+            "ldadd": ldadd_test,
         },
         {
             "directory": "tests/unit/occ_events",
-            "ldadd": [
-                "libcasm_configuration.la"
-            ],
+            "ldadd": ldadd_test,
         }
     ])
     target = os.path.join("tests", "unit", "Makemodule.am")
@@ -858,7 +857,7 @@ def main():
     ]
 
     chunk = make_libcasm("configuration", header_files,
-                         libadd=["-lcasm_global", "-lcasm_crystallography"])
+                         libadd=ldadd)
     target = os.path.join("src", "casm", "Makemodule.am")
     string_to_file(chunk, target)
 

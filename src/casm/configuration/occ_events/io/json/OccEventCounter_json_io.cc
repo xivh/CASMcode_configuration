@@ -1,5 +1,7 @@
 #include "casm/configuration/occ_events/io/json/OccEventCounter_json_io.hh"
 
+#include <optional>
+
 #include "casm/casm_io/container/json_io.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/casm_io/json/optional.hh"

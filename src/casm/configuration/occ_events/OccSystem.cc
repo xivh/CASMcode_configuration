@@ -1,5 +1,7 @@
 #include "casm/configuration/occ_events/OccSystem.hh"
 
+#include <optional>
+
 #include "casm/configuration/clusterography/IntegralCluster.hh"
 #include "casm/configuration/occ_events/OccPosition.hh"
 #include "casm/crystallography/BasicStructure.hh"

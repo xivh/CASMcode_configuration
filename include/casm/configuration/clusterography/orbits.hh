@@ -1,6 +1,7 @@
 #ifndef CASM_clust_orbits
 #define CASM_clust_orbits
 
+#include <memory>
 #include <set>
 #include <vector>
 

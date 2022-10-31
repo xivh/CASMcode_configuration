@@ -4,6 +4,8 @@
 #include "casm/casm_io/container/json_io.hh"
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/clexulator/io/json/ConfigDoFValues_json_io.hh"
+#include "casm/configuration/ConfigurationSet.hh"
+#include "casm/configuration/SupercellSet.hh"
 #include "casm/configuration/io/json/Supercell_json_io.hh"
 #include "casm/configuration/supercell_name.hh"
 #include "casm/misc/Validator.hh"
@@ -128,41 +130,8 @@ void report_and_throw_if_invalid(Validator const &validator, Log &log,
 
 }  // namespace
 
-namespace config {
-
-ConfigurationRecord::ConfigurationRecord(Configuration const &_configuration,
-                                         std::string _supercell_name,
-                                         std::string _configuration_id,
-                                         jsonParser const &_source,
-                                         jsonParser const &_cache)
-    : configuration(_configuration),
-      supercell_name(_supercell_name),
-      configuration_id(_configuration_id),
-      source(_source),
-      cache(_cache) {
-  if (supercell_name.empty()) {
-    supercell_name = make_supercell_name(
-        configuration.supercell->superlattice.prim_lattice(),
-        configuration.supercell->superlattice.superlattice());
-  }
-  configuration_name = supercell_name + "/" + configuration_id;
-}
-
-std::map<std::string, ConfigurationRecord const *>
-make_index_by_configuration_name(
-    std::set<ConfigurationRecord> const &configurations) {
-  std::map<std::string, ConfigurationRecord const *> result;
-  for (auto const &c : configurations) {
-    result.emplace(c.configuration_name, &c);
-  }
-  return result;
-}
-
-}  // namespace config
-
-void from_json(std::set<config::SupercellRecord> &supercells,
-               std::set<config::ConfigurationRecord> &configurations,
-               std::map<std::string, Index> &config_id, jsonParser const &json,
+void from_json(config::SupercellSet &supercells,
+               config::ConfigurationSet &configurations, jsonParser const &json,
                std::shared_ptr<config::Prim const> const &prim) {
   configurations.clear();
 
@@ -188,7 +157,7 @@ void from_json(std::set<config::SupercellRecord> &supercells,
   }
 
   std::map<std::string, config::SupercellRecord const *>
-      index_by_supercell_name = make_index_by_supercell_name(supercells);
+      index_by_supercell_name = make_index_by_supercell_name(supercells.data());
 
   // read config list contents
   auto scel_it = json["supercells"].begin();
@@ -203,7 +172,7 @@ void from_json(std::set<config::SupercellRecord> &supercells,
     // try to find or add supercell by name
     config::SupercellRecord const *s = nullptr;
     try {
-      s = find_or_add_supercell_by_name(scel_it.name(), supercells,
+      s = find_or_add_supercell_by_name(scel_it.name(), supercells.data(),
                                         index_by_supercell_name, prim);
     } catch (std::exception &e) {
       std::stringstream msg;
@@ -225,11 +194,11 @@ void from_json(std::set<config::SupercellRecord> &supercells,
                           prim->basicstructure->basis().size(),
                           prim->global_dof_info, prim->local_dof_info);
 
-      jsonParser source;
-      config_it->get_if(source, "source");
-
-      jsonParser cache;
-      config_it->get_if(cache, "cache");
+      // jsonParser source;
+      // config_it->get_if(source, "source");
+      //
+      // jsonParser cache;
+      // config_it->get_if(cache, "cache");
 
       if (!validator.valid()) {
         log.indent() << "Errors reading configurations:" << std::endl;
@@ -238,18 +207,20 @@ void from_json(std::set<config::SupercellRecord> &supercells,
         report_and_throw_if_invalid(validator, log, error_if_invalid);
       }
 
-      configurations.emplace(config::Configuration(s->supercell, dof_values),
-                             scel_it.name(), config_it.name(), source, cache);
+      config::ConfigurationRecord record(
+          config::Configuration(s->supercell, dof_values), scel_it.name(),
+          config_it.name());
+      configurations.insert(record);
     }
   }
 
   // read next config id for each supercell
-  config_id.clear();
-  from_json(config_id, json["config_id"]);
+  std::map<std::string, Index> next_config_id;
+  from_json(next_config_id, json["config_id"]);
+  configurations.set_next_config_id(next_config_id);
 }
 
-jsonParser &to_json(std::set<config::ConfigurationRecord> const &configurations,
-                    std::map<std::string, Index> const &config_id,
+jsonParser &to_json(config::ConfigurationSet const &configurations,
                     jsonParser &json) {
   json.put_obj();
   json["version"] = "1.0";
@@ -259,16 +230,16 @@ jsonParser &to_json(std::set<config::ConfigurationRecord> const &configurations,
         json["supercells"][c.supercell_name][c.configuration_id];
     to_json(c.configuration.dof_values, configjson["dof"]);
 
-    if (c.source.size()) {
-      to_json(c.source, configjson["source"]);
-    }
-
-    if (c.cache.size()) {
-      to_json(c.cache, configjson["cache"]);
-    }
+    // if (c.source.size()) {
+    //   to_json(c.source, configjson["source"]);
+    // }
+    //
+    // if (c.cache.size()) {
+    //   to_json(c.cache, configjson["cache"]);
+    // }
   }
 
-  json["config_id"] = config_id;
+  json["config_id"] = configurations.next_config_id();
   return json;
 }
 
@@ -306,7 +277,21 @@ jsonMake<config::Configuration>::make_from_json(
 
 /// Insert Configuration to JSON
 jsonParser &to_json(config::Configuration const &configuration,
-                    jsonParser &json);
+                    jsonParser &json) {
+  if (!json.is_obj()) {
+    throw std::runtime_error(
+        "Error inserting configuration to json: not an object");
+  }
+  auto const &superlattice = configuration.supercell->superlattice;
+  std::string supercell_name = config::make_supercell_name(
+      superlattice.prim_lattice(), superlattice.superlattice());
+  json["supercell_name"] = supercell_name;
+  json["transformation_matrix_to_supercell"] =
+      superlattice.transformation_matrix_to_super();
+  json["dof"] = configuration.dof_values;
+
+  return json;
+}
 
 /// Parser Configuration from JSON with error messages
 ///
@@ -334,8 +319,5 @@ void parse(InputParser<config::Configuration> &parser,
         notstd::make_unique<config::Configuration>(supercell, dof_values);
   }
 }
-
-/// Read Configuration from JSON
-void from_json(config::Configuration &configuration, jsonParser const &json);
 
 }  // namespace CASM

@@ -31,6 +31,11 @@ autoclass_content = "class"
 autodoc_class_signature = "separated"
 autosummary_generate = True
 autosummary_imported_members = True
+intersphinx_mapping = {
+    'xtal':
+        ('../../../../../CASMcode_crystallography/python/doc/_build/html',
+            ('../../../CASMcode_crystallography/python/doc/_build/html/objects.inv', None)),
+}
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -38,7 +43,7 @@ autosummary_imported_members = True
 extensions = [
     'sphinx.ext.autodoc', 'sphinx.ext.autosummary', 'sphinx.ext.coverage',
     'sphinx.ext.viewcode', 'sphinx.ext.githubpages', 'sphinx.ext.napoleon',
-    'sphinxarg.ext', 'sphinxcontrib.bibtex'
+    'sphinxarg.ext', 'sphinxcontrib.bibtex', 'sphinx.ext.intersphinx',
 ]
 
 bibtex_bibfiles = ['refs.bib']

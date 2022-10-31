@@ -325,9 +325,7 @@ ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values) {
   Index n_sublat = prim.basicstructure->basis().size();
   Index n_sites = n_vol * n_sublat;
 
-  Index supercell_fg_index = op.supercell_factor_group_index();
-  Index prim_fg_index =
-      supercell_sym_info.factor_group->head_group_index[supercell_fg_index];
+  Index prim_fg_index = op.prim_factor_group_index();
 
   for (auto &dof : dof_values.global_dof_values) {
     Eigen::MatrixXd const &M =
@@ -369,6 +367,7 @@ ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values) {
     for (Index b = 0; b < n_sublat; ++b) {
       Eigen::MatrixXd const &M = local_dof_symop_rep[b];
       Index dim = M.cols();
+      if (dim == 0) continue;
       sublattice_block(tmp, b, n_vol).topRows(dim) =
           M * sublattice_block(init_value, b, n_vol).topRows(dim);
     }

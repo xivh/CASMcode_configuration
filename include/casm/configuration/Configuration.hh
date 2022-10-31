@@ -41,6 +41,29 @@ Configuration &apply(SupercellSymOp const &op, Configuration &configuration);
 /// Configuration
 Configuration copy_apply(SupercellSymOp const &op, Configuration configuration);
 
+struct ConfigurationWithProperties {
+  ConfigurationWithProperties(
+      Configuration const &_configuration,
+      std::map<std::string, Eigen::MatrixXd> const &_local_properties,
+      std::map<std::string, Eigen::VectorXd> const &_global_properties);
+
+  Configuration configuration;
+  std::map<std::string, Eigen::MatrixXd> local_properties;
+  std::map<std::string, Eigen::VectorXd> global_properties;
+};
+
+class SupercellSymOp;
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+///     a configuration with properties
+ConfigurationWithProperties &apply(SupercellSymOp const &op,
+                                   ConfigurationWithProperties &configuration);
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+///     a configuration with properties
+ConfigurationWithProperties copy_apply(
+    SupercellSymOp const &op, ConfigurationWithProperties configuration);
+
 }  // namespace config
 }  // namespace CASM
 

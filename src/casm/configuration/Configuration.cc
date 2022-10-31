@@ -56,5 +56,59 @@ Configuration copy_apply(SupercellSymOp const &op,
   return apply(op, configuration);
 }
 
+ConfigurationWithProperties::ConfigurationWithProperties(
+    Configuration const &_configuration,
+    std::map<std::string, Eigen::MatrixXd> const &_local_properties,
+    std::map<std::string, Eigen::VectorXd> const &_global_properties)
+    : configuration(_configuration),
+      local_properties(_local_properties),
+      global_properties(_global_properties) {}
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+///     a configuration with properties
+ConfigurationWithProperties &apply(
+    SupercellSymOp const &op,
+    ConfigurationWithProperties &config_with_properties) {
+  apply(op, config_with_properties.configuration);
+
+  Configuration &configuration = config_with_properties.configuration;
+  Index n_sites =
+      configuration.supercell->unitcellcoord_index_converter.total_sites();
+  Index prim_fg_index = op.prim_factor_group_index();
+  xtal::SymOp symop = op.to_symop();
+
+  // transform global properties
+  for (auto &property : config_with_properties.global_properties) {
+    AnisoValTraits traits(property.first);
+    Eigen::MatrixXd M = traits.symop_to_matrix(
+        get_matrix(symop), get_translation(symop), get_time_reversal(symop));
+    property.second = M * property.second;
+  }
+
+  // transform then permute local properties
+  sym_info::Permutation combined_permute{op.combined_permute()};
+  for (auto &property : config_with_properties.local_properties) {
+    AnisoValTraits traits(property.first);
+    Eigen::MatrixXd M = traits.symop_to_matrix(
+        get_matrix(symop), get_translation(symop), get_time_reversal(symop));
+    Eigen::MatrixXd tmp = M * property.second;
+    // permute values amongst sites
+    for (Index l = 0; l < n_sites; ++l) {
+      property.second.col(l) = tmp.col(combined_permute[l]);
+    }
+  }
+
+  return config_with_properties;
+}
+
+/// \brief Apply a symmetry operation specified by a SupercellSymOp to
+///     a configuration with properties
+ConfigurationWithProperties copy_apply(
+    SupercellSymOp const &op,
+    ConfigurationWithProperties config_with_properties) {
+  apply(op, config_with_properties);
+  return config_with_properties;
+}
+
 }  // namespace config
 }  // namespace CASM

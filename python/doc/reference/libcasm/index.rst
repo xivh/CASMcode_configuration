@@ -1,8 +1,8 @@
 ..
     DO NOT DELETE! This causes _autosummary to generate stub files
 
-libcasm.configuration module
-============================
+libcasm package
+===============
 
 .. autosummary::
     :toctree: _autosummary

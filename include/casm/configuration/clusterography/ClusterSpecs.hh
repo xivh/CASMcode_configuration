@@ -1,6 +1,8 @@
 #ifndef CASM_clust_ClusterSpecs
 #define CASM_clust_ClusterSpecs
 
+#include <memory>
+#include <optional>
 #include <set>
 #include <vector>
 
