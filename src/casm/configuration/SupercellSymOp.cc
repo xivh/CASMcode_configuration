@@ -552,9 +552,9 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
     result.push_back(M);
   }
 
-  std::cout << "make_global_dof_matrix_rep: " << group.size() << ","
-            << prim_factor_group_indices.size() << "," << result.size()
-            << std::endl;
+  // std::cout << "make_global_dof_matrix_rep: " << group.size() << ","
+  //           << prim_factor_group_indices.size() << "," << result.size()
+  //           << std::endl;
   return result;
 }
 
