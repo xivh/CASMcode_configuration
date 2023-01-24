@@ -64,6 +64,8 @@ ext_modules = [
                       ["src/configuration.cpp"], **ext_modules_params),
     Pybind11Extension("libcasm.occ_events._occ_events", ["src/occ_events.cpp"],
                       **ext_modules_params),
+    Pybind11Extension("libcasm.enumerate._enumerate", ["src/enumerate.cpp"],
+                      **ext_modules_params),
 ]
 
 setup(

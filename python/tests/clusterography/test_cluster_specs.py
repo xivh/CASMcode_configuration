@@ -24,8 +24,7 @@ def test_cluster_specs():
 def test_make_periodic_cluster_specs():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     cluster_specs = clust.make_periodic_cluster_specs(
-        xtal_prim=xtal_prim,
-        max_length=[0.0, 0.0, 2.01])
+        xtal_prim=xtal_prim, max_length=[0.0, 0.0, 2.01])
     assert isinstance(cluster_specs, clust.ClusterSpecs)
 
     orbits = cluster_specs.make_orbits()
@@ -39,11 +38,11 @@ def test_local_cluster_specs():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     symgroup_rep = clust.make_integral_site_coordinate_symgroup_rep(
-        prim_factor_group.elements(),
-        xtal_prim)
+        prim_factor_group.elements(), xtal_prim)
     phenomenal = clust.Cluster([
         xtal.IntegralSiteCoordinate.from_list([0, 0, 0, 0]),
-        xtal.IntegralSiteCoordinate.from_list([0, 1, 0, 0])])
+        xtal.IntegralSiteCoordinate.from_list([0, 1, 0, 0])
+    ])
     cluster_group = clust.make_cluster_group(
         cluster=phenomenal,
         group=prim_factor_group,
@@ -69,7 +68,8 @@ def test_make_local_cluster_specs():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     phenomenal_cluster = clust.Cluster([
         xtal.IntegralSiteCoordinate.from_list([0, 0, 0, 0]),
-        xtal.IntegralSiteCoordinate.from_list([0, 1, 0, 0])])
+        xtal.IntegralSiteCoordinate.from_list([0, 1, 0, 0])
+    ])
     cluster_specs = clust.make_local_cluster_specs(
         xtal_prim=xtal_prim,
         phenomenal_cluster=phenomenal_cluster,
