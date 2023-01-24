@@ -46,7 +46,7 @@ def test_make_all_distinct_local_perturbations(fcc_1NN_A_Va_event):
         print("ssum:", ssum)
 
         # get interpolated structures
-        structures = enum.make_occ_event_simple_structures(
+        structures = enum.make_occevent_simple_structures(
             c, phenomenal_occ_event, [0.0, 0.5, 1.0], system, False)
         print(xtal.pretty_json(structures[0].to_dict()))
         print()
