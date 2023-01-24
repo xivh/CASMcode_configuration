@@ -33,17 +33,24 @@ autosummary_generate = True
 autosummary_imported_members = True
 intersphinx_mapping = {
     'xtal':
-        ('../../../../../CASMcode_crystallography/python/doc/_build/html',
-            ('../../../CASMcode_crystallography/python/doc/_build/html/objects.inv', None)),
+    ('../../../../../CASMcode_crystallography/python/doc/_build/html',
+     ('../../../CASMcode_crystallography/python/doc/_build/html/objects.inv',
+      None)),
 }
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc', 'sphinx.ext.autosummary', 'sphinx.ext.coverage',
-    'sphinx.ext.viewcode', 'sphinx.ext.githubpages', 'sphinx.ext.napoleon',
-    'sphinxarg.ext', 'sphinxcontrib.bibtex', 'sphinx.ext.intersphinx',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.coverage',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.githubpages',
+    'sphinx.ext.napoleon',
+    'sphinxarg.ext',
+    'sphinxcontrib.bibtex',
+    'sphinx.ext.intersphinx',
 ]
 
 bibtex_bibfiles = ['refs.bib']
@@ -158,16 +165,16 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'libcasm-configuration.tex', u'libcasm-configuration Documentation',
-     u'CASM Developers', 'manual'),
+    (master_doc, 'libcasm-configuration.tex',
+     u'libcasm-configuration Documentation', u'CASM Developers', 'manual'),
 ]
 
 # -- Options for manual page output ---------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, 'libcasm-configuration', u'libcasm-configuration Documentation', [author], 1)
-             ]
+man_pages = [(master_doc, 'libcasm-configuration',
+              u'libcasm-configuration Documentation', [author], 1)]
 
 # -- Options for Texinfo output -------------------------------------------
 
@@ -175,6 +182,7 @@ man_pages = [(master_doc, 'libcasm-configuration', u'libcasm-configuration Docum
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'libcasm-configuration', u'libcasm-configuration Documentation', author, 'libcasm-configuration',
+    (master_doc, 'libcasm-configuration',
+     u'libcasm-configuration Documentation', author, 'libcasm-configuration',
      'One line description of project.', 'Miscellaneous'),
 ]

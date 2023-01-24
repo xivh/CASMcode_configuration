@@ -1,9 +1,4 @@
-"""casm-configuration: Enumerate configurations, clusters, and events"""
+"""libcasm.configuration: Supercells and configurations"""
 from ._configuration import *
 
-__all__ = [
-    "Prim",
-    "Supercell",
-    "SupercellSymOp",
-    "Configuration"
-]
+__all__ = ["Prim", "Supercell", "SupercellSymOp", "Configuration"]

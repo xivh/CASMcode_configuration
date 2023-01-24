@@ -119,107 +119,6 @@ PYBIND11_MODULE(_configuration, m) {
   py::module::import("libcasm.xtal");
   py::module::import("libcasm.sym_info");
 
-  // py::class_<config::SymGroup, std::shared_ptr<config::SymGroup>>(m,
-  // "SymGroup",
-  //                                                                 R"pbdoc(
-  //     Holds group elements and group info.
-  //     )pbdoc")
-  //     .def(py::init(&make_symgroup), py::arg("element"),
-  //          py::arg("multiplication_table"),
-  //          R"pbdoc(
-  //
-  //     Parameters
-  //     ----------
-  //     element : List[libcasm.xtal.SymOp]
-  //         List of elements of the symmetry group.
-  //     multiplication_table : List[List[int]]
-  //         The group multiplication table, where `k ==
-  //         multiplication_table[i][j]` indicates that element[k] == element[i]
-  //         * element[j]. This must be provide for a head group, but it is
-  //         determined for a subgroup.
-  //     )pbdoc")
-  //     .def("make_subgroup", &make_symgroup_subgroup,
-  //          py::arg("head_group_index"), py::arg("element") = std::nullopt,
-  //          R"pbdoc(
-  //     Construct a subgroup
-  //
-  //     Parameters
-  //     ----------
-  //     head_group_index : Set[int]
-  //         Indices of elements to include in the subgroup.
-  //     element : List[libcasm.xtal.SymOp], optional
-  //         List of elements in the subgroup. This is optional, and if not
-  //         provided the head group elements corresponding to the
-  //         head_group_index will be used. It may be provided to specify
-  //         particular elements for a subgroup of a factor group, such as the
-  //         elements of a cluster group. Must be listed in ascending head group
-  //         index order.
-  //     )pbdoc")
-  //     .def(
-  //         "elements",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup) {
-  //           return symgroup->element;
-  //         },
-  //         "Returns the elements list.")
-  //     .def(
-  //         "__getitem__",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup, Index
-  //         i) {
-  //           return symgroup->element[i];
-  //         },
-  //         py::arg("i"), "Returns an element from group.")
-  //     .def(
-  //         "multiplication_table",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup) {
-  //           return symgroup->multiplication_table;
-  //         },
-  //         "Returns the multiplication table.")
-  //     .def(
-  //         "conjugacy_classes",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup) {
-  //           return make_conjugacy_classes(*symgroup);
-  //         },
-  //         "Returns a List[List[int]], where `conjugacy_classes[i]` is a list
-  //         " "of the indices of elements in class 'i'")
-  //     .def(
-  //         "mult",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup, Index
-  //         i,
-  //            Index j) { return symgroup->mult(i, j); },
-  //         py::arg("i"), py::arg("j"),
-  //         "Returns the index `k == multiplication_table[i][j]`.")
-  //     .def(
-  //         "is_subgroup",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup) {
-  //           return symgroup->head_group != nullptr;
-  //         },
-  //         "Returns True if this is a subgroup.")
-  //     .def(
-  //         "head_group",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup) {
-  //           return symgroup->head_group;
-  //         },
-  //         "If this is a subgroup, return the head group, else return None.")
-  //     .def(
-  //         "head_group_index",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup) {
-  //           return symgroup->head_group_index;
-  //         },
-  //         "Return the list of head group indices")
-  //     .def(
-  //         "inverse_index",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup) {
-  //           return symgroup->inverse_index;
-  //         },
-  //         "Return the list of head group indices")
-  //     .def(
-  //         "inv",
-  //         [](std::shared_ptr<config::SymGroup const> const &symgroup, Index
-  //         i) {
-  //           return symgroup->inv(i);
-  //         },
-  //         py::arg("i"), "Return the index of the inverse element.");
-
   py::class_<config::Prim, std::shared_ptr<config::Prim>>(m, "Prim", R"pbdoc(
       A data structure that includes a shared `libcasm.xtal.Prim` specifying the
       parent crystal structure and allowed degrees of freedom (DoF),
@@ -296,6 +195,27 @@ PYBIND11_MODULE(_configuration, m) {
           "converts from DoF values in the standard basis, `x_standard`, to "
           "DoF values in the prim basis, `x_prim`, according to `x_prim = "
           "B_inv @ x_standard`.")
+      .def(
+          "integral_site_coordinate_symgroup_rep",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.unitcellcoord_symgroup_rep;
+          },
+          "Returns the symmetry group representation that describes how "
+          "IntegralSiteCoordinate transform under symmetry.")
+      .def(
+          "occ_symgroup_rep",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.occ_symgroup_rep;
+          },
+          "Returns the symmetry group representation that describes how "
+          "occupant indices transform under symmetry.")
+      .def(
+          "atom_position_symgroup_rep",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.atom_position_symgroup_rep;
+          },
+          "Returns the symmetry group representation that describes how atom "
+          "position indices transform under symmetry.")
       .def_static(
           "from_json", &prim_from_json,
           "Construct a Prim from a JSON-formatted string. The `Prim reference "

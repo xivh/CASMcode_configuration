@@ -5,8 +5,14 @@ import sys
 __version__ = "2.0.dev1"
 
 # Available at setup time due to pyproject.toml
-from pybind11.setup_helpers import Pybind11Extension, build_ext
+from pybind11.setup_helpers import Pybind11Extension, build_ext, ParallelCompile, naive_recompile
 from setuptools import setup, find_namespace_packages
+
+casm_num_build_jobs = os.getenv("CASM_NUM_BUILD_JOBS")
+if casm_num_build_jobs is None:
+    raise Exception("CASM_NUM_BUILD_JOBS not set")
+ParallelCompile("NPY_NUM_BUILD_JOBS",
+                needs_recompile=naive_recompile).install()
 
 casm_prefix = os.getenv('CASM_PREFIX')
 if casm_prefix is None:
@@ -52,9 +58,11 @@ ext_modules_params = {
 ext_modules = [
     Pybind11Extension("libcasm.sym_info._sym_info", ["src/sym_info.cpp"],
                       **ext_modules_params),
-    Pybind11Extension("libcasm.clusterography._clusterography", ["src/clusterography.cpp"],
-                      **ext_modules_params),
-    Pybind11Extension("libcasm.configuration._configuration", ["src/configuration.cpp"],
+    Pybind11Extension("libcasm.clusterography._clusterography",
+                      ["src/clusterography.cpp"], **ext_modules_params),
+    Pybind11Extension("libcasm.configuration._configuration",
+                      ["src/configuration.cpp"], **ext_modules_params),
+    Pybind11Extension("libcasm.occ_events._occ_events", ["src/occ_events.cpp"],
                       **ext_modules_params),
 ]
 

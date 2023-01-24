@@ -3,9 +3,23 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+// nlohmann::json binding
+#define JSON_USE_IMPLICIT_CONVERSIONS 0
+#include "casm/casm_io/container/stream_io.hh"
+#include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
+#include "casm/configuration/clusterography/ClusterSpecs.hh"
 #include "casm/configuration/clusterography/IntegralCluster.hh"
+#include "casm/configuration/clusterography/io/json/ClusterSpecs_json_io.hh"
+#include "casm/configuration/clusterography/io/json/IntegralClusterOrbitGenerator_json_io.hh"
+#include "casm/configuration/clusterography/io/json/IntegralCluster_json_io.hh"
+#include "casm/configuration/clusterography/orbits.hh"
+#include "casm/configuration/group/Group.hh"
+#include "casm/configuration/sym_info/unitcellcoord_sym_info.hh"
+#include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
+#include "casm/crystallography/UnitCellCoordRep.hh"
+#include "pybind11_json/pybind11_json.hpp"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -52,6 +66,23 @@ clust::IntegralCluster make_cluster_from_list(
     append_site_list(cluster, site);
   }
   return cluster;
+}
+
+clust::ClusterSpecs make_cluster_specs(
+    std::shared_ptr<xtal::BasicStructure const> const &prim,
+    std::shared_ptr<clust::SymGroup const> const &generating_group,
+    std::vector<double> max_length,
+    std::vector<clust::IntegralClusterOrbitGenerator> custom_generators,
+    std::optional<clust::IntegralCluster> phenomenal,
+    bool include_phenomenal_sites, std::vector<double> cutoff_radius) {
+  clust::ClusterSpecs cluster_specs(prim, generating_group);
+  cluster_specs.max_length = max_length;
+  cluster_specs.custom_generators = custom_generators;
+  cluster_specs.site_filter = clust::dof_sites_filter();
+  cluster_specs.phenomenal = phenomenal;
+  cluster_specs.include_phenomenal_sites = include_phenomenal_sites;
+  cluster_specs.cutoff_radius = cutoff_radius;
+  return cluster_specs;
 }
 
 }  // namespace CASMpy
@@ -156,7 +187,414 @@ PYBIND11_MODULE(_clusterography, m) {
              Eigen::Vector3l const &translation) {
             return cluster -= translation;
           },
-          "Translate a cluster by subtracting unit cell indices");
+          "Translate a cluster by subtracting unit cell indices")
+      .def(py::self < py::self, "Compares via lexicographical order of sites")
+      .def(py::self <= py::self, "Compares via lexicographical order of sites")
+      .def(py::self > py::self, "Compares via lexicographical order of sites")
+      .def(py::self >= py::self, "Compares via lexicographical order of sites")
+      .def(py::self == py::self, "True if clusters are equal")
+      .def(py::self != py::self, "True if clusters are not equal")
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data,
+             xtal::BasicStructure const &prim) -> clust::IntegralCluster {
+            jsonParser json{data};
+            return jsonConstructor<clust::IntegralCluster>::from_json(json,
+                                                                      prim);
+          },
+          R"pbdoc(
+          Construct an Cluster from a Python dict
+
+          Parameters
+          ----------
+          data : dict
+              The serialized Cluster
+
+          xtal_prim : libcasm.xtal.Prim
+              The :class:`~libcasm.xtal.Prim`
+
+          Returns
+          -------
+          cluster : libcasm.clusterography.Cluster
+              The Cluster
+          )pbdoc",
+          py::arg("data"), py::arg("prim"))
+      .def(
+          "to_dict",
+          [](clust::IntegralCluster const &cluster,
+             xtal::BasicStructure const &prim) -> nlohmann::json {
+            jsonParser json;
+            to_json(cluster, json, prim);
+            return static_cast<nlohmann::json>(json);
+          },
+          R"pbdoc(
+          Represent the Cluster as a Python dict
+
+          Parameters
+          ----------
+          xtal_prim : libcasm.xtal.Prim
+              The :class:`~libcasm.xtal.Prim`
+
+          Returns
+          -------
+          data : dict
+              The Cluster as a Python dict
+          )pbdoc",
+          py::arg("xtal_prim"));
+
+  py::class_<clust::IntegralClusterOrbitGenerator>(m, "ClusterOrbitGenerator",
+                                                   R"pbdoc(
+      A cluster of IntegralSiteCoordinate
+      )pbdoc")
+      .def(py::init<clust::IntegralCluster const &, bool>(),
+           py::arg("prototype"), py::arg("include_subclusters") = true,
+           R"pbdoc(
+
+      Parameters
+      ----------
+      prototype: Cluster
+          A prototype cluster
+      include_subclusters: bool
+          If True, include subcluster orbits
+      )pbdoc")
+      //
+      .def_static(
+          "from_list",
+          [](const nlohmann::json &data, xtal::BasicStructure const &prim)
+              -> std::vector<clust::IntegralClusterOrbitGenerator> {
+            jsonParser json{data};
+            InputParser<std::vector<clust::IntegralClusterOrbitGenerator>>
+                parser(json, prim);
+            std::runtime_error error_if_invalid{
+                "Error in "
+                "libcasm.clusterography.ClusterOrbitGenerator.from_list"};
+            report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+            return *parser.value;
+          },
+          R"pbdoc(
+          Construct a list of ClusterOrbitGenerator from a list of Python dict
+
+          Parameters
+          ----------
+          data : list[dict]
+              The serialized list of ClusterOrbitGenerator
+
+          xtal_prim : libcasm.xtal.Prim
+              The :class:`~libcasm.xtal.Prim`
+
+          Returns
+          -------
+          orbit_generators : list[ClusterOrbitGenerator]
+              The orbit generators
+          )pbdoc",
+          py::arg("data"), py::arg("prim"))
+      .def(
+          "to_dict",
+          [](clust::IntegralClusterOrbitGenerator const &orbit_generator,
+             xtal::BasicStructure const &prim) -> nlohmann::json {
+            jsonParser json;
+            to_json(orbit_generator, json, prim);
+            return static_cast<nlohmann::json>(json);
+          },
+          R"pbdoc(
+          Represent the ClusterOrbitGenerator as a Python dict
+
+          Parameters
+          ----------
+          xtal_prim : libcasm.xtal.Prim
+              The :class:`~libcasm.xtal.Prim`
+
+          Returns
+          -------
+          data : dict
+              The ClusterOrbitGenerator as a Python dict
+          )pbdoc",
+          py::arg("xtal_prim"));
+
+  py::class_<clust::ClusterSpecs>(m, "ClusterSpecs",
+                                  R"pbdoc(
+      Specifications for generating orbits of clusters
+      )pbdoc")
+      .def(py::init(&make_cluster_specs),
+           R"pbdoc(
+      Construct ClusterSpecs
+
+      Parameters
+      ----------
+      xtal_prim : libcasm.xtal.Prim
+          The :class:`~libcasm.xtal.Prim`
+      generating_group: libcasm.sym_info.SymGroup
+          The group used to generate orbits of equivalent clusters
+      max_length: list[float]=[]
+          The maximum site-to-site distance to allow in clusters, by number
+          of sites in the cluster. Example: `[0.0, 0.0, 5.0, 4.0]` specifies
+          that pair clusters up to distance 5.0 and triplet clusters up to
+          distance 4.0 should be included. The null cluster and point
+          cluster values (elements 0 and 1) are arbitrary.
+      custom_generators: list[ClusterOrbitGenerator]=[]
+          Specifies clusters that should be uses to construct orbits
+          regardless of the max_length or cutoff_radius parameters
+      phenomenal: Optional[Cluster] = None
+          For local clusters, specifies the sites about which local-clusters
+          are generated.
+      include_phenomenal_sites: bool = False
+          For local clusters, if True, the phenomenal cluster sites are
+          included in the local-clusters.
+      cutoff_radius: list[float]
+          For local clusters, the maximum distance of sites from any
+          phenomenal cluster site to include in the local environment, by
+          number of sites in the cluster. The null cluster value
+          (element 0) is arbitrary.
+      )pbdoc",
+           py::arg("xtal_prim"), py::arg("generating_group"),
+           py::arg("max_length") = std::vector<double>{},
+           py::arg("custom_generators") =
+               std::vector<clust::IntegralClusterOrbitGenerator>{},
+           py::arg("phenomenal") = std::nullopt,
+           py::arg("include_phenomenal_sites") = false,
+           py::arg("cutoff_radius") = std::vector<double>{})
+      .def(
+          "is_local",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            return cluster_specs.phenomenal.has_value();
+          },
+          "Return True if ClusterSpecs will generate local-cluster orbits")
+      .def(
+          "make_orbits",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            // construct
+            std::vector<std::set<clust::IntegralCluster>> _orbits;
+            if (cluster_specs.phenomenal.has_value()) {
+              // local clusters
+              auto symgroup_rep = sym_info::make_unitcellcoord_symgroup_rep(
+                  cluster_specs.generating_group->element, *cluster_specs.prim);
+              _orbits = make_local_orbits(
+                  cluster_specs.prim, symgroup_rep, cluster_specs.site_filter,
+                  cluster_specs.max_length, cluster_specs.custom_generators,
+                  cluster_specs.phenomenal.value(), cluster_specs.cutoff_radius,
+                  cluster_specs.include_phenomenal_sites);
+            } else {
+              // prim periodic clusters
+              auto generating_group_unitcellcoord_symgroup_rep =
+                  sym_info::make_unitcellcoord_symgroup_rep(
+                      cluster_specs.generating_group->element,
+                      *cluster_specs.prim);
+              _orbits = make_prim_periodic_orbits(
+                  cluster_specs.prim,
+                  generating_group_unitcellcoord_symgroup_rep,
+                  cluster_specs.site_filter, cluster_specs.max_length,
+                  cluster_specs.custom_generators);
+            }
+
+            // copy
+            std::vector<std::vector<clust::IntegralCluster>> orbits;
+            for (Index i = 0; i < _orbits.size(); ++i) {
+              orbits.emplace_back(_orbits[i].begin(), _orbits[i].end());
+            }
+            return orbits;
+          },
+          R"pbdoc(
+          Construct cluster orbits
+
+          Returns
+          -------
+          orbits: list[list[Cluster]]
+              A list of cluster orbits, `orbits[i]` is the i-th orbit. If a
+              phenomenal cluster is included in the ClusterSpecs, the resulting
+              orbits are local-cluster orbits, otherwise they are periodic.
+         )pbdoc")
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data,
+             std::shared_ptr<xtal::BasicStructure const> const &prim,
+             std::shared_ptr<clust::SymGroup const> const &prim_factor_group,
+             std::vector<xtal::UnitCellCoordRep> const
+                 &unitcellcoord_symgroup_rep) -> clust::ClusterSpecs {
+            jsonParser json{data};
+            InputParser<clust::ClusterSpecs> parser(
+                json, prim, prim_factor_group, unitcellcoord_symgroup_rep);
+            std::runtime_error error_if_invalid{
+                "Error in libcasm.clusterography.ClusterSpecs.from_dict"};
+            report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+            return *parser.value;
+          },
+          R"pbdoc(
+          Construct ClusterSpecs from a Python dict
+
+          See the CASM documentation for the `ClusterSpecs format`_.
+
+          .. _`ClusterSpecs format`: https://prisms-center.github.io/CASMcode_docs/formats/casm/clusterography/ClusterSpecs/
+
+          Parameters
+          ----------
+          data : list[dict]
+              The serialized list of ClusterOrbitGenerator
+
+          xtal_prim : libcasm.xtal.Prim
+              The :class:`~libcasm.xtal.Prim`
+
+          prim_factor_group: libcasm.sym_info.SymGroup
+              The prim factor group
+
+          integral_site_coordinate_symgroup_rep: list[libcasm.xtal.IntegralSiteCoordinateRep]
+              Symmetry representation for IntegralSiteCoordinate tranformation
+
+          Returns
+          -------
+          cluster_specs : ClusterSpecs
+              The ClusterSpecs object
+          )pbdoc",
+          py::arg("data"), py::arg("xtal_prim"), py::arg("prim_factor_group"),
+          py::arg("integral_site_coordinate_symgroup_rep"))
+      .def(
+          "to_dict",
+          [](clust::ClusterSpecs const &cluster_specs,
+             xtal::BasicStructure const &prim) -> nlohmann::json {
+            jsonParser json;
+            to_json(cluster_specs, json, prim);
+            return static_cast<nlohmann::json>(json);
+          },
+          R"pbdoc(
+          Represent the ClusterSpecs as a Python dict
+
+          Parameters
+          ----------
+          xtal_prim : libcasm.xtal.Prim
+              The :class:`~libcasm.xtal.Prim`
+
+          Returns
+          -------
+          data : dict
+              The ClusterSpecs as a Python dict
+          )pbdoc",
+          py::arg("xtal_prim"));
+
+  m.def(
+      "make_integral_site_coordinate_symgroup_rep",
+      [](std::vector<xtal::SymOp> const &group_elements,
+         xtal::BasicStructure const &xtal_prim) {
+        return sym_info::make_unitcellcoord_symgroup_rep(group_elements,
+                                                         xtal_prim);
+      },
+      R"pbdoc(
+      Construct a group representation of IntegralSiteCoordinateRep
+
+      Parameters
+      ----------
+      group_elements: list[libcasm.xtal.SymOp]
+          Symmetry group elements
+
+      xtal_prim: libcasm.xtal.Prim
+          The Prim structure
+
+      Returns
+      -------
+      integral_site_coordinate_symgroup_rep: list[IntegralSiteCoordinateRep]
+          Symmetry group representation for transforming IntegralSiteCoordinate.
+        )pbdoc",
+      py::arg("group_elements"), py::arg("xtal_prim"));
+
+  m.def(
+      "make_prim_periodic_orbit",
+      [](clust::IntegralCluster const &orbit_element,
+         std::vector<xtal::UnitCellCoordRep> const
+             &unitcellcoord_symgroup_rep) {
+        std::set<clust::IntegralCluster> orbit =
+            make_prim_periodic_orbit(orbit_element, unitcellcoord_symgroup_rep);
+        return std::vector<clust::IntegralCluster>(orbit.begin(), orbit.end());
+      },
+      R"pbdoc(
+      Construct an orbit of Cluster
+
+      The orbit of Cluster is all distinct Cluster that are equivalent
+      under the provided symmetry group, including one element for all
+      Cluster that are equivalent according to prim translational symmetry.
+
+      Parameters
+      ----------
+      orbit_element : OccEvent
+          One Cluster in the orbit
+
+      integral_site_coordinate_symgroup_rep: list[IntegralSiteCoordinateRep]
+          Symmetry group representation.
+
+      Returns
+      -------
+      orbit : list[Cluster]
+          The orbit of Cluster
+      )pbdoc",
+      py::arg("orbit_element"),
+      py::arg("integral_site_coordinate_symgroup_rep"));
+
+  m.def(
+      "make_cluster_group",
+      [](clust::IntegralCluster cluster,
+         std::shared_ptr<clust::SymGroup const> const &group,
+         xtal::Lattice const &lattice,
+         std::vector<xtal::UnitCellCoordRep> const
+             &unitcellcoord_symgroup_rep) {
+        return make_cluster_group(cluster, group, lattice.lat_column_mat(),
+                                  unitcellcoord_symgroup_rep);
+      },
+      R"pbdoc(
+      Construct the subgroup which leaves a Cluster invariant
+
+      Parameters
+      ----------
+      cluster : Cluster
+          The Cluster that remains invariant after transformation by
+          subgroup elements.
+
+      group: list[libcasm.xtal.SymOp]
+          The super group.
+
+      lattice: xtal.Lattice
+          The lattice.
+
+      integral_site_coordinate_symgroup_rep: list[xtal.IntegralSiteCoordinateRep]
+          Representation of `group` for transforming IntegralSiteCoordinateRep.
+
+      Returns
+      -------
+      cluster_group : libcasm.sym_info.SymGroup
+          The subgroup which leaves the cluster invariant
+      )pbdoc",
+      py::arg("cluster"), py::arg("group"), py::arg("lattice"),
+      py::arg("integral_site_coordinate_symgroup_rep"));
+
+  m.def(
+      "make_local_orbit",
+      [](clust::IntegralCluster const &orbit_element,
+         std::vector<xtal::UnitCellCoordRep> const
+             &unitcellcoord_symgroup_rep) {
+        std::set<clust::IntegralCluster> orbit =
+            make_prim_periodic_orbit(orbit_element, unitcellcoord_symgroup_rep);
+        return std::vector<clust::IntegralCluster>(orbit.begin(), orbit.end());
+      },
+      R"pbdoc(
+      Construct an orbit of Cluster
+
+      The orbit of Cluster is all distinct Cluster that are equivalent
+      under the provided symmetry group, which is expected to be
+      constructed such that the phenomenal cluster is invariant, as
+      by :func:`~libcasm.clusterography.make_cluster_group`.
+
+      Parameters
+      ----------
+      orbit_element : OccEvent
+          One Cluster in the orbit
+
+      integral_site_coordinate_symgroup_rep: list[IntegralSiteCoordinateRep]
+          Symmetry group representation, expected to leave the phenomenal
+          cluster invariant.
+
+      Returns
+      -------
+      orbit : list[Cluster]
+          The orbit of Cluster
+      )pbdoc",
+      py::arg("orbit_element"),
+      py::arg("integral_site_coordinate_symgroup_rep"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

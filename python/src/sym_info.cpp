@@ -6,6 +6,7 @@
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/group/Group.hh"
 #include "casm/configuration/sym_info/factor_group.hh"
+#include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/SymType.hh"
 
 #define STRINGIFY(x) #x
@@ -148,6 +149,22 @@ PYBIND11_MODULE(_sym_info, m) {
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
              Index i) { return symgroup->inv(i); },
           py::arg("i"), "Return the index of the inverse element.");
+
+  m.def("make_factor_group", &sym_info::make_factor_group,
+        R"pbdoc(
+    Construct the factor group as a SymGroup
+
+    Parameters
+    ----------
+    xtal_prim: libcasm.xtal.Prim
+        The Prim structure
+
+    Returns
+    -------
+    factor_group : libcasm.sym_info.SymGroup
+        The group which leaves xtal_prim invariant
+    )pbdoc",
+        py::arg("xtal_prim"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

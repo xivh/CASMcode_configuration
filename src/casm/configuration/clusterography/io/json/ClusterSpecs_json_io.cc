@@ -111,14 +111,14 @@ void parse(
   }
   if (phenomenal.has_value()) {
     // need to get elements consistent with phenomenal cluster invariance
-    std::vector<xtal::SymOp> element;
-
     std::vector<xtal::SymOp> cluster_group_elements;
     for (Index i : head_group_index) {
       cluster_group_elements.push_back(clust::make_cluster_group_element(
           *phenomenal, prim->lattice().lat_column_mat(),
           prim_factor_group->element[i], unitcellcoord_symgroup_rep[i]));
     }
+    generating_group = std::make_shared<clust::SymGroup const>(
+        prim_factor_group, cluster_group_elements, head_group_index);
   } else {
     std::vector<xtal::SymOp> element;
     for (Index i : head_group_index) {

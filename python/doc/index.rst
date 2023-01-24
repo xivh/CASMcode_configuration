@@ -12,6 +12,7 @@ The libcasm.configuration module is a Python interface to the classes and method
 - A class for representing an occupation modifying event for kinetic Monte Carlo calculations
 - Methods for finding the symmetry of events and generating orbits of symmetrically equivalent events
 - Methods for enumerating unique events
+- Methods for enumerating local environments around events
 
 
 Documentation

@@ -11,4 +11,6 @@ libcasm package
 
     libcasm.clusterography
     libcasm.configuration
+    libcasm.enumerate
+    libcasm.occ_events
     libcasm.sym_info
