@@ -7,9 +7,14 @@ import libcasm.xtal as xtal
 
 def test_make_all_distinct_local_perturbations(fcc_1NN_A_Va_event):
 
+    # setup: FCC prim, 1NN A-Va exchange event
     xtal_prim, phenomenal_occ_event = fcc_1NN_A_Va_event
     prim = config.Prim(xtal_prim)
     system = occ_events.OccSystem(xtal_prim)
+
+    # make local-clusters to perturb to generate local environments:
+    # null and point clusters only, 1NN sites to the event sites
+    # expect null orbit and 4 point cluster orbits
     cluster_specs = occ_events.make_occevent_cluster_specs(
         xtal_prim=xtal_prim,
         phenomenal_occ_event=phenomenal_occ_event,
@@ -18,24 +23,26 @@ def test_make_all_distinct_local_perturbations(fcc_1NN_A_Va_event):
     orbits = cluster_specs.make_orbits()
     local_clusters = [orbit[0] for orbit in orbits]
 
+    # conventional 4-site FCC
     T_motif = np.array([
         [-1, 1, 1],
         [1, -1, 1],
         [1, 1, -1],
     ])
     motif_supercell = config.Supercell(prim, T_motif)
-    S_motif = motif_supercell.superlattice().column_vector_matrix()
-    print(S_motif)
     motif = config.Configuration(motif_supercell)
 
-    T = T_motif * 3
-    supercell = config.Supercell(prim, T)
-    S = supercell.superlattice().column_vector_matrix()
-    print(S)
+    # supercell to fill: 3x3x3 of the conventional FCC
+    supercell = config.Supercell(prim, T_motif * 3)
 
+    # generate unique perturbation configurations
     configurations = enum.make_all_distinct_local_perturbations(
         supercell, phenomenal_occ_event, motif, local_clusters)
 
+    # check the results:
+    # expect 9 results:
+    # - 1 is the unperturbed background
+    # - + 4*2: for B or Va on the point cluster sites
     for i, c in enumerate(configurations):
         print(i)
 

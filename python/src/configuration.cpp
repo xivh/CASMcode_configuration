@@ -117,6 +117,7 @@ PYBIND11_MODULE(_configuration, m) {
 
     )pbdoc";
   py::module::import("libcasm.xtal");
+  py::module::import("libcasm.clexulator");
   py::module::import("libcasm.sym_info");
 
   py::class_<config::Prim, std::shared_ptr<config::Prim>>(m, "Prim", R"pbdoc(
@@ -543,6 +544,11 @@ PYBIND11_MODULE(_configuration, m) {
       A data structure encapsulating configuration DoF values and all
       information necessary to apply supercell factor group operations.
 
+      Notes
+      -----
+
+      - Configuration may be copied with `copy.copy` or `copy.deepcopy`.
+
     )pbdoc");
 
   // SupercellSymOp -- define functions
@@ -684,6 +690,17 @@ PYBIND11_MODULE(_configuration, m) {
           },
           "Returns the internal shared "
           ":class:`~libcasm.configuration.Supercell`")
+      .def(
+          "set_dof_values",
+          [](config::Configuration &self,
+             clexulator::ConfigDoFValues const &other) {
+            self.dof_values = other;
+          },
+          "Assign all values from other", py::arg("other"))
+      .def(
+          "dof_values",
+          [](config::Configuration const &self) { return self.dof_values; },
+          "Return a copy of ConfigDoFValues")
       .def(
           "occupation",
           [](config::Configuration const &configuration) {
@@ -898,7 +915,14 @@ PYBIND11_MODULE(_configuration, m) {
       .def(py::self != py::self,
            "True if configurations are equal, or approximately equal up the "
            "lattice tolerance if there continuous DoF. Only configurations "
-           "with the same prim can be compared.");
+           "with the same prim can be compared.")
+      .def("__copy__",
+           [](config::Configuration const &self) {
+             return config::Configuration(self);
+           })
+      .def("__deepcopy__", [](config::Configuration const &self) {
+        return config::Configuration(self);
+      });
 
   m.def(
       "apply",

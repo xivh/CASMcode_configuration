@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 from sortedcontainers import SortedList
 import libcasm.xtal as xtal
+import libcasm.clexulator as casmclex
 import libcasm.configuration as config
 
 
@@ -17,6 +18,22 @@ def test_configuration_constructor(simple_cubic_binary_prim):
     configuration = config.Configuration(supercell)
     assert type(configuration) == config.Configuration
 
+def test_configuration_dof_values(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    T = np.array([
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+    ])
+    supercell = config.make_canonical_supercell(config.Supercell(prim, T))
+    configuration = config.Configuration(supercell)
+    dof_values = configuration.dof_values()
+    assert type(dof_values) == casmclex.ConfigDoFValues
+
+    # Configuration.dof_values() returns a *copy*
+    assert configuration.occ(0) == 0
+    configuration.dof_values().set_occupation([1])
+    assert configuration.occ(0) == 0
 
 def test_configuration_occupation(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
@@ -100,3 +117,19 @@ def test_configuration_apply(simple_cubic_binary_prim):
         i += 1
     assert i == 48 * 64
     assert len(equivs) == 192
+
+def test_copy_configuration(simple_cubic_binary_prim):
+    import copy
+    prim = config.Prim(simple_cubic_binary_prim)
+    T = np.array([
+        [4, 0, 0],
+        [0, 4, 0],
+        [0, 0, 4],
+    ])
+    supercell = config.make_canonical_supercell(config.Supercell(prim, T))
+    configuration1 = config.Configuration(supercell)
+    configuration2 = copy.copy(configuration1)
+
+    assert isinstance(configuration1, config.Configuration)
+    assert isinstance(configuration2, config.Configuration)
+    assert configuration2 is not configuration1

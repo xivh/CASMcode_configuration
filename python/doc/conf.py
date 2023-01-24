@@ -36,6 +36,10 @@ intersphinx_mapping = {
     ('../../../../../CASMcode_crystallography/python/doc/_build/html',
      ('../../../CASMcode_crystallography/python/doc/_build/html/objects.inv',
       None)),
+    'clexulator':
+    ('../../../../../CASMcode_clexulator/python/doc/_build/html',
+     ('../../../CASMcode_clexulator/python/doc/_build/html/objects.inv',
+      None)),
 }
 
 # Add any Sphinx extension module names here, as strings. They can be
