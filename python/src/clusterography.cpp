@@ -11,6 +11,7 @@
 #include "casm/configuration/clusterography/ClusterSpecs.hh"
 #include "casm/configuration/clusterography/IntegralCluster.hh"
 #include "casm/configuration/clusterography/io/json/ClusterSpecs_json_io.hh"
+#include "casm/configuration/clusterography/io/json/EquivalentsInfo_json_io.hh"
 #include "casm/configuration/clusterography/io/json/IntegralClusterOrbitGenerator_json_io.hh"
 #include "casm/configuration/clusterography/io/json/IntegralCluster_json_io.hh"
 #include "casm/configuration/clusterography/orbits.hh"
@@ -595,6 +596,48 @@ PYBIND11_MODULE(_clusterography, m) {
       )pbdoc",
       py::arg("orbit_element"),
       py::arg("integral_site_coordinate_symgroup_rep"));
+
+  m.def(
+      "equivalents_info_from_dict",
+      [](const nlohmann::json &data,
+         xtal::BasicStructure const &prim) -> py::tuple {
+        jsonParser json{data};
+        InputParser<clust::EquivalentsInfo> parser(json, prim);
+        std::runtime_error error_if_invalid{
+            "Error in equivalents_info_from_dict"};
+        report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+        return py::make_tuple(parser.value->phenomenal_clusters,
+                              parser.value->equivalent_generating_op_indices);
+      },
+      R"pbdoc(
+    Read the contents of an "equivalents_info.json" file
+
+    The "equivalents_info.json" file is written when a local basis set
+    is generated to specify the orientation and translational position
+    of the phenomenal cluster and local basis set.
+
+    Parameters
+    ----------
+    data : dict
+        The serialized equivalents info
+
+    xtal_prim : libcasm.xtal.Prim
+        The :class:`~libcasm.xtal.Prim`
+
+    Returns
+    -------
+    phenomenal_clusters, equivalent_generating_op_indices :
+
+        phenomenal_clusters : list[Cluster]
+            The phenomenal clusters of the local basis sets
+
+        equivalent_generating_op_indices : list[int]
+            Indices of the factor group operations that
+            generate the phenomenal clusters from the
+            prototype.
+
+    )pbdoc",
+      py::arg("data"), py::arg("prim"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

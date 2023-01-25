@@ -20,6 +20,7 @@
 #include "casm/configuration/occ_events/io/json/OccEvent_json_io.hh"
 #include "casm/configuration/occ_events/io/json/OccSystem_json_io.hh"
 #include "casm/configuration/occ_events/orbits.hh"
+#include "casm/configuration/sym_info/factor_group.hh"
 #include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/BasicStructureTools.hh"
 

@@ -12,10 +12,11 @@ class jsonParser;
 
 /// \brief Output minimal "equivalents info" to JSON
 jsonParser &to_json(clust::EquivalentsInfo const &equivalents_info,
-                    jsonParser &json);
+                    jsonParser &json, xtal::BasicStructure const &prim);
 
 /// \brief Parse minimal clexulator::EquivalentsInfo from JSON
-void parse(InputParser<clust::EquivalentsInfo> &parser);
+void parse(InputParser<clust::EquivalentsInfo> &parser,
+           xtal::BasicStructure const &prim);
 
 }  // namespace CASM
 

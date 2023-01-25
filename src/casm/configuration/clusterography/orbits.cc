@@ -138,7 +138,8 @@ xtal::SymOp make_equivalence_map_op(
 ///     phenomenal clusters from a known prototype and
 ///     generating ops
 ///
-/// \param prototype The prototype cluster
+/// \param prototype The prototype cluster that equivalent
+///     generating operations are applied to
 /// \param phenomenal_clusters The phenomenal clusters of the local
 ///     basis sets
 /// \param equivalent_generating_op_indices Factor group operation
@@ -160,7 +161,7 @@ std::vector<xtal::UnitCell> make_phenomenal_generating_translations(
   for (Index fg_index : equivalent_generating_op_indices) {
     auto const &unitcellcoord_rep = unitcellcoord_symgroup_rep[fg_index];
     xtal::UnitCell translation = equivalence_map_translation(
-        unitcellcoord_rep, phenomenal_clusters[0], phenomenal_clusters[i]);
+        unitcellcoord_rep, prototype, phenomenal_clusters[i]);
     translations.push_back(translation);
     ++i;
   }

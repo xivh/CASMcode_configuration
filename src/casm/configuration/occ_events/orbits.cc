@@ -87,7 +87,7 @@ std::vector<OccEvent> make_prim_periodic_equivalents(
 ///
 /// \returns phenomenal_occevent The phenomenal OccEvent, which
 ///     have the same cluster sites as the phenomenal clusters
-///     of the local basis sets
+///     of the local basis sets, in standardized form.
 std::vector<OccEvent> make_phenomenal_occevent(
     OccEvent const &prototype,
     std::vector<Index> const &equivalent_generating_op_indices,
@@ -102,6 +102,9 @@ std::vector<OccEvent> make_phenomenal_occevent(
     phenomenal_occevent.push_back(copy_apply(occevent_op, prototype) +
                                   translations[i]);
     ++i;
+  }
+  for (auto &occ_event : phenomenal_occevent) {
+    standardize(occ_event);
   }
   return phenomenal_occevent;
 }

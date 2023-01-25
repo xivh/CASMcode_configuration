@@ -26,6 +26,13 @@ std::vector<OccEvent> make_prim_periodic_equivalents(
     OccEvent const &prototype, std::vector<Index> const &symop_indices,
     std::vector<OccEventRep> const &occevent_symgroup_rep);
 
+/// \brief Make the phenomenal OccEvent, with correct translation
+std::vector<OccEvent> make_phenomenal_occevent(
+    OccEvent const &prototype,
+    std::vector<Index> const &equivalent_generating_op_indices,
+    std::vector<xtal::UnitCell> const &phenomenal_generating_translations,
+    std::vector<OccEventRep> const &occevent_symgroup_rep);
+
 /// \brief Make groups that leave OccEvent orbit elements invariant
 std::vector<std::shared_ptr<SymGroup const>> make_occevent_groups(
     std::set<OccEvent> const &orbit,
