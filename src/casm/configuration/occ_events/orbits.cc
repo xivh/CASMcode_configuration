@@ -73,6 +73,39 @@ std::vector<OccEvent> make_prim_periodic_equivalents(
   return equivalents;
 }
 
+/// \brief Make the phenomenal OccEvent, with correct translation
+///
+/// \param prototype The prototype OccEvent
+/// \param equivalent_generating_op_indices Factor group operation
+///     indices of the symmetry operations used to generate
+///     equivalent OccEvent and associated local basis sets
+/// \param phenomenal_generating_translations The proper
+///     translations (applied after factor group op) for generating
+///     OccEvent on the phenomenal cluster sites
+/// \param occevent_symgroup_rep Symmetry group representation (as
+///     OccEventRep) of the factor group.
+///
+/// \returns phenomenal_occevent The phenomenal OccEvent, which
+///     have the same cluster sites as the phenomenal clusters
+///     of the local basis sets
+std::vector<OccEvent> make_phenomenal_occevent(
+    OccEvent const &prototype,
+    std::vector<Index> const &equivalent_generating_op_indices,
+    std::vector<xtal::UnitCell> const &phenomenal_generating_translations,
+    std::vector<OccEventRep> const &occevent_symgroup_rep) {
+  std::vector<OccEvent> phenomenal_occevent;
+  auto const &translations = phenomenal_generating_translations;
+  Index i = 0;
+  for (Index fg_index : equivalent_generating_op_indices) {
+    auto const &occevent_op = occevent_symgroup_rep[fg_index];
+    auto const &unitcellcoord_rep = occevent_op.unitcellcoord_rep;
+    phenomenal_occevent.push_back(copy_apply(occevent_op, prototype) +
+                                  translations[i]);
+    ++i;
+  }
+  return phenomenal_occevent;
+}
+
 /// \brief Make groups that leave OccEvent orbit elements invariant
 ///
 /// \param orbit An OccEvent orbit

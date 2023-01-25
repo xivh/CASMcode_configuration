@@ -132,7 +132,40 @@ xtal::SymOp make_equivalence_map_op(
                                   .cast<double>(),
              false) *
          factor_group_op;
-};
+}
+
+/// \brief Determine the translations used to generate known
+///     phenomenal clusters from a known prototype and
+///     generating ops
+///
+/// \param prototype The prototype cluster
+/// \param phenomenal_clusters The phenomenal clusters of the local
+///     basis sets
+/// \param equivalent_generating_op_indices Factor group operation
+///     indices of the symmetry operations used to generate
+///     the phenomenal clusters
+/// \param unitcellcoord_symgroup_rep Symmetry group representation
+///     of the factor group.
+///
+/// \returns translations The proper translations (applied after
+///     factor group op) for generating the phenomenal clusters
+///
+std::vector<xtal::UnitCell> make_phenomenal_generating_translations(
+    clust::IntegralCluster const &prototype,
+    std::vector<clust::IntegralCluster> const &phenomenal_clusters,
+    std::vector<Index> const &equivalent_generating_op_indices,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  std::vector<xtal::UnitCell> translations;
+  Index i = 0;
+  for (Index fg_index : equivalent_generating_op_indices) {
+    auto const &unitcellcoord_rep = unitcellcoord_symgroup_rep[fg_index];
+    xtal::UnitCell translation = equivalence_map_translation(
+        unitcellcoord_rep, phenomenal_clusters[0], phenomenal_clusters[i]);
+    translations.push_back(translation);
+    ++i;
+  }
+  return translations;
+}
 
 /// \brief Make groups that leave cluster orbit elements invariant
 ///

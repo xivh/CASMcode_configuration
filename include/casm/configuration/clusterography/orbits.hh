@@ -46,6 +46,15 @@ xtal::SymOp make_equivalence_map_op(
     Eigen::Matrix3d const &lat_column_mat, xtal::SymOp const &factor_group_op,
     xtal::UnitCellCoordRep const &unitcellcoord_rep);
 
+/// \brief Determine the translations used to generate known
+///     phenomenal clusters from a known prototype and
+///     generating ops
+std::vector<xtal::UnitCell> make_phenomenal_generating_translations(
+    clust::IntegralCluster const &prototype,
+    std::vector<clust::IntegralCluster> const &phenomenal_clusters,
+    std::vector<Index> const &equivalent_generating_op_indices,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
+
 /// \brief Make groups that leave cluster orbit elements invariant
 std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
     std::set<IntegralCluster> const &orbit,
@@ -74,6 +83,17 @@ std::vector<std::set<std::set<Index>>> make_orbits_as_indices(
     xtal::UnitCellCoordIndexConverter const &converter);
 
 // --- Local-cluster orbits ---
+
+/// \brief Minimal "equivalents info" specify the phenomenal
+///     clusters of equivalent local basis sets
+struct EquivalentsInfo {
+  /// \brief The phenomenal clusters
+  std::vector<clust::IntegralCluster> phenomenal_clusters;
+
+  /// \brief Indices of the factor group operations that
+  ///     generate the equivalent phenomenal clusters
+  std::vector<Index> equivalent_generating_op_indices;
+};
 
 /// \brief Copy cluster and apply symmetry operation transformation
 IntegralCluster local_integral_cluster_copy_apply(
