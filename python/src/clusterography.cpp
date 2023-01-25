@@ -449,26 +449,19 @@ PYBIND11_MODULE(_clusterography, m) {
           py::arg("integral_site_coordinate_symgroup_rep"))
       .def(
           "to_dict",
-          [](clust::ClusterSpecs const &cluster_specs,
-             xtal::BasicStructure const &prim) -> nlohmann::json {
+          [](clust::ClusterSpecs const &cluster_specs) -> nlohmann::json {
             jsonParser json;
-            to_json(cluster_specs, json, prim);
+            to_json(cluster_specs, json);
             return static_cast<nlohmann::json>(json);
           },
           R"pbdoc(
           Represent the ClusterSpecs as a Python dict
 
-          Parameters
-          ----------
-          xtal_prim : libcasm.xtal.Prim
-              The :class:`~libcasm.xtal.Prim`
-
           Returns
           -------
           data : dict
               The ClusterSpecs as a Python dict
-          )pbdoc",
-          py::arg("xtal_prim"));
+          )pbdoc");
 
   m.def(
       "make_integral_site_coordinate_symgroup_rep",

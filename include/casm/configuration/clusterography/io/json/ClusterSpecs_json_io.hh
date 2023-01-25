@@ -14,8 +14,7 @@ struct jsonConstructor;
 class jsonParser;
 
 /// \brief Write ClusterSpecs to JSON object
-jsonParser &to_json(clust::ClusterSpecs const &cluster_specs, jsonParser &json,
-                    xtal::BasicStructure const &prim);
+jsonParser &to_json(clust::ClusterSpecs const &cluster_specs, jsonParser &json);
 
 /// \brief Read from JSON
 void from_json(

@@ -192,8 +192,25 @@ PYBIND11_MODULE(_occ_events, m) {
             return occ_events::OccPosition::molecule(integral_site_coordinate,
                                                      occupant_index);
           },
-          "Construct an OccPosition representing an entire molecule, whether "
-          "single or multi-atom. ",
+          R"pbdoc(
+          Construct an OccPosition representing an entire molecule, whether
+          single or multi-atom.
+
+          This is equivalent to :func:`~libcasm.occ_events.occupant`.
+          )pbdoc",
+          py::arg("integral_site_coordinate"), py::arg("occupant_index"))
+      .def_static(
+          "occupant",
+          [](xtal::UnitCellCoord const &integral_site_coordinate,
+             Index occupant_index) {
+            return occ_events::OccPosition::molecule(integral_site_coordinate,
+                                                     occupant_index);
+          },
+          R"pbdoc(
+          Construct an OccPosition representing the entire occupant.
+
+          This is equivalent to :func:`~libcasm.occ_events.molecule`.
+          )pbdoc",
           py::arg("integral_site_coordinate"), py::arg("occupant_index"))
       .def_static(
           "atom_component",

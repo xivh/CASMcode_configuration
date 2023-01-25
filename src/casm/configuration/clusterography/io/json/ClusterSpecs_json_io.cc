@@ -23,8 +23,8 @@
 namespace CASM {
 
 /// \brief Write ClusterSpecs to JSON object
-jsonParser &to_json(clust::ClusterSpecs const &cluster_specs, jsonParser &json,
-                    xtal::BasicStructure const &prim) {
+jsonParser &to_json(clust::ClusterSpecs const &cluster_specs,
+                    jsonParser &json) {
   // generating_group
   json["generating_group"] = cluster_specs.generating_group->head_group_index;
 
@@ -42,6 +42,8 @@ jsonParser &to_json(clust::ClusterSpecs const &cluster_specs, jsonParser &json,
           cluster_specs.cutoff_radius[i];
     }
   }
+
+  auto const &prim = *cluster_specs.prim;
 
   // orbit_specs
   if (cluster_specs.custom_generators.size()) {
