@@ -173,47 +173,8 @@ PYBIND11_MODULE(_enumerate, m) {
 
   m.def("make_all_distinct_local_perturbations",
         &make_all_distinct_local_perturbations,
-        R"pbdoc(
-      Construct a subgroup which leaves an event invariant
-
-      Parameters
-      ----------
-      supercell : libcasm.configuration.Supercell
-          The supercell in which local environment configurations will
-          be generated.
-
-      occ_event: libcasm.occ_events.OccEvent
-          The occupation event.
-
-      motif: libcasm.configuration.Configuration
-          The motif configuration is tiled into the supercell to generate
-          background configurations. The occ_event is kept in the same position
-          while prim factor group symmetry operations are applied to the motif
-          configuration to generate all symmetrically distinct combinations of
-          the background configuration and occ_event before generating
-          perturbations. Only perfect tilings into the supercell are kept.
-
-      local_clusters: list[list[libcasm.clusterography.Cluster]]
-          Local clusters, on which the occupation variables will be enumerated
-          in order to generate local perturbation configurations. The initial
-          cluster in each local-cluster orbit generated using
-          :func:`~libcasm.occ_events.make_occevent_cluster_specs` is an
-          appropriate input for this parameter. Each local cluster is first used
-          to generated local-cluster orbits without regard to the background
-          congifuration or supercell. Then, the local-clusters that are distinct
-          taking the background configuration and supercell into account are
-          perturbed with each possible occupation.
-
-      Returns
-      -------
-      configurations : libcasm.configuration.Configuration
-          The symmetrically distinct perturbations around the
-          event on the specified local-clusters, in all distinct
-          combinations of the event and motif configuration in
-          the chosen supercell.
-      )pbdoc",
-        py::arg("supercell"), py::arg("occ_event"), py::arg("motif"),
-        py::arg("local_clusters"));
+        "Documented in libcasm.enumerate._methods.py", py::arg("supercell"),
+        py::arg("occ_event"), py::arg("motif"), py::arg("local_clusters"));
 
   m.def("make_occevent_simple_structures", &make_occevent_simple_structures,
         R"pbdoc(
