@@ -3,12 +3,58 @@ import libcasm.occ_events
 import libcasm.clusterography
 import libcasm.enumerate._enumerate as _enumerate
 
+
+def make_occevent_suborbits(
+    supercell: libcasm.configuration.Supercell,
+    occ_event: libcasm.occ_events.OccEvent) -> list[list[libcasm.occ_events.OccEvent]]:
+    r"""Make the sub-orbits of OccEvent in a supercell
+
+    This method generates the sub-orbits that occur due to a supercell that has less symmetry than the prim. Each sub-orbit is made up of OccEvent that are equivalent with respect to the supercell factor group. OccEvent in different sub-orbits are equivalent with respect to the prim factor group, but not the supercell factor group.
+
+    Parameters
+    ----------
+    supercell: ~libcasm.configuration.Supercell
+        The :class:`~libcasm.configuration.Supercell`.
+
+    occ_event: ~libcasm.occ_events.OccEvent
+        The :class:`~libcasm.occ_events.OccEvent`.
+
+    Returns
+    -------
+    suborbits: list[list[~libcasm.occ_events.OccEvent]]
+        The sub-orbits, where `suborbits[i][j]` is the j-th :class:`~libcasm.occ_events.OccEvent` in the i-th sub-orbit.
+    """
+    prim = supercell.prim()
+    prim_factor_group = prim.factor_group()
+    prim_rep = libcasm.occ_events.make_occevent_symgroup_rep(
+        prim_factor_group.elements(), prim.xtal_prim())
+    orbit = libcasm.occ_events.make_prim_periodic_orbit(
+        occ_event, prim_rep)
+
+    def in_any_suborbit(x, suborbits):
+        for suborbit in suborbits:
+            if x in suborbit:
+                return True
+        return False
+
+    suborbits = []
+    scel_factor_group = supercell.factor_group()
+    scel_rep = libcasm.occ_events.make_occevent_symgroup_rep(
+        scel_factor_group.elements(), prim.xtal_prim())
+    for x in orbit:
+        if in_any_suborbit(x, suborbits):
+            continue
+        new_suborbit = libcasm.occ_events.make_prim_periodic_orbit(
+            x, scel_rep)
+        if new_suborbit not in suborbits:
+            suborbits.append(new_suborbit)
+    return suborbits
+
 def make_all_distinct_local_perturbations(
     supercell: libcasm.configuration.Supercell,
     occ_event: libcasm.occ_events.OccEvent,
     motif: libcasm.configuration.Configuration,
-    local_clusters: list[list[libcasm.clusterography.Cluster]],
-    ) -> list[libcasm.configuration.Configuration]:
+    local_clusters: list[list[libcasm.clusterography.Cluster]]) -> list[libcasm.configuration.Configuration]:
     r"""
     Construct distinct local perturbations of a configuration
 
