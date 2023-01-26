@@ -5,7 +5,7 @@ Constructing local-cluster orbits
 Construct a prototype OccEvent
 ------------------------------
 
-To generate local-cluster orbits or local basis functions, one prototype OccEvent from the orbit of symmetrically equivalent OccEvent must be provided. For convenience in checking for unique OccEvent, it is useful to construct an orbit of OccEvent and use the OccEvent that is sorted into the initial position. This can be done as follows:
+To generate local-cluster orbits or local basis functions, one prototype :class:`~libcasm.occ_events.OccEvent` from the orbit of symmetrically equivalent :class:`~libcasm.occ_events.OccEvent` must be provided. For convenience in checking for unique :class:`~libcasm.occ_events.OccEvent`, it is useful to construct an orbit of :class:`~libcasm.occ_events.OccEvent` and use the :class:`~libcasm.occ_events.OccEvent` that is sorted into the initial position. This can be done as follows:
 
 .. code-block:: Python
 
@@ -14,9 +14,6 @@ To generate local-cluster orbits or local basis functions, one prototype OccEven
 
     # Construct the Prim
     xtal_prim = xtal.Prim(...)
-
-    # The OccSystem provides index conversions
-    system = occ_events.OccSystem(xtal_prim)
 
     # Construct one example of the OccEvent
     occ_event = occ_events.OccEvent(...)
@@ -35,39 +32,30 @@ To generate local-cluster orbits or local basis functions, one prototype OccEven
     prototype_occ_event = occevent_orbit[0]
 
 
-Save a prototype OccEvent
--------------------------
+Save/load OccEvent
+------------------
 
-A standard location to save prototype OccEvent for future use is in:
+A standard location to save a prototype event for future use is in:
 
 - <CASM project directory> / events / event.<name_of_event> / event.json
 
+The functions :func:`~libcasm.occ_events.save_occevent` and :func:`~libcasm.occ_events.load_occevent` methods can be used to save :class:`~libcasm.occ_events.OccEvent` to the standard location and later load them:
+
 .. code-block:: Python
 
-    # system: occ_events.OccSystem
+    # root: pathlib.path
     # prototype_occ_event: Prototype OccEvent
 
-    # Save a prototype OccEvent:
-    event_path = pathlib.Path("events") / ("event" + name_of_event) / "event.json"
-    with open(event_path, 'w') as f:
-        data = prototype_occ_event.to_dict(system)
-        json.dump(data, f)
+    # The OccSystem provides index conversions
+    system = occ_events.OccSystem(xtal_prim)
 
+    # Save an OccEvent:
+    occ_events.save_occevent(root, "1NN_A_Va", prototype_occ_event, system)
 
-Load a prototype OccEvent
--------------------------
+    # Load an OccEvent:
+    loaded_occ_event = occ_events.load_occevent(root, "1NN_A_Va", system)
 
-Saved prototype events can then be loaded with:
-
-.. code-block:: Python
-
-    # system: occ_events.OccSystem
-
-    # Load a prototype OccEvent:
-    event_path = pathlib.Path("events") / ("event" + name_of_event) / "event.json"
-    with open(event_path, 'r') as f:
-        data = json.load(f)
-        prototype_occ_event = OccEvent.from_dict(data, system)
+    assert loaded_occ_event == prototype_occ_event
 
 
 ClusterSpecs for local-cluster orbits
@@ -136,4 +124,4 @@ The subgroup of the prim factor group that leaves an :class:`~libcasm.occ_events
         lattice=xtal_prim.lattice(),
         occevent_symgroup_rep=occevent_symgroup_rep)
 
-The objects, ``prim_factor_group`` and ``invariant_group``, are instances of :class:`~libcasm.sym_info.SymGroup`, with the relationship that ``invariant_group`` is a sub-group of ``prim_factor_group``, which is called the "head group". The class :class:`~libcasm.sym_info.SymGroup` provides more information than a simple ``list[libcasm.xtal.SymOp]``, including the multiplication table and the head group indices of the sub-group operations.
+The objects ``prim_factor_group`` and ``invariant_group`` are instances of :class:`~libcasm.sym_info.SymGroup`, with the relationship that ``invariant_group`` is a sub-group of ``prim_factor_group``, which is called the "head group". The class :class:`~libcasm.sym_info.SymGroup` provides more information than a simple ``list[libcasm.xtal.SymOp]``, including the multiplication table and the head group indices of the sub-group operations.
