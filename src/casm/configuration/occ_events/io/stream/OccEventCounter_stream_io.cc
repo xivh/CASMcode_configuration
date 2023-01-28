@@ -55,7 +55,7 @@ void _print_traj(Log &log, OccPosition const &pos0, OccPosition const &pos1,
   log << "(";
   log << system.get_orientation_name(pos0);
   if (pos0.is_atom) {
-    log << "[" << pos0.atom_position_index
+    log << ".atom[" << pos0.atom_position_index
         << "]=" << system.get_atom_name(pos0);
   }
   log << ")";
@@ -66,7 +66,7 @@ void _print_traj(Log &log, OccPosition const &pos0, OccPosition const &pos1,
     log << "(";
     log << system.get_orientation_name(pos1);
     if (pos0.is_atom) {
-      log << "[" << pos1.atom_position_index
+      log << ".atom[" << pos1.atom_position_index
           << "]=" << system.get_atom_name(pos1);
     }
     log << ")";

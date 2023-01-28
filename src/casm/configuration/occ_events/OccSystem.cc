@@ -527,15 +527,26 @@ bool OccSystem::is_direct_exchange(
     std::vector<OccPosition> const &position_after) const {
   auto const &before = position_before;
   auto const &after = position_after;
-  for (Index i = 0; i < before.size() - 1; ++i) {
-    if (this->is_vacancy(before[i]) || this->is_vacancy(after[i])) {
-      continue;
+
+  for (auto const &pos : before) {
+    if (pos.is_in_resevoir || this->is_vacancy(pos)) {
+      return false;
     }
+  }
+  for (auto const &pos : after) {
+    if (pos.is_in_resevoir || this->is_vacancy(pos)) {
+      return false;
+    }
+  }
+
+  for (Index i = 0; i < before.size() - 1; ++i) {
     for (Index j = i + 1; j < after.size(); ++j) {
-      if (this->is_vacancy(before[j]) || this->is_vacancy(after[j])) {
-        continue;
-      }
-      if (before[i] == after[j] && before[j] == after[i]) {
+      if (before[i].integral_site_coordinate ==
+              after[j].integral_site_coordinate &&
+          before[i].atom_position_index == after[j].atom_position_index &&
+          before[j].integral_site_coordinate ==
+              after[i].integral_site_coordinate &&
+          before[j].atom_position_index == after[i].atom_position_index) {
         return true;
       }
     }
