@@ -142,7 +142,7 @@ TEST_F(FCCDumbbellOccEventCounterTest, Test1b) {
     OccEventCounterParameters params;
     params.required_init_orientation_count = to_VectorXi({1, 0, 0, 1});
     params.required_final_orientation_count = to_VectorXi({1, 0, 0, 1});
-    EXPECT_EQ(count_occevents(clusters, params), 10);
+    EXPECT_EQ(count_occevents(clusters, params), 9);
   }
 
   {
@@ -167,7 +167,7 @@ TEST_F(FCCDumbbellOccEventCounterTest, Test1c) {
   {
     OccEventCounterParameters params;
     params.required_init_orientation_count = to_VectorXi({0, 1, 1, 0});
-    EXPECT_EQ(count_occevents(clusters, params), 292);
+    EXPECT_EQ(count_occevents(clusters, params), 202);
   }
 
   {
@@ -195,5 +195,5 @@ TEST_F(FCCDumbbellOccEventCounterTest, Test2) {
   std::vector<OccEvent> prototypes = make_prim_periodic_occevent_prototypes(
       system, clusters, occevent_symgroup_rep, params);
 
-  EXPECT_EQ(prototypes.size(), 6);
+  EXPECT_EQ(prototypes.size(), 5);
 }

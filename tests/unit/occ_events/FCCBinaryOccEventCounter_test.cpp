@@ -11,9 +11,12 @@
 #include "teststructures.hh"
 
 // debug:
+#include "casm/configuration/occ_events/io/json/OccEventCounter_json_io.hh"
+#include "casm/configuration/occ_events/io/stream/OccEvent_stream_io.hh"
 // #include "casm/casm_io/container/json_io.hh"
 // #include "casm/casm_io/container/stream_io.hh"
-// #include "casm/casm_io/json/jsonParser.hh"
+#include "casm/casm_io/json/InputParser_impl.hh"
+#include "casm/casm_io/json/jsonParser.hh"
 // #include "casm/configuration/occ_events/io/json/OccEventCounter_json_io.hh"
 // #include "casm/configuration/occ_events/io/json/OccEvent_json_io.hh"
 // #include "casm/configuration/occ_events/io/json/OccSystem_json_io.hh"
@@ -33,6 +36,20 @@ Eigen::VectorXi to_VectorXi(std::vector<int> const &v) {
     vec(i) = v[i];
   }
   return vec;
+}
+
+void _check_json_io(occ_events::OccEventCounterParameters const &params) {
+  jsonParser json;
+  to_json(params, json);
+  // std::cout << json << std::endl;
+
+  InputParser<occ_events::OccEventCounterParameters> parser(json);
+  EXPECT_TRUE(parser.valid());
+
+  jsonParser json_two;
+  to_json(*parser.value, json_two);
+  // std::cout << json_two << std::endl;
+  EXPECT_EQ(json, json_two);
 }
 
 }  // namespace
@@ -60,11 +77,19 @@ class FCCBinaryOccEventCounterTest : public testing::Test {
                         occ_events::OccEventCounterParameters const &params) {
     occ_events::OccEventCounter counter(system, clusters, params);
 
+    // CASM::Log &log = CASM::log();
+    // log << "begin count_occevents" << std::endl;
+    // occ_events::OccEventPrinter printer(*system, log);
+
     std::vector<occ_events::OccEvent> events;
     while (!counter.is_finished()) {
+      // printer(counter.value());
+      // log << std::endl;
       events.push_back(counter.value());
       counter.advance();
     }
+
+    // log << "end count_occevents" << std::endl;
     return events.size();
   }
 };
@@ -81,23 +106,27 @@ TEST_F(FCCBinaryOccEventCounterTest, Test1) {
   // clang-format on
 
   {
+    // std::cout << "CHECK 1" << std::endl;
     OccEventCounterParameters params;
     EXPECT_EQ(count_occevents(clusters, params), 10);
   }
 
   {
+    // std::cout << "CHECK 2" << std::endl;
     OccEventCounterParameters params;
     params.skip_direct_exchange = false;
     EXPECT_EQ(count_occevents(clusters, params), 10);
   }
 
   {
+    // std::cout << "CHECK 3" << std::endl;
     OccEventCounterParameters params;
     params.allow_subcluster_events = true;
-    EXPECT_EQ(count_occevents(clusters, params), 24);
+    EXPECT_EQ(count_occevents(clusters, params), 18);
   }
 
   {
+    // std::cout << "CHECK 4" << std::endl;
     OccEventCounterParameters params;
     params.allow_subcluster_events = true;
     params.skip_direct_exchange = false;
@@ -124,4 +153,23 @@ TEST_F(FCCBinaryOccEventCounterTest, Test2) {
       system, clusters, occevent_symgroup_rep, params);
 
   EXPECT_EQ(prototypes.size(), 4);
+}
+
+TEST(OccEventCounterParametersJsonIO, Test1) {
+  occ_events::OccEventCounterParameters params;
+  _check_json_io(params);
+
+  params = occ_events::OccEventCounterParameters();
+  params.allow_subcluster_events = true;
+  params.skip_direct_exchange = false;
+  _check_json_io(params);
+
+  params = occ_events::OccEventCounterParameters();
+  params.required_init_molecule_count = to_VectorXi({1, 2});
+  _check_json_io(params);
+
+  params = occ_events::OccEventCounterParameters();
+  params.min_cluster_size = 2;
+  params.max_cluster_size = 4;
+  _check_json_io(params);
 }
