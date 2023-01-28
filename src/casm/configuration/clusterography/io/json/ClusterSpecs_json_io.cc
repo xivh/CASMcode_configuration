@@ -29,7 +29,7 @@ jsonParser &to_json(clust::ClusterSpecs const &cluster_specs,
   json["generating_group"] = cluster_specs.generating_group->head_group_index;
 
   // site_filter:
-  // - dof_sites_filter only for now
+  json["site_filter_method"] = cluster_specs.site_filter_method;
 
   // orbit_branch_specs
   json["orbit_branch_specs"];
@@ -131,8 +131,23 @@ void parse(
   }
 
   // site_filter:
-  // - dof_sites_filter only for now
-  clust::SiteFilterFunction site_filter = clust::dof_sites_filter();
+  std::string site_filter_method = "dof_sites";
+  parser.optional<std::string>(site_filter_method,
+                               fs::path("site_filter_method"));
+
+  clust::SiteFilterFunction site_filter;
+  if (site_filter_method == "dof_sites") {
+    site_filter = clust::dof_sites_filter();
+  } else if (site_filter_method == "alloy_sites") {
+    site_filter = clust::alloy_sites_filter;
+  } else if (site_filter_method == "all_sites") {
+    site_filter = clust::all_sites_filter;
+  } else {
+    std::stringstream ss;
+    ss << "Error reading ClusterSpecs from JSON: site_filter_method="
+       << site_filter_method << " is not recognized";
+    parser.insert_error("site_filter_method", ss.str());
+  }
 
   // orbit_branch_specs
   std::vector<double> max_length;
@@ -182,6 +197,7 @@ void parse(
   parser.value =
       notstd::make_unique<clust::ClusterSpecs>(prim, generating_group);
 
+  parser.value->site_filter_method = site_filter_method;
   parser.value->site_filter = site_filter;
   parser.value->max_length = max_length;
   parser.value->custom_generators = *custom_generators_parser->value;

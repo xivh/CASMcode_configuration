@@ -140,7 +140,8 @@ OutputIterator neighborhood(xtal::BasicStructure const &prim,
 ///
 /// Notes:
 /// - Default site_filter is `dof_sites_filter` (include all sites with DoF)
-ClusterSpecs::ClusterSpecs() : site_filter(dof_sites_filter()) {}
+ClusterSpecs::ClusterSpecs()
+    : site_filter_method("dof_sites"), site_filter(dof_sites_filter()) {}
 
 /// \brief Constructor
 ///
@@ -151,6 +152,7 @@ ClusterSpecs::ClusterSpecs(
     std::shared_ptr<SymGroup const> const &_generating_group)
     : prim(_prim),
       generating_group(_generating_group),
+      site_filter_method("dof_sites"),
       site_filter(dof_sites_filter()) {}
 
 namespace ClusterSpecs_impl {

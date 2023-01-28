@@ -21,6 +21,7 @@ struct ClusterSpecs {
 
   std::shared_ptr<xtal::BasicStructure const> prim;
   std::shared_ptr<SymGroup const> generating_group;
+  std::string site_filter_method;
   SiteFilterFunction site_filter;
   std::vector<double> max_length;
   std::vector<IntegralClusterOrbitGenerator> custom_generators;
