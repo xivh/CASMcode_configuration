@@ -2,4 +2,5 @@ numpydoc
 sphinx
 sphinx-argparse
 sphinx_rtd_theme
+sphinxcontrib-bibtex
 pydata-sphinx-theme
