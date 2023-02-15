@@ -238,6 +238,9 @@ struct OccSystem {
     return is_vacancy_list[get_chemical_index(p)];
   }
 
+  /// \brief Return reference to molecule occupant
+  xtal::Molecule const &get_occupant(OccPosition const &p) const;
+
   // --- Occupation checks ---
 
   /// \brief Count molecules occupying cluster sites

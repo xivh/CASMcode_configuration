@@ -18,6 +18,7 @@ def test_configuration_constructor(simple_cubic_binary_prim):
     configuration = config.Configuration(supercell)
     assert type(configuration) == config.Configuration
 
+
 def test_configuration_dof_values(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
     T = np.array([
@@ -34,6 +35,7 @@ def test_configuration_dof_values(simple_cubic_binary_prim):
     assert configuration.occ(0) == 0
     configuration.dof_values().set_occupation([1])
     assert configuration.occ(0) == 0
+
 
 def test_configuration_occupation(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
@@ -117,6 +119,7 @@ def test_configuration_apply(simple_cubic_binary_prim):
         i += 1
     assert i == 48 * 64
     assert len(equivs) == 192
+
 
 def test_copy_configuration(simple_cubic_binary_prim):
     import copy

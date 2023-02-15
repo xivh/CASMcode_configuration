@@ -5,11 +5,10 @@ import libcasm.occ_events._occ_events as _occ_events
 import libcasm.sym_info as sym_info
 import libcasm.xtal as xtal
 
-def save_occevent(
-    root: pathlib.Path,
-    name: str,
-    occ_event: _occ_events.OccEvent,
-    system: _occ_events.OccSystem):
+
+def save_occevent(root: pathlib.Path, name: str,
+                  occ_event: _occ_events.OccEvent,
+                  system: _occ_events.OccSystem):
     """Save an OccEvent
 
     Saves an :class:`~libcasm.occ_events.OccEvent` to:
@@ -35,10 +34,9 @@ def save_occevent(
         data = occ_event.to_dict(system)
         f.write(xtal.pretty_json(data))
 
-def load_occevent(
-    root: pathlib.Path,
-    name: str,
-    system: _occ_events.OccSystem) -> _occ_events.OccEvent:
+
+def load_occevent(root: pathlib.Path, name: str,
+                  system: _occ_events.OccSystem) -> _occ_events.OccEvent:
     """Load a saved OccEvent
 
     Loads an :class:`~libcasm.occ_events.OccEvent` from:
@@ -66,13 +64,13 @@ def load_occevent(
         occ_event = _occ_events.OccEvent.from_dict(data, system)
     return occ_event
 
-def make_prototype_occevent(
-    xtal_prim: xtal.Prim,
-    occ_event: _occ_events.OccEvent):
-    """Construct the prototype equivalent OccEvent
+
+def make_canonical_occevent(xtal_prim: xtal.Prim,
+                            occ_event: _occ_events.OccEvent):
+    """Construct the canonical equivalent OccEvent
 
     Generates an orbit of :class:`~libcasm.occ_events.OccEvent` and
-    returns the first element of the orbit.
+    returns the "greatest" element of the orbit.
 
     Parameters
     ----------
@@ -83,16 +81,16 @@ def make_prototype_occevent(
 
     Returns
     -------
-    prototype occ_event: ~libcasm.occ_events.OccEvent
-        The prototype equivalent :class:`~libcasm.occ_events.OccEvent`.
+    canonical_occ_event: ~libcasm.occ_events.OccEvent
+        The canonical equivalent :class:`~libcasm.occ_events.OccEvent`.
     """
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     occevent_symgroup_rep = _occ_events.make_occevent_symgroup_rep(
         prim_factor_group.elements(), xtal_prim)
     occevent_orbit = _occ_events.make_prim_periodic_orbit(
-        occ_event,
-        occevent_symgroup_rep)
-    return occevent_orbit[0]
+        occ_event, occevent_symgroup_rep)
+    return occevent_orbit[-1]
+
 
 def make_occevent_cluster_specs(
     xtal_prim: xtal.Prim,
@@ -144,3 +142,16 @@ def make_occevent_cluster_specs(
                               phenomenal=phenomenal_occ_event.cluster(),
                               cutoff_radius=cutoff_radius,
                               custom_generators=custom_generators)
+
+
+def make_canonical_prim_periodic_occevents(
+    system: _occ_events.OccSystem,
+    cluster_specs: clust.ClusterSpecs,
+    occevent_counter_params: dict = {},
+    custom_events: list[_occ_events.OccEvent] = []
+) -> list[_occ_events.OccEvent]:
+    """
+
+    """
+    return _occ_events.make_canonical_prim_periodic_occevents(
+        system, cluster_specs, occevent_counter_params, custom_events)

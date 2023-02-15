@@ -1,5 +1,12 @@
-Occupation events
-=================
+
+.. _occupation-events-basics:
+
+Occupation event basics
+=======================
+
+.. toctree::
+    :maxdepth: 2
+    :hidden:
 
 The class :class:`~libcasm.occ_events.OccEvent` is used to represents any change in occupation. For example, this could be:
 
@@ -9,7 +16,7 @@ The class :class:`~libcasm.occ_events.OccEvent` is used to represents any change
 An occupation event is represented by specifying the trajectories of each of the occupants involved in the event.
 
 Construct an atomic hop OccEvent
------------------------------
+--------------------------------
 
 As an example, consider an event representing atom-vacancy exchange. In an :class:`~libcasm.occ_events.OccEvent`, the exchange of an atom and a vacancy is specified by:
 
@@ -137,10 +144,12 @@ To compare :class:`~libcasm.occ_events.OccEvent`, they can be put in a standardi
     print("OccEvent are not equal?:", occ_event_a != occ_event_b)
 
 
+.. _orbits-of-occevent:
+
 Orbits of OccEvent
 ------------------
 
-The orbit of symmetrically equivalent :class:`~libcasm.occ_events.OccEvent` can be constructed using:
+The orbit of symmetrically equivalent :class:`~libcasm.occ_events.OccEvent` can be constructed using :func:`~libcasm.occ_events.occ_events.make_prim_periodic_orbit`:
 
 .. code-block:: Python
 

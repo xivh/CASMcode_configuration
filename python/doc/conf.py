@@ -27,10 +27,17 @@
 #
 # needs_sphinx = '1.0'
 
-autoclass_content = "class"
-autodoc_class_signature = "separated"
+autoclass_content = "both"
+# autodoc_class_signature = "separated"
 autosummary_generate = True
 autosummary_imported_members = True
+numpydoc_show_class_members = False
+#autodoc_typehints = 'both'
+autodoc_typehints_format = 'short'
+python_use_unqualified_type_names = True
+autodoc_inherit_docstrings = False
+add_module_names = True
+
 intersphinx_mapping = {
     'xtal':
     ('../../../../../CASMcode_crystallography/python/doc/_build/html',
@@ -55,6 +62,7 @@ extensions = [
     'sphinxarg.ext',
     'sphinxcontrib.bibtex',
     'sphinx.ext.intersphinx',
+    'numpydoc',
 ]
 
 bibtex_bibfiles = ['refs.bib']
@@ -112,13 +120,15 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'pydata_sphinx_theme'  # 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+# html_theme_options = {
+#   "navigation_depth": 2,
+# }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

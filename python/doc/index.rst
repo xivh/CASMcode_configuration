@@ -16,16 +16,15 @@ The libcasm.configuration module is a Python interface to the classes and method
 
 
 Documentation
-=============
+-------------
 
 .. toctree::
     :maxdepth: 2
 
     Installation <installation>
-    Usage <usage>
+    Usage <usage/usage>
     Reference <reference/libcasm/index>
-    Bibliography <bibliography>
-    About libcasm-configuration <about>
+    About <about>
 
 
 libcasm-configuration is available on GitHub_.

@@ -1,5 +1,5 @@
-About libcasm-configuration
-===========================
+About
+=====
 
 libcasm-configuration is part of the CASM project developed by the `Van der Ven group`_, originally at the University of Michigan and currently at the University of California Santa Barbara.
 

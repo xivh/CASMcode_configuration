@@ -59,37 +59,12 @@ PYBIND11_MODULE(_sym_info, m) {
   py::class_<sym_info::SymGroup, std::shared_ptr<sym_info::SymGroup>>(
       m, "SymGroup",
       R"pbdoc(
-      Holds group elements and group info.
+      Data structure holding group elements and other group info, such as group-subgroup relationships.
       )pbdoc")
       .def(py::init(&make_symgroup), py::arg("element"),
-           py::arg("multiplication_table"),
-           R"pbdoc(
-
-      Parameters
-      ----------
-      element : List[libcasm.xtal.SymOp]
-          List of elements of the symmetry group.
-      multiplication_table : List[List[int]]
-          The group multiplication table, where `k == multiplication_table[i][j]`
-          indicates that element[k] == element[i] * element[j]. This must be
-          provide for a head group, but it is determined for a subgroup.
-      )pbdoc")
+           py::arg("multiplication_table"))
       .def("make_subgroup", &make_symgroup_subgroup,
-           py::arg("head_group_index"), py::arg("element") = std::nullopt,
-           R"pbdoc(
-      Construct a subgroup
-
-      Parameters
-      ----------
-      head_group_index : Set[int]
-          Indices of elements to include in the subgroup.
-      element : List[libcasm.xtal.SymOp], optional
-          List of elements in the subgroup. This is optional, and if not provided
-          the head group elements corresponding to the head_group_index will be
-          used. It may be provided to specify particular elements for a subgroup
-          of a factor group, such as the elements of a cluster group. Must be
-          listed in ascending head group index order.
-      )pbdoc")
+           py::arg("head_group_index"), py::arg("element") = std::nullopt)
       .def(
           "elements",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
@@ -129,7 +104,11 @@ PYBIND11_MODULE(_sym_info, m) {
       .def(
           "head_group",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
-            return symgroup->head_group;
+            std::optional<std::shared_ptr<sym_info::SymGroup const>> head_group;
+            if (symgroup->head_group != nullptr) {
+              head_group = symgroup->head_group;
+            }
+            return head_group;
           },
           "If this is a subgroup, return the head group, else return None.")
       .def(
@@ -151,20 +130,10 @@ PYBIND11_MODULE(_sym_info, m) {
           py::arg("i"), "Return the index of the inverse element.");
 
   m.def("make_factor_group", &sym_info::make_factor_group,
-        R"pbdoc(
-    Construct the factor group as a SymGroup
-
-    Parameters
-    ----------
-    xtal_prim: libcasm.xtal.Prim
-        The Prim structure
-
-    Returns
-    -------
-    factor_group : libcasm.sym_info.SymGroup
-        The group which leaves xtal_prim invariant
-    )pbdoc",
         py::arg("xtal_prim"));
+
+  m.def("make_point_group", &sym_info::make_point_group, py::arg("xtal_prim"),
+        py::arg("factor_group"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

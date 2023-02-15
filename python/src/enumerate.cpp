@@ -261,21 +261,6 @@ PYBIND11_MODULE(_enumerate, m) {
       The coordinates `(unitcell_index, equivalent_index)` are used when
       evaluating local correlations.
 
-      /// \brief Return (unitcell_index,equivalent_index) of a particular OccEvent
-      ///
-      /// \param occ_event Input OccEvent, to find the coordinates of
-      /// \param phenomenal_occevent The phenomenal OccEvent of the equivalent
-      ///     local basis sets
-      /// \param supercell The supercell in which the OccEvent is located
-      ///
-      /// \return Returns the coordinate (unitcell_index, equivalent_index) of
-      ///     the input OccEvent. Throws if no match can be found, indicating the
-      ///     input OccEvent is not in the same orbit.
-      std::tuple<Index, Index> get_occevent_coordinate(
-          occ_events::OccEvent occ_event,
-          std::vector<occ_events::OccEvent> const &phenomenal_occevent,
-          config::Supercell const &supercell)
-
       Parameters
       ----------
 

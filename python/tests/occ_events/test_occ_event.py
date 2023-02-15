@@ -57,18 +57,22 @@ def test_OccEvent_to_from_dict():
 def test_make_prim_periodic_orbit_1(fcc_1NN_A_Va_event):
     xtal_prim, occ_event = fcc_1NN_A_Va_event
     fg = xtal.make_factor_group(xtal_prim)
-    occevent_symgroup_rep = occ_events.make_occevent_symgroup_rep(fg, xtal_prim)
-    orbit = occ_events.make_prim_periodic_orbit(occ_event, occevent_symgroup_rep)
+    occevent_symgroup_rep = occ_events.make_occevent_symgroup_rep(
+        fg, xtal_prim)
+    orbit = occ_events.make_prim_periodic_orbit(occ_event,
+                                                occevent_symgroup_rep)
 
     assert isinstance(orbit, list)
     assert len(orbit) == 6
     for x in orbit:
         assert orbit[0] <= x
 
+
 def test_make_prototype_occevent(fcc_1NN_A_Va_event):
     xtal_prim, occ_event = fcc_1NN_A_Va_event
-    prototype = occ_events.make_prototype_occevent(xtal_prim, occ_event)
+    prototype = occ_events.make_canonical_occevent(xtal_prim, occ_event)
     assert isinstance(prototype, occ_events.OccEvent)
+
 
 def test_save_load_occevent(fcc_1NN_A_Va_event, tmpdir):
     xtal_prim, occ_event = fcc_1NN_A_Va_event

@@ -74,12 +74,27 @@ clust::ClusterSpecs make_cluster_specs(
     std::shared_ptr<clust::SymGroup const> const &generating_group,
     std::vector<double> max_length,
     std::vector<clust::IntegralClusterOrbitGenerator> custom_generators,
+    std::string site_filter_method,
     std::optional<clust::IntegralCluster> phenomenal,
     bool include_phenomenal_sites, std::vector<double> cutoff_radius) {
   clust::ClusterSpecs cluster_specs(prim, generating_group);
   cluster_specs.max_length = max_length;
   cluster_specs.custom_generators = custom_generators;
-  cluster_specs.site_filter = clust::dof_sites_filter();
+
+  if (site_filter_method == "dof_sites") {
+    cluster_specs.site_filter = clust::dof_sites_filter();
+  } else if (site_filter_method == "alloy_sites") {
+    cluster_specs.site_filter = clust::alloy_sites_filter;
+  } else if (site_filter_method == "all_sites") {
+    cluster_specs.site_filter = clust::all_sites_filter;
+  } else {
+    std::stringstream ss;
+    ss << "Error in make_cluster_specs: site_filter_method="
+       << site_filter_method << " is not recognized";
+    throw std::runtime_error(ss.str());
+  }
+  cluster_specs.site_filter_method = site_filter_method;
+
   cluster_specs.phenomenal = phenomenal;
   cluster_specs.include_phenomenal_sites = include_phenomenal_sites;
   cluster_specs.cutoff_radius = cutoff_radius;
@@ -155,12 +170,20 @@ PYBIND11_MODULE(_clusterography, m) {
             return cluster.elements().size();
           },
           "Returns number of sites in the cluster")
+      .def("__len__", &clust::IntegralCluster::size)
       .def(
           "__getitem__",
           [](clust::IntegralCluster const &cluster, Index i) {
             return cluster.element(i);
           },
           "Returns the i-th site in the cluster")
+      .def(
+          "__iter__",
+          [](clust::IntegralCluster const &cluster) {
+            return py::make_iterator(cluster.begin(), cluster.end());
+          },
+          py::keep_alive<
+              0, 1>() /* Essential: keep object alive while iterator exists */)
       .def(
           "__add__",
           [](clust::IntegralCluster const &cluster,
@@ -245,7 +268,7 @@ PYBIND11_MODULE(_clusterography, m) {
 
   py::class_<clust::IntegralClusterOrbitGenerator>(m, "ClusterOrbitGenerator",
                                                    R"pbdoc(
-      A cluster of IntegralSiteCoordinate
+      A cluster of IntegralSiteCoordinate, and optionally subclusters
       )pbdoc")
       .def(py::init<clust::IntegralCluster const &, bool>(),
            py::arg("prototype"), py::arg("include_subclusters") = true,
@@ -335,6 +358,18 @@ PYBIND11_MODULE(_clusterography, m) {
       custom_generators: list[ClusterOrbitGenerator]=[]
           Specifies clusters that should be uses to construct orbits
           regardless of the max_length or cutoff_radius parameters
+      site_filter_method: str = "dof_sites"
+          Names a method for selecting which sites are included in clusters.
+          Options are:
+
+              "dof_sites": (default)
+                  Include sites with any continuous degrees of freedom (DoF)
+                  or >1 allowed occupant DoF
+              "alloy_sites":
+                  Include all sites with >1 allowed occupant DoF
+              "all_sites":
+                  Include all sites
+
       phenomenal: Optional[Cluster] = None
           For local clusters, specifies the sites about which local-clusters
           are generated.
@@ -351,15 +386,58 @@ PYBIND11_MODULE(_clusterography, m) {
            py::arg("max_length") = std::vector<double>{},
            py::arg("custom_generators") =
                std::vector<clust::IntegralClusterOrbitGenerator>{},
+           py::arg("site_filter_method") = std::string("dof_sites"),
            py::arg("phenomenal") = std::nullopt,
            py::arg("include_phenomenal_sites") = false,
            py::arg("cutoff_radius") = std::vector<double>{})
       .def(
-          "is_local",
+          "xtal_prim",
           [](clust::ClusterSpecs const &cluster_specs) {
-            return cluster_specs.phenomenal.has_value();
+            return cluster_specs.prim;
           },
-          "Return True if ClusterSpecs will generate local-cluster orbits")
+          "Return the prim.")
+      .def(
+          "generating_group",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            return cluster_specs.generating_group;
+          },
+          "Return the generating group.")
+      .def(
+          "max_length",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            return cluster_specs.max_length;
+          },
+          "Return the `max_length` list.")
+      .def(
+          "custom_generators",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            return cluster_specs.custom_generators;
+          },
+          "Return the `custom_generators` list.")
+      .def(
+          "site_filter_method",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            return cluster_specs.site_filter_method;
+          },
+          "Return the `site_filter_method`.")
+      .def(
+          "phenomenal",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            return cluster_specs.phenomenal;
+          },
+          "Return the phenomenal cluster if it is present, else None")
+      .def(
+          "include_phenomenal_sites",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            return cluster_specs.include_phenomenal_sites;
+          },
+          "Return the `include_phenomenal_sites` parameter")
+      .def(
+          "cutoff_radius",
+          [](clust::ClusterSpecs const &cluster_specs) {
+            return cluster_specs.cutoff_radius;
+          },
+          "Return the `cutoff_radius` list")
       .def(
           "make_orbits",
           [](clust::ClusterSpecs const &cluster_specs) {

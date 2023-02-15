@@ -11,16 +11,21 @@
 #include "casm/casm_io/Log.hh"
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
+#include "casm/configuration/clusterography/ClusterSpecs.hh"
 #include "casm/configuration/clusterography/IntegralCluster.hh"
+#include "casm/configuration/clusterography/orbits.hh"
 #include "casm/configuration/group/Group.hh"
 #include "casm/configuration/occ_events/OccEvent.hh"
+#include "casm/configuration/occ_events/OccEventCounter.hh"
 #include "casm/configuration/occ_events/OccEventRep.hh"
 #include "casm/configuration/occ_events/OccSystem.hh"
 #include "casm/configuration/occ_events/io/json/OccEventCounter_json_io.hh"
 #include "casm/configuration/occ_events/io/json/OccEvent_json_io.hh"
 #include "casm/configuration/occ_events/io/json/OccSystem_json_io.hh"
+#include "casm/configuration/occ_events/io/stream/OccEventCounter_stream_io.hh"
 #include "casm/configuration/occ_events/orbits.hh"
 #include "casm/configuration/sym_info/factor_group.hh"
+#include "casm/configuration/sym_info/unitcellcoord_sym_info.hh"
 #include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/BasicStructureTools.hh"
 
@@ -101,7 +106,7 @@ PYBIND11_MODULE(_occ_events, m) {
       R"pbdoc(
       Holds index conversion tables used with occupation events
       )pbdoc")
-      .def(py::init(&make_system), py::arg("prim"),
+      .def(py::init(&make_system), py::arg("xtal_prim"),
            py::arg("chemical_name_list") = std::nullopt,
            py::arg("vacancy_name_list") = std::nullopt,
            R"pbdoc(
@@ -109,7 +114,7 @@ PYBIND11_MODULE(_occ_events, m) {
 
       Parameters
       ----------
-      prim: libcasm.xtal.Prim
+      xtal_prim: libcasm.xtal.Prim
           A :class:`~libcasm.xtal.Prim`
       chemical_name_list: Optional[list[str]]=None
           Order of chemical name indices (i.e. :func:`~libcasm.xtal.Occupant.name`)
@@ -118,6 +123,9 @@ PYBIND11_MODULE(_occ_events, m) {
           Chemical names that should be recognized as vacancies.
 
       )pbdoc")
+      .def(
+          "xtal_prim", [](occ_events::OccSystem const &m) { return m.prim; },
+          "Return the prim.")
       .def(
           "chemical_name_list",
           [](occ_events::OccSystem const &m) { return m.chemical_name_list; },
@@ -133,7 +141,7 @@ PYBIND11_MODULE(_occ_events, m) {
             return m.orientation_name_list;
           },
           "Names of the unique molecular orientations, as determined from the "
-          "keys of :func:`~libcasm.xtal.Prim.occupants`.")
+          "keys of :func:`libcasm.xtal.Prim.occupants`.")
       .def_static(
           "from_dict",
           [](const nlohmann::json &data,
@@ -163,9 +171,8 @@ PYBIND11_MODULE(_occ_events, m) {
           -------
           system : libcasm.occ_events.OccSystem
               The OccSystem
-          )pbdoc"
-          "Construct OccSystem from a Python dict.",
-          py::arg("prim"), py::arg("data"))
+          )pbdoc",
+          py::arg("data"), py::arg("prim"))
       .def(
           "to_dict",
           [](occ_events::OccSystem const &m) -> nlohmann::json {
@@ -173,7 +180,47 @@ PYBIND11_MODULE(_occ_events, m) {
             to_json(m, json);
             return static_cast<nlohmann::json>(json);
           },
-          "Represent the OccSystem as a Python dict.");
+          "Represent the OccSystem as a Python dict.")
+      .def(
+          "get_chemical_name",
+          [](occ_events::OccSystem const &self,
+             occ_events::OccPosition const &pos) {
+            return self.get_chemical_name(pos);
+          },
+          "Get the chemical name of an occupant", py::arg("pos"))
+      .def(
+          "get_orientation_name",
+          [](occ_events::OccSystem const &self,
+             occ_events::OccPosition const &pos) {
+            return self.get_orientation_name(pos);
+          },
+
+          "Get the orientation name of an occupant", py::arg("pos"))
+      .def(
+          "get_atom_name",
+          [](occ_events::OccSystem const &self,
+             occ_events::OccPosition const &pos) {
+            return self.get_atom_name(pos);
+          },
+          "Get the name of an atom component", py::arg("pos"))
+      .def("get_chemical_index", &occ_events::OccSystem::get_chemical_index,
+           "Get index of occupant in the chemical name list", py::arg("pos"))
+      .def("get_orientation_index",
+           &occ_events::OccSystem::get_orientation_index,
+           "Get index of occupant in the orientation name list", py::arg("pos"))
+      .def("get_cartesian_coordinate",
+           &occ_events::OccSystem::get_cartesian_coordinate,
+           "Get the Cartesian coordinate of an occupant position",
+           py::arg("pos"))
+      .def("is_indivisible", &occ_events::OccSystem::is_indivisible,
+           "Return True if occupant is indivisible, False otherwise",
+           py::arg("pos"))
+      .def("is_vacancy", &occ_events::OccSystem::is_vacancy,
+           "Return True if occupant is a vacancy, False otherwise",
+           py::arg("pos"))
+      .def("get_occupant", &occ_events::OccSystem::get_occupant,
+           "Return the :class:`~libcasm.xtal.Occupant` indicated",
+           py::arg("pos"));
 
   py::class_<occ_events::OccPosition>(m, "OccPosition",
                                       R"pbdoc(
@@ -405,7 +452,7 @@ PYBIND11_MODULE(_occ_events, m) {
       py::arg("group_elements"), py::arg("xtal_prim"));
 
   m.def(
-      "make_occevent_symgroup_rep",
+      "make_occevent_symgroup_rep_from_existing",
       [](std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep,
          std::vector<sym_info::OccSymOpRep> const &occ_symgroup_rep,
          std::vector<sym_info::AtomPositionSymOpRep> const
@@ -676,6 +723,53 @@ PYBIND11_MODULE(_occ_events, m) {
       )pbdoc",
       py::arg("occ_event"), py::arg("group"), py::arg("lattice"),
       py::arg("occevent_symgroup_rep"));
+
+  m.def(
+      "make_canonical_prim_periodic_occevents",
+      [](std::shared_ptr<occ_events::OccSystem const> const &system,
+         clust::ClusterSpecs const &cluster_specs,
+         const nlohmann::json &occevent_counter_params,
+         std::vector<occ_events::OccEvent> const &custom_occevents)
+          -> std::vector<occ_events::OccEvent> {
+        // get canonical clusters
+        auto generating_group_unitcellcoord_symgroup_rep =
+            sym_info::make_unitcellcoord_symgroup_rep(
+                cluster_specs.generating_group->element, *cluster_specs.prim);
+        auto orbits = clust::make_prim_periodic_orbits(
+            cluster_specs.prim, generating_group_unitcellcoord_symgroup_rep,
+            cluster_specs.site_filter, cluster_specs.max_length,
+            cluster_specs.custom_generators);
+        std::vector<clust::IntegralCluster> clusters;
+        for (auto const &orbit : orbits) {
+          clusters.push_back(*orbit.rbegin());
+        }
+
+        // get occevent_symgroup_rep
+        auto occevent_symgroup_rep = occ_events::make_occevent_symgroup_rep(
+            cluster_specs.generating_group->element, *cluster_specs.prim);
+
+        // get OccEventCounterParameters
+        jsonParser json{occevent_counter_params};
+        InputParser<occ_events::OccEventCounterParameters> parser(json);
+        std::runtime_error error_if_invalid{
+            "Error in "
+            "libcasm.occ_events.make_canonical_prim_periodic_occevents"};
+        report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+        occ_events::OccEventCounterParameters &params = *parser.value;
+
+        if (json.count("print_state_info") &&
+            json["print_state_info"] == true) {
+          params.save_state_info = true;
+          params.print_state_info =
+              occ_events::OccEventCounterStateInfoPrinter(*system);
+        }
+
+        return make_prim_periodic_occevent_prototypes(
+            system, clusters, occevent_symgroup_rep, params, custom_occevents);
+      },
+      "Documented in libcasm.occ_events._methods.py", py::arg("system"),
+      py::arg("cluster_specs"), py::arg("occevent_counter_params"),
+      py::arg("custom_occevents"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

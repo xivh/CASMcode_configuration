@@ -50,5 +50,6 @@ def test_make_occevent_local_orbits(fcc_1NN_A_Va_event):
     assert len(orbits[3]) == 8
     assert len(orbits[4]) == 2
 
+
 def test_make_phenomenal_occevent():
     assert True

@@ -349,6 +349,42 @@ Eigen::Vector3d OccSystem::get_cartesian_coordinate(
   return coord;
 }
 
+/// \brief Return reference to molecule occupant
+///
+/// Note:
+/// - For resevoir positions, this returns the first xtal::Molecule orientation
+///   with matching chemical name
+xtal::Molecule const &OccSystem::get_occupant(OccPosition const &pos) const {
+  if (pos.is_in_resevoir) {
+    std::string chemical_name = this->get_chemical_name(pos);
+    for (Index b = 0; b < prim->basis().size(); ++b) {
+      for (auto const &mol : prim->basis()[b].occupant_dof()) {
+        if (mol.name() == chemical_name) {
+          return mol;
+        }
+      }
+    }
+    throw std::runtime_error(
+        "Error in OccSystem::get_occupant: Invalid OccPosition "
+        "chemical_name_list");
+  }
+
+  Index b = pos.integral_site_coordinate.sublattice();
+  if (b < 0 || b >= this->prim->basis().size()) {
+    throw std::runtime_error(
+        "Error in OccSystem::get_occupant: Invalid OccPosition "
+        "sublattice");
+  }
+  xtal::Site const &site = this->prim->basis()[b];
+  if (pos.occupant_index < 0 ||
+      pos.occupant_index >= site.occupant_dof().size()) {
+    throw std::runtime_error(
+        "Error in OccSystem::get_occupant: Invalid OccPosition "
+        "occupant_index");
+  }
+  return site.occupant_dof()[pos.occupant_index];
+}
+
 /// \brief Count molecules occupying cluster sites
 ///
 /// \param count, Eigen::VectorXi used for checking atom count.
