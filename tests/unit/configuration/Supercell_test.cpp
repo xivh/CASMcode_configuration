@@ -15,6 +15,6 @@ TEST(SupercellTest, Test1) {
   std::shared_ptr<config::Supercell const> supercell =
       std::make_shared<config::Supercell const>(prim, T);
   EXPECT_EQ(supercell->sym_info.factor_group->element.size(), 48);
-  EXPECT_EQ(supercell->sym_info.translation_permutations.size(), 4);
+  EXPECT_EQ(supercell->sym_info.translation_permutations->size(), 4);
   EXPECT_EQ(supercell->sym_info.factor_group_permutations.size(), 48);
 }

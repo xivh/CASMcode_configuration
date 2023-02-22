@@ -25,7 +25,7 @@ class SupercellSymOpFCCTest : public testing::Test {
 
 TEST_F(SupercellSymOpFCCTest, Test1) {
   EXPECT_EQ(supercell->sym_info.factor_group->element.size(), 48);
-  EXPECT_EQ(supercell->sym_info.translation_permutations.size(), 4);
+  EXPECT_EQ(supercell->sym_info.translation_permutations->size(), 4);
   EXPECT_EQ(supercell->sym_info.factor_group_permutations.size(), 48);
 }
 

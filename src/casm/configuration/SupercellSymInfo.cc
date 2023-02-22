@@ -8,7 +8,29 @@
 namespace CASM {
 namespace config {
 
-namespace SupercellSymInfo_impl {
+/// \brief Constructor
+///
+/// \brief prim Prim associated with this supercell
+/// \brief superlattice Superlattice for this supercell
+/// \brief ijk_index_converter UnitCell and linear unit cell index conversions
+///     in this supercell.
+/// \brief bijk_index_converter UnitCellCoord and linear site index conversions
+///     in this supercell.
+SupercellSymInfo::SupercellSymInfo(
+    std::shared_ptr<Prim const> const &prim, Superlattice const &superlattice,
+    xtal::UnitCellIndexConverter const &unitcell_index_converter,
+    xtal::UnitCellCoordIndexConverter const &unitcellcoord_index_converter)
+    : factor_group(std::make_shared<SymGroup const>(
+          make_factor_group(prim, superlattice))),
+      factor_group_permutations(make_factor_group_permutations(
+          factor_group->head_group_index,
+          prim->sym_info.unitcellcoord_symgroup_rep,
+          unitcellcoord_index_converter)) {
+  if (superlattice.size() <= 100) {
+    translation_permutations = make_translation_permutations(
+        unitcell_index_converter, unitcellcoord_index_converter);
+  }
+}
 
 /// \brief Construct supercell factor group
 SymGroup make_factor_group(std::shared_ptr<Prim const> const &prim,
@@ -22,40 +44,57 @@ SymGroup make_factor_group(std::shared_ptr<Prim const> const &prim,
   return SymGroup(prim->sym_info.factor_group, head_group_index);
 }
 
-/// \brief Construct supercell factor group permutations
+/// \brief Construct a single supercell translation permutation
 ///
 /// These permutations describe how the translations within the supercell
 /// permute sites in the supercell.
 ///
-/// \brief ijk_index_converter UnitCell and linear unit cell index conversions
+/// \param translation_index Index in range [0, n_unitcells)
+/// \param ijk_index_converter UnitCell and linear unit cell index conversions
 ///     in this supercell. Generates translations within the supercell.
-/// \brief bijk_index_converter UnitCellCoord and linear site index conversions
+/// \param bijk_index_converter UnitCellCoord and linear site index conversions
+///     in this supercell.
+sym_info::Permutation make_translation_permutation(
+    Index translation_index,
+    xtal::UnitCellIndexConverter const &ijk_index_converter,
+    xtal::UnitCellCoordIndexConverter const &bijk_index_converter) {
+  std::vector<Index> single_translation_permutation(
+      bijk_index_converter.total_sites(), -1);
+  UnitCell translation_uc = ijk_index_converter(translation_index);
+
+  // Loops over all the sites
+  for (Index old_site_ix = 0; old_site_ix < bijk_index_converter.total_sites();
+       ++old_site_ix) {
+    UnitCellCoord old_site_ucc = bijk_index_converter(old_site_ix);
+    Index new_site_ix = bijk_index_converter(old_site_ucc + translation_uc);
+
+    single_translation_permutation[new_site_ix] = old_site_ix;
+  }
+  // You should have given a permutation value to every single site
+  assert(std::find(single_translation_permutation.begin(),
+                   single_translation_permutation.end(),
+                   -1) == single_translation_permutation.end());
+  return single_translation_permutation;
+}
+
+/// \brief Construct supercell translation permutations
+///
+/// These permutations describe how the translations within the supercell
+/// permute sites in the supercell.
+///
+/// \param ijk_index_converter UnitCell and linear unit cell index conversions
+///     in this supercell. Generates translations within the supercell.
+/// \param bijk_index_converter UnitCellCoord and linear site index conversions
 ///     in this supercell.
 std::vector<sym_info::Permutation> make_translation_permutations(
     xtal::UnitCellIndexConverter const &ijk_index_converter,
     xtal::UnitCellCoordIndexConverter const &bijk_index_converter) {
   std::vector<sym_info::Permutation> translation_permutations;
-
   // Loops over lattice points
   for (Index translation_ix = 0;
        translation_ix < ijk_index_converter.total_sites(); ++translation_ix) {
-    std::vector<Index> single_translation_permutation(
-        bijk_index_converter.total_sites(), -1);
-    UnitCell translation_uc = ijk_index_converter(translation_ix);
-
-    // Loops over all the sites
-    for (Index old_site_ix = 0;
-         old_site_ix < bijk_index_converter.total_sites(); ++old_site_ix) {
-      UnitCellCoord old_site_ucc = bijk_index_converter(old_site_ix);
-      Index new_site_ix = bijk_index_converter(old_site_ucc + translation_uc);
-
-      single_translation_permutation[new_site_ix] = old_site_ix;
-    }
-    // You should have given a permutation value to every single site
-    assert(std::find(single_translation_permutation.begin(),
-                     single_translation_permutation.end(),
-                     -1) == single_translation_permutation.end());
-    translation_permutations.push_back(single_translation_permutation);
+    translation_permutations.push_back(make_translation_permutation(
+        translation_ix, ijk_index_converter, bijk_index_converter));
   }
   return translation_permutations;
 }
@@ -92,31 +131,6 @@ std::vector<sym_info::Permutation> make_factor_group_permutations(
   }
   return factor_group_permutations;
 }
-
-}  // namespace SupercellSymInfo_impl
-
-/// \brief Constructor
-///
-/// \brief prim Prim associated with this supercell
-/// \brief superlattice Superlattice for this supercell
-/// \brief ijk_index_converter UnitCell and linear unit cell index conversions
-///     in this supercell.
-/// \brief bijk_index_converter UnitCellCoord and linear site index conversions
-///     in this supercell.
-SupercellSymInfo::SupercellSymInfo(
-    std::shared_ptr<Prim const> const &prim, Superlattice const &superlattice,
-    xtal::UnitCellIndexConverter const &unitcell_index_converter,
-    xtal::UnitCellCoordIndexConverter const &unitcellcoord_index_converter)
-    : factor_group(std::make_shared<SymGroup const>(
-          SupercellSymInfo_impl::make_factor_group(prim, superlattice))),
-      translation_permutations(
-          SupercellSymInfo_impl::make_translation_permutations(
-              unitcell_index_converter, unitcellcoord_index_converter)),
-      factor_group_permutations(
-          SupercellSymInfo_impl::make_factor_group_permutations(
-              factor_group->head_group_index,
-              prim->sym_info.unitcellcoord_symgroup_rep,
-              unitcellcoord_index_converter)) {}
 
 }  // namespace config
 }  // namespace CASM

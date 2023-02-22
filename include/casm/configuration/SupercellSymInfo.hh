@@ -23,8 +23,9 @@ struct SupercellSymInfo {
   /// supercell
   ///
   /// The number of translations is equal the supercell volume (as an integer
-  /// multiple of the prim unit cell)
-  std::vector<sym_info::Permutation> translation_permutations;
+  /// multiple of the prim unit cell). Not populated for large supercells
+  /// (n_unitcells > 100).
+  std::optional<std::vector<sym_info::Permutation>> translation_permutations;
 
   /// \brief Describes how sites permute due to supercell factor group
   /// operations.
@@ -32,6 +33,27 @@ struct SupercellSymInfo {
   /// There is one element for each element in the supercell factor group.
   std::vector<sym_info::Permutation> factor_group_permutations;
 };
+
+/// \brief Construct supercell factor group
+SymGroup make_factor_group(std::shared_ptr<Prim const> const &prim,
+                           Superlattice const &superlattice);
+
+/// \brief Construct a single supercell translation permutation
+sym_info::Permutation make_translation_permutation(
+    Index translation_index,
+    xtal::UnitCellIndexConverter const &ijk_index_converter,
+    xtal::UnitCellCoordIndexConverter const &bijk_index_converter);
+
+/// \brief Construct supercell translation permutations
+std::vector<sym_info::Permutation> make_translation_permutations(
+    xtal::UnitCellIndexConverter const &ijk_index_converter,
+    xtal::UnitCellCoordIndexConverter const &bijk_index_converter);
+
+/// \brief Construct supercell factor group permutations
+std::vector<sym_info::Permutation> make_factor_group_permutations(
+    std::vector<Index> const &head_group_index,
+    sym_info::UnitCellCoordSymGroupRep const &unitcellcoord_symgroup_rep,
+    xtal::UnitCellCoordIndexConverter const &bijk_index_converter);
 
 }  // namespace config
 }  // namespace CASM

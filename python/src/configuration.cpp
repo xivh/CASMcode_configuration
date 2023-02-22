@@ -310,7 +310,8 @@ PYBIND11_MODULE(_configuration, m) {
           "vector corresponding to translating the origin unit cell to the "
           "unitcell specified by linear index `l`, permutes supercell site DoF "
           "values. When permuting site occupants, the following convention is "
-          "used, `after[l] = before[permutation[l]]`.")
+          "used, `after[l] = before[permutation[l]]`. Returns None for large "
+          "supercells (n_unitcells > 100).")
       .def(
           "n_sites",
           [](std::shared_ptr<config::Supercell const> const &supercell) {

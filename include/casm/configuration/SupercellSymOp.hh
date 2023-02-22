@@ -20,7 +20,8 @@ namespace config {
 /// - When iterating over all operations the translation operations are
 ///   iterated in the inner loop and factor group operations iterated in the
 ///   outer loop
-/// - Overall, the following sequence of permutations is replicated:
+/// - Overall, the following sequence of permutations is replicated (if
+///   sym_info.translation_permutations.has_value()):
 ///
 /// \code
 /// Container before;
@@ -29,9 +30,9 @@ namespace config {
 ///   sym_info::Permutation const &factor_group_permute =
 ///       sym_info.factor_group_permutations[g];
 ///
-///   for( t=0; t<sym_info.translation_permutations.size(); t++) {
+///   for( t=0; t<supercell.superlattice.size(); t++) {
 ///     sym_info::Permutation const &trans_permute =
-///         sym_info.translation_permutations[t];
+///         (*sym_info.translation_permutations)[t];
 ///     Container after = copy_apply(trans_permute,
 ///                           copy_apply(factor_group_permute, before));
 ///   }
@@ -114,6 +115,9 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
   /// \brief Return the SymOp for the current operation
   SymOp to_symop() const;
 
+  /// Returns the translation permutation. Reference not valid after increment.
+  sym_info::Permutation const &translation_permute() const;
+
   /// Returns the combination of factor group operation permutation and
   /// translation permutation
   sym_info::Permutation combined_permute() const;
@@ -152,7 +156,10 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
 
   /// \brief Lattice translation index
   ///
-  /// This is an index into:
+  /// Translation index, corresponding to the translation of the origin to
+  /// the unitcell with the same linear index.
+  ///
+  /// For small supercells, this is an index into:
   /// - m_supercell->sym_info.translation_permutations
   ///
   /// The corresponding lattice translation, fractional with respect to the
@@ -166,10 +173,16 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
   /// \brief Total number of translations
   ///
   /// This is equal to the total number of unit cells in the supercell:
-  /// - m_supercell->sym_info.translation_permutations.size()
   /// - m_supercell->unitcell_index_converter.total_sites()
   /// - m_supercell->superlattice.size()
   Index m_N_translation;
+
+  /// \brief Use to hold current translation permutation, if not
+  ///     held by SymInfo
+  mutable sym_info::Permutation m_tmp_translation_permute;
+
+  /// \brief Index of translation currently stored in m_tmp_translation_permute
+  mutable Index m_tmp_translation_index;
 };
 
 /// \brief Return inverse SymOp
