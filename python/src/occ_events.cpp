@@ -127,6 +127,10 @@ PYBIND11_MODULE(_occ_events, m) {
           "xtal_prim", [](occ_events::OccSystem const &m) { return m.prim; },
           "Return the prim.")
       .def(
+          "atom_name_list",
+          [](occ_events::OccSystem const &m) { return m.atom_name_list; },
+          "Return the atom name list.")
+      .def(
           "chemical_name_list",
           [](occ_events::OccSystem const &m) { return m.chemical_name_list; },
           "Return the chemical name list.")

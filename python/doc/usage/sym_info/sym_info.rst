@@ -1,3 +1,6 @@
+
+.. _sym_info_usage_index:
+
 Crystallographic Symmetry (libcasm.sym_info)
 ============================================
 
@@ -5,19 +8,7 @@ Crystallographic Symmetry (libcasm.sym_info)
     :maxdepth: 2
     :hidden:
 
-Module
-------
+    sym_info_examples
 
-- :py:mod:`libcasm.sym_info`
 
-Functions
----------
-
-- :func:`~libcasm.sym_info.make_factor_group`
-
-- :func:`~libcasm.sym_info.make_point_group`
-
-Classes
--------
-
-- :class:`~libcasm.sym_info.SymGroup`
+The :py:mod:`~libcasm.sym_info` module includes methods and classes for generating group properties, tracking group / subgroup relationships, and building symmetry representations.

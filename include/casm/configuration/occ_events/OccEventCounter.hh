@@ -91,7 +91,7 @@ struct OccEventCounterParameters {
   std::optional<Eigen::VectorXi> max_init_atom_count;
   std::optional<Eigen::VectorXi> required_init_atom_count;
 
-  // Order determined by OccSystem::molecule_name_list
+  // Order determined by OccSystem::chemical_name_list
   std::optional<Eigen::VectorXi> min_init_molecule_count;
   std::optional<Eigen::VectorXi> max_init_molecule_count;
   std::optional<Eigen::VectorXi> required_init_molecule_count;

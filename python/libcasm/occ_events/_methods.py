@@ -150,8 +150,76 @@ def make_canonical_prim_periodic_occevents(
     occevent_counter_params: dict = {},
     custom_events: list[_occ_events.OccEvent] = []
 ) -> list[_occ_events.OccEvent]:
-    """
+    """Enumerate symmetrically distinct OccEvent
 
+    Parameters
+    ----------
+    system: ~libcasm.occ_events.OccSystem
+        An :class:`~libcasm.occ_events.OccSystem`, used for indexing
+    cluster_specs: ~libcasm.clusterography.ClusterSpecs
+        ClusterSpecs specifying local-cluster orbits on which to construct
+        OccEvent
+    occevent_counter_params: dict
+        Options filtering which OccEvent are generated. Includes:
+
+        Filter by cluster size:
+
+        - "min_cluster_size": Optional[int] = None
+        - "max_cluster_size": Optional[int] = None
+        - "required_cluster_size": Optional[int] = None
+
+        Filter by sublattice, using sublattice indices:
+
+        - "excluded_sublattices": Optional[list[int]] = None
+        - "required_sublattices": Optional[list[int]] = None
+
+        Filter by occupation, using occupation variable on each cluster site:
+
+        - "required_occ_init": Optional[list[int]] = None
+        - "required_occ_final": Optional[list[int]] = None
+
+        Filter by atom type count, using indices defined by the order in :py:class:`~libcasm.occ_events.OccSystem.atom_name_list`:
+
+        - "min_init_atom_count": Optional[list[int]] = None
+        - "max_init_atom_count": Optional[list[int]] = None
+        - "required_init_atom_count": Optional[list[int]] = None
+        - "min_final_atom_count": Optional[list[int]] = None
+        - "max_final_atom_count": Optional[list[int]] = None
+        - "required_final_atom_count": Optional[list[int]] = None
+
+        Filter by molecule type count, using indices defined by the order in :py:class:`~libcasm.occ_events.OccSystem.chemical_name_list`:
+
+        - "min_init_molecule_count": Optional[list[int]] = None
+        - "max_init_molecule_count": Optional[list[int]] = None
+        - "required_init_molecule_count": Optional[list[int]] = None
+        - "min_final_molecule_count": Optional[list[int]] = None
+        - "max_final_molecule_count": Optional[list[int]] = None
+        - "required_final_molecule_count": Optional[list[int]] = None
+
+        Filter by molecule orientation type count, using indices defined by the order in :py:class:`~libcasm.occ_events.OccSystem.orientation_name_list`:
+
+        - "min_init_orientation_count": Optional[list[int]] = None
+        - "max_init_orientation_count": Optional[list[int]] = None
+        - "required_init_orientation_count": Optional[list[int]] = None
+        - "min_final_orientation_count": Optional[list[int]] = None
+        - "max_final_orientation_count": Optional[list[int]] = None
+        - "required_final_orientation_count": Optional[list[int]] = None
+
+        Filter by type of event:
+
+        - "allow_subcluster_events": Optional[bool] = False, Optionally include multisite events that do not result in any change on some sites.
+        - "do_not_allow_breakup": Optional[bool] = False, Do not include events that break up a multi-atom molecule.
+        - "skip_direct_exchange": Optional[bool] = True, Optionally include events in which non-vacancies directly exchange sites.
+        - "print_state_info": Optional[bool] = False, Print information about the step-by-step state of the algorithm.
+
+    custom_events: list[~libcasm.clusterography.ClusterOrbitGenerator]=[]
+          Specifies OccEvent that should be included in the results
+          regardless of the other options.
+
+    Returns
+    -------
+    canonical_prim_periodic_occevents: list[~libcasm.clusterography.OccEvent]
+        The resulting OccEvent
     """
     return _occ_events.make_canonical_prim_periodic_occevents(
         system, cluster_specs, occevent_counter_params, custom_events)

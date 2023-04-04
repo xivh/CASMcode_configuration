@@ -11,28 +11,29 @@ Usage
     configuration/configuration
     enumerate/enumerate
 
-Crystallographic Symmetry (libcasm.sym_info)
---------------------------------------------
+This section of the documentation provides (or will provide) examples using the modules installed as part of libcasm-configuration:
 
-TODO
+:ref:`sym_info_usage_index`:
 
-Cluster Orbits (libcasm.clusterography)
----------------------------------------
+- :ref:`sym_info_examples`
 
-TODO
 
-Occupation Events (libcasm.occ_events)
---------------------------------------
+:ref:`clusterography_usage_index`:
+
+- :ref:`clusterography_examples`
+
+
+:ref:`occ_events_usage_index`:
 
 - :ref:`occupation-events-basics`
 - :ref:`constructing-local-cluster-orbits`
 
-Configurations (libcasm.configuration)
---------------------------------------
 
-TODO
+:ref:`configuration_usage_index`:
 
-Configuration Enumeration (libcasm.enumerate)
----------------------------------------------
+- :ref:`configuration_examples`
 
-TODO
+
+:ref:`enumerate_usage_index`:
+
+- :ref:`enumerate_examples`

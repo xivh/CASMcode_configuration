@@ -19,6 +19,7 @@ The canonical :class:`~libcasm.occ_events.OccEvent` can be obtained by :ref:`con
 .. code-block:: Python
 
     import libcasm.occ_events as occ_events
+    import libcasm.xtal as xtal
 
     xtal_prim = xtal.Prim(...)
     occ_event = occ_events.OccEvent(...)
@@ -65,13 +66,17 @@ Additionally, for :class:`~libcasm.xtal.Prim` with molecular occupants, :class:`
     Enumerated :class:`~libcasm.occ_events.OccEvent` represent symmetrically distinct trajectories of occupants, considering only the initial and final positions, and how the occupants permute amongst them, but not the complete transformation pathway. In real materials, there are some cases in which there may be multiple distinct pathways that are represented by the same :class:`~libcasm.occ_events.OccEvent`. In this case, it is possible to include duplicate :class:`~libcasm.occ_events.OccEvent` with different names in a CASM project for input to kinetic Monte Carlo calculations.
 
 
-The following demonstrates enumerating distinct :class:`~libcasm.occ_events.OccEvent`, in an FCC Prim with "A" and "B" atoms and vacancies, including exchange on triplet sites, using the default filters:
+The following example script demonstrates enumerating distinct :class:`~libcasm.occ_events.OccEvent`, in an FCC Prim with "A" and "B" atoms and vacancies, including exchange on triplet sites, using the default filters:
 
 .. code-block:: Python
 
+    import math
+    import sys
     import libcasm.clusterography as clust
+    import libcasm.occ_events as occ_events
+    import libcasm.sym_info as sym_info
     import libcasm.xtal as xtal
-    import libcasm.clusterography as clust
+    import libcasm.xtal.prims as xtal_prims
 
     r = 1.0 # ideal atom radius
     a = math.sqrt( ((4*r)**2) /2.) # conventional FCC lattice parameter
@@ -100,16 +105,19 @@ The following demonstrates enumerating distinct :class:`~libcasm.occ_events.OccE
 
     # Construct ClusterSpecs, with generating group equal to
     # the invariant group of prototype_occ_event
-    cluster_specs = clust.ClusterSpecs(
+        cluster_specs = clust.ClusterSpecs(
         xtal_prim=xtal_prim,
         generating_group=sym_info.make_factor_group(xtal_prim),
-        max_length=[0.0, 0.0, max_pair_length, max_triplet_length],
+        max_length=max_length,
         custom_generators=custom_generators)
-    assert cluster_specs.make_orbits()) == 4
+
+    orbits = cluster_specs.make_orbits()
+    # null, point, 1NN pair, 2NN pair, 1NN triplet, 2NN triplet
+    assert len(orbits) == 6
 
     # `occevent_counter_params` is a dict that sets filters
     # See the `make_canonical_prim_periodic_occevents` documentation
-    # for the list of options
+    # for the list of options (TODO)
     occevent_counter_params = {}
 
     # `custom_occevents` is a list[occ_events.OccEvent]
@@ -121,11 +129,64 @@ The following demonstrates enumerating distinct :class:`~libcasm.occ_events.OccE
 
     canonical_occevents = occ_events.make_canonical_prim_periodic_occevents(
         system, cluster_specs, occevent_counter_params, custom_occevents)
-    assert len(canonical_occevents) == 14
+
+    # Print enumerated events for inspection
+    print_event = occ_events.OccEventPrinter(f=sys.stdout,
+                                             system=system,
+                                             coordinate_mode='cart')
+
+    for i, x in enumerate(canonical_occevents):
+        print(i)
+        print_event(x)
+        print()
+
     # pair.1: A-Va, B-Va
     # pair.2: A-Va, B-Va
-    # triplet.1NN: A-A-Va, A-B-Va, B-B-Va, A-A-A, B-B-B
-    # triplet.2NN: ...
+    # triplet.1NN: A-A-Va, B-B-Va, A-A-A, B-B-B, A-B-Va, A-A-B, B-B-A
+    # triplet.2NN: A-A-Va x2, B-B-Va x2, A-A-A x1, B-B-B x1, A-B-Va x3, A-A-B x2, B-B-A x2,
+    assert len(canonical_occevents) == 24
+
+
+The example prints the following description of the enumerated events, using :py:class:`~libcasm.occ_events.OccEventPrinter`, with site locations printed using Cartesian coordinates:
+
+.. code-block::
+
+    0
+    Site Occupation:
+    [0.0, 0.0, 0.0]:  1 == B  ->  2 == Va
+    [0.0, 1.414213562373095, 1.414213562373095]:  2 == Va  ->  1 == B
+    Trajectories:
+    [[0.0, 0.0, 0.0], 1] == B  ->  [[0.0, 1.414213562373095, 1.414213562373095], 1] == B
+    [[0.0, 1.414213562373095, 1.414213562373095], 2] == Va  ->  [[0.0, 0.0, 0.0], 2] == Va
+
+    1
+    Site Occupation:
+    [0.0, 0.0, 0.0]:  1 == B  ->  2 == Va
+    [0.0, 0.0, 2.82842712474619]:  2 == Va  ->  1 == B
+    Trajectories:
+    [[0.0, 0.0, 0.0], 1] == B  ->  [[0.0, 0.0, 2.82842712474619], 1] == B
+    [[0.0, 0.0, 2.82842712474619], 2] == Va  ->  [[0.0, 0.0, 0.0], 2] == Va
+    ...
+
+    22
+    Site Occupation:
+        [0.0, 0.0, 0.0]:  0 == A  ->  0 == A
+        [-1.414213562373095, 0.0, 1.414213562373095]:  0 == A  ->  0 == A
+        [0.0, 1.414213562373095, 1.414213562373095]:  0 == A  ->  0 == A
+    Trajectories:
+        [[0.0, 0.0, 0.0], 0] == A  ->  [[-1.414213562373095, 0.0, 1.414213562373095], 0] == A
+        [[-1.414213562373095, 0.0, 1.414213562373095], 0] == A  ->  [[0.0, 1.414213562373095, 1.414213562373095], 0] == A
+        [[0.0, 1.414213562373095, 1.414213562373095], 0] == A  ->  [[0.0, 0.0, 0.0], 0] == A
+
+    23
+    Site Occupation:
+        [0.0, 0.0, 0.0]:  0 == A  ->  0 == A
+        [0.0, 1.414213562373095, 1.414213562373095]:  0 == A  ->  0 == A
+        [0.0, 0.0, 2.82842712474619]:  0 == A  ->  0 == A
+    Trajectories:
+        [[0.0, 0.0, 0.0], 0] == A  ->  [[0.0, 1.414213562373095, 1.414213562373095], 0] == A
+        [[0.0, 1.414213562373095, 1.414213562373095], 0] == A  ->  [[0.0, 0.0, 2.82842712474619], 0] == A
+        [[0.0, 0.0, 2.82842712474619], 0] == A  ->  [[0.0, 0.0, 0.0], 0] == A
 
 
 Save/load OccEvent
@@ -139,8 +200,8 @@ The functions :func:`~libcasm.occ_events.save_occevent` and :func:`~libcasm.occ_
 
 .. code-block:: Python
 
-    # root: pathlib.path
-    # prototype_occ_event: Prototype OccEvent
+    # root: pathlib.Path
+    # prototype_occ_event: prototype occ_events.OccEvent
 
     # The OccSystem provides index conversions
     system = occ_events.OccSystem(xtal_prim)

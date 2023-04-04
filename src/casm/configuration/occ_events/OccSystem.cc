@@ -226,29 +226,27 @@ OccPosition OccSystem::make_atom_position(
 }
 
 OccPosition OccSystem::make_molecule_in_resevoir_position(
-    Index occupant_index) const {
-  if (occupant_index < 0 || occupant_index >= this->chemical_name_list.size()) {
+    Index chemical_index) const {
+  if (chemical_index < 0 || chemical_index >= this->chemical_name_list.size()) {
     throw std::runtime_error(
         "Error in OccSystem::make_molecule_in_resevoir_position: Invalid "
-        "OccPosition "
-        "occupant_index");
+        "chemical_index");
   }
   return OccPosition{true, false, xtal::UnitCellCoord{0, 0, 0, 0},
-                     occupant_index, -1};
+                     chemical_index, -1};
 }
 
 /// Make an OccPosition that indicates occupant in the resevoir
 OccPosition OccSystem::make_molecule_in_resevoir_position(
     std::string chemical_name) const {
-  Index occupant_index = find_index(this->chemical_name_list, chemical_name);
-  if (occupant_index < 0 || occupant_index >= this->chemical_name_list.size()) {
+  Index chemical_index = find_index(this->chemical_name_list, chemical_name);
+  if (chemical_index < 0 || chemical_index >= this->chemical_name_list.size()) {
     throw std::runtime_error(
         "Error in OccSystem::make_molecule_in_resevoir_position: Invalid "
-        "OccPosition "
         "chemical_name");
   }
   return OccPosition{true, false, xtal::UnitCellCoord{0, 0, 0, 0},
-                     occupant_index, -1};
+                     chemical_index, -1};
 }
 
 /// Make an OccPosition that indicates atomic molecule in the resevoir
