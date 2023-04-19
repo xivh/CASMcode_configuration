@@ -52,6 +52,10 @@ jsonParser &to_json(config::Configuration const &configuration,
 void parse(InputParser<config::Configuration> &parser,
            std::shared_ptr<config::Prim const> const &prim);
 
+/// Parser Configuration from JSON with error messages
+void parse(InputParser<config::Configuration> &parser,
+           config::SupercellSet &supercells);
+
 }  // namespace CASM
 
 #endif

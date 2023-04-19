@@ -55,6 +55,18 @@ std::pair<SupercellSet::iterator, bool> SupercellSet::insert(
 }
 
 std::pair<SupercellSet::iterator, bool> SupercellSet::insert(
+    Eigen::Matrix3l const &transformation_matrix_to_super) {
+  auto it = find(transformation_matrix_to_super);
+  if (it == end()) {
+    auto supercell = std::make_shared<Supercell const>(
+        m_prim, transformation_matrix_to_super);
+    return m_data.emplace(supercell);
+  } else {
+    return std::make_pair(it, false);
+  }
+}
+
+std::pair<SupercellSet::iterator, bool> SupercellSet::insert(
     std::string supercell_name) {
   auto it = find_by_name(supercell_name);
   if (it == end()) {
@@ -75,6 +87,19 @@ SupercellSet::const_iterator SupercellSet::find(
 SupercellSet::const_iterator SupercellSet::find(
     SupercellRecord const &record) const {
   return m_data.find(record);
+}
+
+SupercellSet::const_iterator SupercellSet::find(
+    Eigen::Matrix3l const &transformation_matrix_to_super) const {
+  auto it = this->begin();
+  auto end = this->end();
+  for (; it != end; ++it) {
+    if (it->supercell->superlattice.transformation_matrix_to_super() ==
+        transformation_matrix_to_super) {
+      return it;
+    }
+  }
+  return end;
 }
 
 SupercellSet::const_iterator SupercellSet::find_by_name(
@@ -99,6 +124,14 @@ SupercellSet::size_type SupercellSet::count(
   return m_data.count(record);
 }
 
+SupercellSet::size_type SupercellSet::count(
+    Eigen::Matrix3l const &transformation_matrix_to_super) const {
+  if (find(transformation_matrix_to_super) != end()) {
+    return 1;
+  }
+  return 0;
+}
+
 SupercellSet::size_type SupercellSet::count_by_name(std::string name) const {
   if (find_by_name(name) != end()) {
     return 1;
@@ -113,6 +146,16 @@ SupercellSet::size_type SupercellSet::erase(
 
 SupercellSet::size_type SupercellSet::erase(SupercellRecord const &record) {
   return m_data.erase(record);
+}
+
+SupercellSet::size_type SupercellSet::erase(
+    Eigen::Matrix3l const &transformation_matrix_to_super) {
+  auto it = find(transformation_matrix_to_super);
+  if (it == end()) {
+    return 0;
+  }
+  m_data.erase(it);
+  return 1;
 }
 
 SupercellSet::size_type SupercellSet::erase_by_name(std::string name) {

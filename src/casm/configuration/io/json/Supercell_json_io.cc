@@ -14,7 +14,7 @@ void from_json(std::shared_ptr<config::Supercell const> &supercell,
   auto &log = CASM::log();
   ParentInputParser parser{json};
   std::runtime_error error_if_invalid{
-      "Error reading Configuration from JSON input"};
+      "Error reading Supercell from JSON input"};
 
   Eigen::Matrix3l T;
   parser.require(T, "transformation_matrix_to_supercell");
@@ -22,8 +22,33 @@ void from_json(std::shared_ptr<config::Supercell const> &supercell,
   supercell = std::make_shared<config::Supercell const>(prim, T);
 }
 
+void from_json(std::shared_ptr<config::Supercell const> &supercell,
+               jsonParser const &json, config::SupercellSet &supercells) {
+  auto &log = CASM::log();
+  ParentInputParser parser{json};
+  std::runtime_error error_if_invalid{
+      "Error reading Supercell into SupercellSet from JSON input"};
+
+  Eigen::Matrix3l T;
+  parser.require(T, "transformation_matrix_to_supercell");
+  report_and_throw_if_invalid(parser, log, error_if_invalid);
+  supercell = supercells.insert(T).first->supercell;
+}
+
 jsonParser &to_json(std::shared_ptr<config::Supercell const> const &supercell,
-                    jsonParser &json);
+                    jsonParser &json) {
+  if (!json.is_obj()) {
+    throw std::runtime_error(
+        "Error inserting supercell to json: not an object");
+  }
+  auto const &superlattice = supercell->superlattice;
+  std::string supercell_name = config::make_supercell_name(
+      superlattice.prim_lattice(), superlattice.superlattice());
+  json["supercell_name"] = supercell_name;
+  json["transformation_matrix_to_supercell"] =
+      superlattice.transformation_matrix_to_super();
+  return json;
+}
 
 void from_json(config::SupercellSet &supercells, jsonParser const &json,
                std::shared_ptr<config::Prim const> const &prim) {

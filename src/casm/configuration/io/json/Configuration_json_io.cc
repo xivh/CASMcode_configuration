@@ -293,7 +293,7 @@ jsonParser &to_json(config::Configuration const &configuration,
   return json;
 }
 
-/// Parser Configuration from JSON with error messages
+/// Parse Configuration from JSON with error messages
 ///
 /// Notes:
 /// - This version creates a new Supercell for each Configuration.
@@ -313,6 +313,30 @@ void parse(InputParser<config::Configuration> &parser,
                       supercell->unitcell_index_converter.total_sites(),
                       prim->basicstructure->basis().size(),
                       prim->global_dof_info, prim->local_dof_info);
+
+  if (parser.valid()) {
+    parser.value =
+        notstd::make_unique<config::Configuration>(supercell, dof_values);
+  }
+}
+
+/// Parse Configuration from JSON with error messages
+///
+/// Notes:
+/// - This version avoids duplicate Supercells.
+void parse(InputParser<config::Configuration> &parser,
+           config::SupercellSet &supercells) {
+  Eigen::Matrix3l T;
+  parser.require(T, "transformation_matrix_to_supercell");
+  auto supercell = supercells.insert(T).first->supercell;
+
+  clexulator::ConfigDoFValues dof_values;
+  parser.require(dof_values, "dof");
+
+  validate_dof_values(
+      parser, dof_values, supercell->unitcell_index_converter.total_sites(),
+      supercells.prim()->basicstructure->basis().size(),
+      supercells.prim()->global_dof_info, supercells.prim()->local_dof_info);
 
   if (parser.valid()) {
     parser.value =

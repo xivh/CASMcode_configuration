@@ -46,17 +46,25 @@ class SupercellSet {
 
   std::pair<iterator, bool> insert(SupercellRecord const &record);
 
+  std::pair<iterator, bool> insert(
+      Eigen::Matrix3l const &transformation_matrix_to_super);
+
   std::pair<iterator, bool> insert(std::string supercell_name);
 
   const_iterator find(std::shared_ptr<Supercell const> supercell) const;
 
   const_iterator find(SupercellRecord const &record) const;
 
+  const_iterator find(
+      Eigen::Matrix3l const &transformation_matrix_to_super) const;
+
   const_iterator find_by_name(std::string name) const;
 
   size_type count(std::shared_ptr<Supercell const> supercell) const;
 
   size_type count(SupercellRecord const &record) const;
+
+  size_type count(Eigen::Matrix3l const &transformation_matrix_to_super) const;
 
   size_type count_by_name(std::string name) const;
 
@@ -65,6 +73,8 @@ class SupercellSet {
   size_type erase(std::shared_ptr<Supercell const> supercell);
 
   size_type erase(SupercellRecord const &record);
+
+  size_type erase(Eigen::Matrix3l const &transformation_matrix_to_super);
 
   size_type erase_by_name(std::string name);
 

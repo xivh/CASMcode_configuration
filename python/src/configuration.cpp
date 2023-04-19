@@ -3,16 +3,25 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+// nlohmann::json binding
+#define JSON_USE_IMPLICIT_CONVERSIONS 0
+#include "casm/casm_io/Log.hh"
+#include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/ConfigCompare.hh"
+#include "casm/configuration/ConfigurationSet.hh"
 #include "casm/configuration/Prim.hh"
 #include "casm/configuration/Supercell.hh"
+#include "casm/configuration/SupercellSet.hh"
 #include "casm/configuration/SupercellSymInfo.hh"
 #include "casm/configuration/SupercellSymOp.hh"
 #include "casm/configuration/canonical_form.hh"
 #include "casm/configuration/copy_configuration.hh"
+#include "casm/configuration/io/json/Configuration_json_io.hh"
+#include "casm/configuration/io/json/Supercell_json_io.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "casm/crystallography/io/BasicStructureIO.hh"
+#include "pybind11_json/pybind11_json.hpp"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -229,6 +238,13 @@ PYBIND11_MODULE(_configuration, m) {
            "<https://prisms-center.github.io/CASMcode_docs/formats/casm/"
            "crystallography/BasicStructure/>`_ documents the expected JSON "
            "format.");
+
+  // SupercellSet -- declare class
+  py::class_<config::SupercellSet, std::shared_ptr<config::SupercellSet>>
+      pySupercellSet(m, "SupercellSet", R"pbdoc(
+     Data structure for holding / reading / writing supercells.
+
+   )pbdoc");
 
   py::class_<config::Supercell, std::shared_ptr<config::Supercell>>(
       m, "Supercell", R"pbdoc(
@@ -485,7 +501,34 @@ PYBIND11_MODULE(_configuration, m) {
       .def(py::self != py::self,
            ""
            "True if supercells are not equal. Only supercells with the same "
-           "prim can be compared.");
+           "prim can be compared.")
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data,
+             std::shared_ptr<config::SupercellSet> supercells) {
+            jsonParser json{data};
+            std::shared_ptr<config::Supercell const> supercell;
+            from_json(supercell, json, *supercells);
+            return supercell;
+          },
+          "Construct a Supercell from a Python dict. The `Configuration "
+          "reference "
+          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
+          "Configuration/>`_ documents the expected format for Configurations "
+          "and Supercells.",
+          py::arg("data"), py::arg("xtal_tol") = TOL)
+      .def(
+          "to_dict",
+          [](std::shared_ptr<config::Supercell const> const &supercell) {
+            jsonParser json;
+            to_json(supercell, json);
+            return static_cast<nlohmann::json>(json);
+          },
+          "Represent the Supercell as a Python dict. The `Configuration "
+          "reference "
+          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
+          "Configuration/>`_ documents the expected format for Configurations "
+          "and Supercells.");
 
   m.def(
       "is_canonical_supercell",
@@ -530,6 +573,24 @@ PYBIND11_MODULE(_configuration, m) {
       py::arg("supercell"),
       "Return a list of supercells with distinct, but symmetrically equivalent "
       "lattice vectors, using the prim crystal point group.");
+
+  // SupercellSet -- define functions
+  pySupercellSet
+      .def(py::init<std::shared_ptr<config::Prim const> const &>(),
+           py::arg("prim"),
+           R"pbdoc(
+          Construct an empty SupercellSet
+
+          Parameters
+          ----------
+          prim : libcasm.configuration.Prim
+              A :class:`~libcasm.configuration.Prim`
+          )pbdoc")
+      .def("prim", &config::SupercellSet::prim,
+           "Returns the internal shared :class:`~libcasm.configuration.Prim`")
+      .def("empty", &config::SupercellSet::empty,
+           "Returns True if the SupercellSet is empty")
+      .def("__len__", &config::SupercellSet::size);
 
   // SupercellSymOp -- declare class
   py::class_<config::SupercellSymOp> pySupercellSymOp(m, "SupercellSymOp",
@@ -921,9 +982,39 @@ PYBIND11_MODULE(_configuration, m) {
            [](config::Configuration const &self) {
              return config::Configuration(self);
            })
-      .def("__deepcopy__", [](config::Configuration const &self) {
-        return config::Configuration(self);
-      });
+      .def("__deepcopy__",
+           [](config::Configuration const &self) {
+             return config::Configuration(self);
+           })
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data,
+             std::shared_ptr<config::SupercellSet> supercells) {
+            jsonParser json{data};
+            InputParser<config::Configuration> parser(json, *supercells);
+            std::runtime_error error_if_invalid{
+                "Error in libcasm.configuration.Configuration.from_dict"};
+            report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+            return std::move(*parser.value);
+          },
+          "Construct a Configuration from a Python dict. The `Configuration "
+          "reference "
+          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
+          "Configuration/>`_ documents the expected format for Configurations "
+          "and Supercells.",
+          py::arg("data"), py::arg("xtal_tol") = TOL)
+      .def(
+          "to_dict",
+          [](config::Configuration const &self) {
+            jsonParser json;
+            to_json(self, json);
+            return static_cast<nlohmann::json>(json);
+          },
+          "Represent the Configuration as a Python dict. The `Configuration "
+          "reference "
+          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
+          "Configuration/>`_ documents the expected format for Configurations "
+          "and Supercells.");
 
   m.def(
       "apply",

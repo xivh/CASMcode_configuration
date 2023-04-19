@@ -19,6 +19,9 @@ void from_json(std::shared_ptr<config::Supercell const> &supercell,
                jsonParser const &json,
                std::shared_ptr<config::Prim const> const &prim);
 
+void from_json(std::shared_ptr<config::Supercell const> &supercell,
+               jsonParser const &json, config::SupercellSet &supercells);
+
 jsonParser &to_json(std::shared_ptr<config::Supercell const> const &supercell,
                     jsonParser &json);
 
