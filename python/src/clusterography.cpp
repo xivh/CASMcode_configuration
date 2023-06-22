@@ -218,6 +218,14 @@ PYBIND11_MODULE(_clusterography, m) {
       .def(py::self >= py::self, "Compares via lexicographical order of sites")
       .def(py::self == py::self, "True if clusters are equal")
       .def(py::self != py::self, "True if clusters are not equal")
+      .def("__copy__",
+           [](clust::IntegralCluster const &self) {
+             return clust::IntegralCluster(self);
+           })
+      .def("__deepcopy__",
+           [](clust::IntegralCluster const &self, py::dict) {
+             return clust::IntegralCluster(self);
+           })
       .def_static(
           "from_dict",
           [](const nlohmann::json &data,

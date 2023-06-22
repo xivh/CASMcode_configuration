@@ -147,7 +147,10 @@ def test_copy_configuration(simple_cubic_binary_prim):
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration1 = config.Configuration(supercell)
     configuration2 = copy.copy(configuration1)
+    configuration3 = copy.deepcopy(configuration1)
 
     assert isinstance(configuration1, config.Configuration)
     assert isinstance(configuration2, config.Configuration)
+    assert isinstance(configuration3, config.Configuration)
     assert configuration2 is not configuration1
+    assert configuration3 is not configuration1

@@ -727,7 +727,14 @@ PYBIND11_MODULE(_configuration, m) {
       .def(py::self > py::self, "Sorts SupercellRecord.")
       .def(py::self >= py::self, "Sorts SupercellRecord.")
       .def(py::self == py::self, "Compare SupercellRecord.")
-      .def(py::self != py::self, "Compare SupercellRecord.");
+      .def(py::self != py::self, "Compare SupercellRecord.")
+      .def("__copy__",
+           [](config::SupercellRecord const &self) {
+             return config::SupercellRecord(self);
+           })
+      .def("__deepcopy__", [](config::SupercellRecord const &self, py::dict) {
+        return config::SupercellRecord(self);
+      });
 
   // ConfigurationRecord -- define functions
   pyConfigurationRecord
@@ -751,7 +758,15 @@ PYBIND11_MODULE(_configuration, m) {
       .def(py::self > py::self, "Sorts ConfigurationRecord.")
       .def(py::self >= py::self, "Sorts ConfigurationRecord.")
       .def(py::self == py::self, "Compare ConfigurationRecord.")
-      .def(py::self != py::self, "Compare ConfigurationRecord.");
+      .def(py::self != py::self, "Compare ConfigurationRecord.")
+      .def("__copy__",
+           [](config::ConfigurationRecord const &self) {
+             return config::ConfigurationRecord(self);
+           })
+      .def("__deepcopy__",
+           [](config::ConfigurationRecord const &self, py::dict) {
+             return config::ConfigurationRecord(self);
+           });
 
   // SupercellSet -- define functions
   pySupercellSet
@@ -1967,10 +1982,8 @@ PYBIND11_MODULE(_configuration, m) {
            [](config::Configuration const &self) {
              return config::Configuration(self);
            })
-      .def("__deepcopy__",
-           [](config::Configuration const &self) {
-             return config::Configuration(self);
-           })
+      .def("__deepcopy__", [](config::Configuration const &self,
+                              py::dict) { return config::Configuration(self); })
       .def_static(
           "from_dict",
           [](const nlohmann::json &data,
