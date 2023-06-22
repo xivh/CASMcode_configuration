@@ -39,9 +39,9 @@ def test_simple_cubic_binary_to_json(simple_cubic_binary_prim):
     xtal_prim = simple_cubic_binary_prim
     prim = config.Prim(xtal_prim)
     prim_json = json.loads(prim.to_json())
-    assert 'basis' in prim_json
-    assert 'coordinate_mode' in prim_json
-    assert 'lattice_vectors' in prim_json
+    assert "basis" in prim_json
+    assert "coordinate_mode" in prim_json
+    assert "lattice_vectors" in prim_json
 
 
 def test_from_json():

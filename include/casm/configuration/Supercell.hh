@@ -14,11 +14,14 @@ namespace config {
 /// configurations with the same supercell. All members are const.
 struct Supercell : public Comparisons<CRTPBase<Supercell>> {
   Supercell(std::shared_ptr<Prim const> const &_prim,
-            Lattice const &_superlattice);
+            Lattice const &_superlattice,
+            Index max_n_translation_permutations = 100);
   Supercell(std::shared_ptr<Prim const> const &_prim,
-            Superlattice const &_superlattice);
+            Superlattice const &_superlattice,
+            Index max_n_translation_permutations = 100);
   Supercell(std::shared_ptr<Prim const> const &_prim,
-            Eigen::Matrix3l const &_superlattice_matrix);
+            Eigen::Matrix3l const &_superlattice_matrix,
+            Index max_n_translation_permutations = 100);
 
   /// \brief Species the primitive crystal structure (lattice and basis) and
   /// allowed degrees of freedom (DoF), and also symmetry representations

@@ -1,0 +1,253 @@
+import numpy as np
+import pytest
+import libcasm.configuration as config
+
+
+def test_SupercellSet_constructor_1(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    supercells = config.SupercellSet(prim)
+
+    assert isinstance(supercells, config.SupercellSet)
+    assert supercells.empty()
+
+
+def test_SupercellSet_add_remove_1(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    supercells = config.SupercellSet(prim)
+    assert supercells.empty()
+
+    T = np.array(
+        [
+            [2, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
+    supercell = config.Supercell(prim, T)
+    assert config.is_canonical_supercell(supercell) == False
+
+    supercell = config.make_canonical_supercell(supercell)
+    assert config.is_canonical_supercell(supercell) == True
+
+    # add remove supercell
+    record = supercells.add(supercell)
+    assert supercells.empty() == False
+    assert len(supercells) == 1
+
+    supercells.remove(supercell)
+    assert supercells.empty() == True
+    assert len(supercells) == 0
+
+    with pytest.raises(KeyError):
+        supercells.remove(supercell)
+
+    # add remove T
+    supercells.add(T)
+    assert supercells.empty() == False
+    assert len(supercells) == 1
+
+    supercells.remove(T)
+    assert supercells.empty() == True
+    assert len(supercells) == 0
+
+    with pytest.raises(KeyError):
+        supercells.remove(T)
+
+    # add remove record
+    record = config.SupercellRecord(supercell)
+    supercells.add(record)
+    assert supercells.empty() == False
+    assert len(supercells) == 1
+
+    supercells.remove(record)
+    assert supercells.empty() == True
+    assert len(supercells) == 0
+
+    with pytest.raises(KeyError):
+        supercells.remove(record)
+
+    # add remove canonical by name
+    record = config.SupercellRecord(supercell)
+    supercells.add(record.canonical_supercell_name)
+    assert supercells.empty() == False
+    assert len(supercells) == 1
+
+    supercells.remove(record.canonical_supercell_name)
+    assert supercells.empty() == True
+    assert len(supercells) == 0
+
+    with pytest.raises(KeyError):
+        supercells.remove(record.canonical_supercell_name)
+
+
+def test_SupercellSet_add_discard_1(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    supercells = config.SupercellSet(prim)
+    assert supercells.empty()
+
+    T = np.array(
+        [
+            [2, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
+    supercell = config.Supercell(prim, T)
+    assert config.is_canonical_supercell(supercell) == False
+
+    supercell = config.make_canonical_supercell(supercell)
+    assert config.is_canonical_supercell(supercell) == True
+
+    # add discard supercell
+    record = supercells.add(supercell)
+    assert supercells.empty() == False
+    assert len(supercells) == 1
+
+    supercells.discard(supercell)
+    assert supercells.empty() == True
+    assert len(supercells) == 0
+    supercells.discard(supercell)
+
+    # add discard T
+    supercells.add(T)
+    assert supercells.empty() == False
+    assert len(supercells) == 1
+
+    supercells.discard(T)
+    assert supercells.empty() == True
+    assert len(supercells) == 0
+    supercells.discard(T)
+
+    # add discard record
+    record = config.SupercellRecord(supercell)
+    supercells.add(record)
+    assert supercells.empty() == False
+    assert len(supercells) == 1
+
+    supercells.discard(record)
+    assert supercells.empty() == True
+    assert len(supercells) == 0
+    supercells.discard(record)
+
+    # add discard canonical by name
+    record = config.SupercellRecord(supercell)
+    supercells.add(record.canonical_supercell_name)
+    assert supercells.empty() == False
+    assert len(supercells) == 1
+
+    supercells.discard(record.canonical_supercell_name)
+    assert supercells.empty() == True
+    assert len(supercells) == 0
+    supercells.discard(record.canonical_supercell_name)
+
+
+def test_SupercellSet_to_dict_1(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    supercells = config.SupercellSet(prim)
+    assert supercells.empty()
+
+    T = np.array(
+        [
+            [2, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
+    supercell = config.Supercell(prim, T)
+    assert config.is_canonical_supercell(supercell) == False
+
+    supercell = config.make_canonical_supercell(supercell)
+    assert config.is_canonical_supercell(supercell) == True
+
+    # check canonical supercell
+    supercells.add(supercell)
+    data = supercells.to_dict()
+    assert "supercells" in data
+    assert len(data["supercells"]) == 1
+    assert "non_canonical_supercells" in data
+    assert len(data["non_canonical_supercells"]) == 0
+    supercells.remove(supercell)
+
+    # check non-canonical supercell
+    supercells.add(T)
+    data = supercells.to_dict()
+    assert "supercells" in data
+    assert len(data["supercells"]) == 0
+    assert "non_canonical_supercells" in data
+    assert len(data["non_canonical_supercells"]) == 1
+    supercells.remove(T)
+
+
+def test_SupercellSet_from_dict_1(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+
+    data = {
+        "non_canonical_supercells": [],
+        "supercells": {"SCEL2_1_2_1_1_0_0": [[-1, 0, 0], [0, 1, 1], [0, 1, -1]]},
+        "version": "2.0",
+    }
+    supercells = config.SupercellSet.from_dict(data, prim)
+    assert isinstance(supercells, config.SupercellSet)
+    assert len(supercells) == 1
+
+    data = {
+        "non_canonical_supercells": [
+            {
+                "canonical_supercell_name": "SCEL2_1_2_1_1_0_0",
+                "supercell_name": "SCEL2_2_1_1_0_0_1",
+                "transformation_matrix_to_supercell": [[2, 1, 0], [0, 1, 0], [0, 0, 1]],
+            }
+        ],
+        "supercells": {},
+        "version": "2.0",
+    }
+    supercells = config.SupercellSet.from_dict(data, prim)
+    assert isinstance(supercells, config.SupercellSet)
+    assert len(supercells) == 1
+
+
+def test_SupercellSet_to_dict_v1_1(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    supercells = config.SupercellSet(prim)
+    assert supercells.empty()
+
+    T = np.array(
+        [
+            [2, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
+    supercell = config.Supercell(prim, T)
+    assert config.is_canonical_supercell(supercell) == False
+
+    supercell = config.make_canonical_supercell(supercell)
+    assert config.is_canonical_supercell(supercell) == True
+
+    # check canonical supercell
+    supercells.add(supercell)
+    data = supercells.to_dict(version="1.0")
+    assert "supercells" in data
+    assert len(data["supercells"]) == 1
+    assert "non_canonical_supercells" not in data
+    supercells.remove(supercell)
+
+    # check non-canonical supercell
+    supercells.add(T)
+    data = supercells.to_dict(version="1.0")
+    assert "supercells" in data
+    assert len(data["supercells"]) == 0
+    assert "non_canonical_supercells" not in data
+    supercells.remove(T)
+
+
+def test_SupercellSet_from_dict_v1_1(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+
+    data = {
+        "supercells": {"SCEL2_1_2_1_1_0_0": [[-1, 0, 0], [0, 1, 1], [0, 1, -1]]},
+        "version": "1.0",
+    }
+    supercells = config.SupercellSet.from_dict(data, prim)
+    assert isinstance(supercells, config.SupercellSet)
+    assert len(supercells) == 1

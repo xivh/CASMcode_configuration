@@ -266,9 +266,9 @@ PYBIND11_MODULE(_enumerate, m) {
 
       occ_event : libcasm.occ_events.OccEvent
           Input OccEvent, to find the coordinates of
-      phenomenal_occevent : list[libcasm.occ_events.OccEvent]
+      phenomenal_occevent : List[libcasm.occ_events.OccEvent]
           The phenomenal OccEvent for the equivalent local basis sets
-      supercell : libcasm.config.Supercell
+      supercell : libcasm.configuration.Supercell
           The supercell in which the OccEvent is located
 
       Returns

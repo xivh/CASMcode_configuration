@@ -157,7 +157,8 @@ void from_json(config::SupercellSet &supercells,
   }
 
   std::map<std::string, config::SupercellRecord const *>
-      index_by_supercell_name = make_index_by_supercell_name(supercells.data());
+      index_by_supercell_name =
+          make_index_by_canonical_supercell_name(supercells.data());
 
   // read config list contents
   auto scel_it = json["supercells"].begin();
@@ -172,8 +173,8 @@ void from_json(config::SupercellSet &supercells,
     // try to find or add supercell by name
     config::SupercellRecord const *s = nullptr;
     try {
-      s = find_or_add_supercell_by_name(scel_it.name(), supercells.data(),
-                                        index_by_supercell_name, prim);
+      s = find_or_add_canonical_supercell_by_name(
+          scel_it.name(), supercells.data(), index_by_supercell_name, prim);
     } catch (std::exception &e) {
       std::stringstream msg;
       msg << "Error: could not find or construct supercell '" << scel_it.name()

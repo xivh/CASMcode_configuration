@@ -6,19 +6,27 @@
 
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/definitions.hh"
+#include "casm/misc/Comparisons.hh"
 
 namespace CASM {
 namespace config {
 
 /// \brief Data structure for holding / reading / writing supercells
-struct SupercellRecord {
+struct SupercellRecord : public Comparisons<CRTPBase<SupercellRecord>> {
   SupercellRecord(std::shared_ptr<Supercell const> const &_supercell);
 
   std::shared_ptr<Supercell const> supercell;
 
   std::string supercell_name;
 
+  std::string canonical_supercell_name;
+
+  bool is_canonical;
+
   bool operator<(SupercellRecord const &rhs) const;
+
+ private:
+  friend struct Comparisons<CRTPBase<SupercellRecord>>;
 };
 
 /// \brief Data structure for holding / reading / writing supercells
@@ -49,7 +57,7 @@ class SupercellSet {
   std::pair<iterator, bool> insert(
       Eigen::Matrix3l const &transformation_matrix_to_super);
 
-  std::pair<iterator, bool> insert(std::string supercell_name);
+  std::pair<iterator, bool> insert_canonical(std::string supercell_name);
 
   const_iterator find(std::shared_ptr<Supercell const> supercell) const;
 
@@ -58,7 +66,7 @@ class SupercellSet {
   const_iterator find(
       Eigen::Matrix3l const &transformation_matrix_to_super) const;
 
-  const_iterator find_by_name(std::string name) const;
+  const_iterator find_canonical_by_name(std::string name) const;
 
   size_type count(std::shared_ptr<Supercell const> supercell) const;
 
@@ -66,7 +74,7 @@ class SupercellSet {
 
   size_type count(Eigen::Matrix3l const &transformation_matrix_to_super) const;
 
-  size_type count_by_name(std::string name) const;
+  size_type count_canonical_by_name(std::string name) const;
 
   const_iterator erase(const_iterator it);
 
@@ -76,7 +84,7 @@ class SupercellSet {
 
   size_type erase(Eigen::Matrix3l const &transformation_matrix_to_super);
 
-  size_type erase_by_name(std::string name);
+  size_type erase_canonical_by_name(std::string name);
 
   std::set<SupercellRecord> &data();
 
@@ -87,12 +95,13 @@ class SupercellSet {
   std::set<SupercellRecord> m_data;
 };
 
-/// \brief Make a map for finding SupercellRecord by supercell_name
-std::map<std::string, SupercellRecord const *> make_index_by_supercell_name(
+/// \brief Make a map for finding canonical SupercellRecord by supercell_name
+std::map<std::string, SupercellRecord const *>
+make_index_by_canonical_supercell_name(
     std::set<SupercellRecord> const &supercells);
 
-/// \brief Find or add supercell by name
-SupercellRecord const *find_or_add_supercell_by_name(
+/// \brief Find or add canonical supercell by name
+SupercellRecord const *find_or_add_canonical_supercell_by_name(
     std::string const &supercell_name, std::set<SupercellRecord> &supercells,
     std::map<std::string, SupercellRecord const *> &index_by_supercell_name,
     std::shared_ptr<Prim const> const &prim);

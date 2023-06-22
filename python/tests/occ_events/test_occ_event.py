@@ -1,7 +1,12 @@
 import libcasm.xtal as xtal
 import libcasm.xtal.prims as xtal_prims
 import libcasm.occ_events as occ_events
-from libcasm.occ_events import OccEvent, OccSystem, make_occevent_symgroup_rep, make_prim_periodic_orbit
+from libcasm.occ_events import (
+    OccEvent,
+    OccSystem,
+    make_occevent_symgroup_rep,
+    make_prim_periodic_orbit,
+)
 
 
 def test_OccEvent_construction_1():
@@ -22,28 +27,28 @@ def test_OccEvent_to_from_dict():
         "trajectories": [
             [
                 {
-                    #"chemical_name": "A",
+                    # "chemical_name": "A",
                     "coordinate": [0, 0, 0, 0],
-                    "occupant_index": 0
+                    "occupant_index": 0,
                 },
                 {
-                    #"chemical_name": "A",
+                    # "chemical_name": "A",
                     "coordinate": [0, 0, 0, 1],
-                    "occupant_index": 0
-                }
+                    "occupant_index": 0,
+                },
             ],
             [
                 {
-                    #"chemical_name": "Va",
+                    # "chemical_name": "Va",
                     "coordinate": [0, 0, 0, 1],
-                    "occupant_index": 2
+                    "occupant_index": 2,
                 },
                 {
-                    #"chemical_name": "Va",
+                    # "chemical_name": "Va",
                     "coordinate": [0, 0, 0, 0],
-                    "occupant_index": 2
-                }
-            ]
+                    "occupant_index": 2,
+                },
+            ],
         ]
     }
 
@@ -57,10 +62,8 @@ def test_OccEvent_to_from_dict():
 def test_make_prim_periodic_orbit_1(fcc_1NN_A_Va_event):
     xtal_prim, occ_event = fcc_1NN_A_Va_event
     fg = xtal.make_factor_group(xtal_prim)
-    occevent_symgroup_rep = occ_events.make_occevent_symgroup_rep(
-        fg, xtal_prim)
-    orbit = occ_events.make_prim_periodic_orbit(occ_event,
-                                                occevent_symgroup_rep)
+    occevent_symgroup_rep = occ_events.make_occevent_symgroup_rep(fg, xtal_prim)
+    orbit = occ_events.make_prim_periodic_orbit(occ_event, occevent_symgroup_rep)
 
     assert isinstance(orbit, list)
     assert len(orbit) == 6

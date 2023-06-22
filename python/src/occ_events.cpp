@@ -28,6 +28,7 @@
 #include "casm/configuration/sym_info/unitcellcoord_sym_info.hh"
 #include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/BasicStructureTools.hh"
+#include "casm/crystallography/LinearIndexConverter.hh"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -81,6 +82,40 @@ occ_events::OccPosition make_default_occ_position() {
   return occ_events::OccPosition::molecule(xtal::UnitCellCoord(0, 0, 0, 0), 0);
 }
 
+/// \brief Return (unitcell_index,equivalent_index) of a particular OccEvent
+///
+/// \param occ_event Input OccEvent, to find the coordinates of
+/// \param phenomenal_occevent The phenomenal OccEvent of the equivalent
+///     local basis sets
+/// \param unitcell_index_converter A xtal::UnitCellIndexConverter for the
+///     supercell that occ_event is in.
+///
+/// \return Returns the coordinate (unitcell_index, equivalent_index) of
+///     the input OccEvent. Throws if no match can be found, indicating the
+///     input OccEvent is not in the same orbit.
+std::tuple<Index, Index> get_occevent_coordinate(
+    occ_events::OccEvent occ_event,
+    std::vector<occ_events::OccEvent> const &phenomenal_occevent,
+    xtal::UnitCellIndexConverter const &unitcell_index_converter) {
+  standardize(occ_event);
+  clust::IntegralCluster cluster = make_cluster(occ_event);
+  cluster.sort();
+  for (Index i = 0; i < phenomenal_occevent.size(); ++i) {
+    auto phenom_cluster = make_cluster(phenomenal_occevent[i]);
+    phenom_cluster.sort();
+    xtal::UnitCell trans = phenom_cluster[0].unitcell() - cluster[0].unitcell();
+    occ_events::OccEvent translated_occ_event = occ_event + trans;
+    if (translated_occ_event == phenomenal_occevent[i]) {
+      Index unitcell_index = unitcell_index_converter(trans);
+      Index equivalent_index = i;
+      return std::make_tuple(unitcell_index, equivalent_index);
+    }
+  }
+  throw std::runtime_error(
+      "Error in get_occevent_coordinate: No match with the phenomenal OccEvent "
+      "could be found");
+}
+
 }  // namespace CASMpy
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
@@ -116,10 +151,10 @@ PYBIND11_MODULE(_occ_events, m) {
       ----------
       xtal_prim: libcasm.xtal.Prim
           A :class:`~libcasm.xtal.Prim`
-      chemical_name_list: Optional[list[str]]=None
+      chemical_name_list: Optional[List[str]]=None
           Order of chemical name indices (i.e. :func:`~libcasm.xtal.Occupant.name`)
           to use in specifying OccEvents, performing Monte Carlo calculations, etc.
-      vacancy_name_list: Optional[list[str]]=None
+      vacancy_name_list: Optional[List[str]]=None
           Chemical names that should be recognized as vacancies.
 
       )pbdoc")
@@ -137,7 +172,7 @@ PYBIND11_MODULE(_occ_events, m) {
       .def(
           "is_vacancy_list",
           [](occ_events::OccSystem const &m) { return m.is_vacancy_list; },
-          "Return a list[bool], where `is_vacancy_list[chemical_name_index]` "
+          "Return a List[bool], where `is_vacancy_list[chemical_name_index]` "
           "indicates if the corresponding chemical is a vacancy.")
       .def(
           "orientation_name_list",
@@ -401,14 +436,14 @@ PYBIND11_MODULE(_occ_events, m) {
           integral_site_coordinate_rep: libcasm.xtal.IntegralSiteCoordinateRep
               Symmetry representation for transforming IntegralSiteCoordinate
 
-          occupant_rep: list[list[int]]
+          occupant_rep: List[List[int]]
               Permutations describe occupant index transformation under symmetry.
               Usage:
 
                   occupant_index_after =
                       occupant_rep[sublattice_index_before][occupant_index_before]
 
-          atom_position_rep: list[list[list[int]]]
+          atom_position_rep: List[List[List[int]]]
               Permutations describe atom position index transformation under
               symmetry.
 
@@ -442,7 +477,7 @@ PYBIND11_MODULE(_occ_events, m) {
 
       Parameters
       ----------
-      group_elements: list[libcasm.xtal.SymOp]
+      group_elements: List[libcasm.xtal.SymOp]
           Symmetry group elements
 
       xtal_prim: libcasm.xtal.Prim
@@ -450,7 +485,7 @@ PYBIND11_MODULE(_occ_events, m) {
 
       Returns
       -------
-      occevent_symgroup_rep: list[OccEventRep]
+      occevent_symgroup_rep: List[OccEventRep]
           Group representation for transforming OccEvent
       )pbdoc",
       py::arg("group_elements"), py::arg("xtal_prim"));
@@ -470,16 +505,16 @@ PYBIND11_MODULE(_occ_events, m) {
 
       Parameters
       ----------
-      unitcellcoord_symgroup_rep: list[libcasm.xtal.IntegralSiteCoordinateRep]
+      unitcellcoord_symgroup_rep: List[libcasm.xtal.IntegralSiteCoordinateRep]
           The symmetry group representation that describes how IntegralSiteCoordinate transform under symmetry.
-      occ_symgroup_rep: list[list[list[int]]]
+      occ_symgroup_rep: List[List[List[int]]]
           Permutations describe occupant index transformation under symmetry. Indices are: group_element_index, sublattice_index_before, and occupant_index_before; and the resulting value is occupant_index_after.
-      atom_position_symgroup_rep: list[list[list[list[int]]]]
+      atom_position_symgroup_rep: List[List[List[List[int]]]]
           Permutations describe atom position index transformation under symmetry. Indices are: group_element_index, sublattice_index_before, occupant_index_before, atom_position_index_before; and the resulting value is atom_position_index_after.
 
       Returns
       -------
-      occevent_symgroup_rep: list[OccEventRep]
+      occevent_symgroup_rep: List[OccEventRep]
           Group representation for transforming OccEvent
       )pbdoc",
       py::arg("unitcellcoord_symgroup_rep"), py::arg("occ_symgroup_rep"),
@@ -492,7 +527,7 @@ PYBIND11_MODULE(_occ_events, m) {
 
       Parameters
       ----------
-      trajectories: list[list[OccPosition]]=[]
+      trajectories: List[List[OccPosition]]=[]
           The occupant trajectories. Usage: `trajectories[i_occupant][0]` is the initial position of the i-th occupant, and `trajectories[i_occupant][1]` is the final position of the i-th occupant. Most methods currently support trajectories of length 2 only (an initial position and a final position).
 
       )pbdoc",
@@ -519,7 +554,7 @@ PYBIND11_MODULE(_occ_events, m) {
 
           Returns
           -------
-          trajectories: list[list[OccPosition]]=[]
+          trajectories: List[List[OccPosition]]=[]
              The occupant trajectories. Usage: `trajectories[i_occupant][0]` is the initial position of the i-th occupant, and `trajectories[i_occupant][1]` is the final position of the i-th occupant. Most methods currently support trajectories of length 2 only (an initial position and a final position).
 
           )pbdoc")
@@ -683,12 +718,12 @@ PYBIND11_MODULE(_occ_events, m) {
       orbit_element : OccEvent
           One OccEvent in the orbit
 
-      occevent_symgroup_rep: list[OccEventRep]
+      occevent_symgroup_rep: List[OccEventRep]
           Symmetry group representation.
 
       Returns
       -------
-      orbit : list[OccEvent]
+      orbit : List[OccEvent]
           The orbit of OccEvent
       )pbdoc",
       py::arg("orbit_element"), py::arg("occevent_symgroup_rep"));
@@ -711,13 +746,13 @@ PYBIND11_MODULE(_occ_events, m) {
           The OccEvent that remains invariant after transformation by
           subgroup elements.
 
-      group: list[libcasm.xtal.SymOp]
+      group: List[libcasm.xtal.SymOp]
           The super group.
 
       lattice: xtal.Lattice
           The lattice.
 
-      occevent_symgroup_rep: list[OccEventRep]
+      occevent_symgroup_rep: List[OccEventRep]
           Representation of `group` for transforming OccEventRep.
 
       Returns
@@ -774,6 +809,33 @@ PYBIND11_MODULE(_occ_events, m) {
       "Documented in libcasm.occ_events._methods.py", py::arg("system"),
       py::arg("cluster_specs"), py::arg("occevent_counter_params"),
       py::arg("custom_occevents"));
+
+  m.def("get_occevent_coordinate", &get_occevent_coordinate,
+        R"pbdoc(
+      Determine the coordinates `(unitcell_index, equivalent_index)` of a OccEvent
+
+      The coordinates `(unitcell_index, equivalent_index)` are used when
+      evaluating local correlations.
+
+      Parameters
+      ----------
+
+      occ_event : libcasm.occ_events.OccEvent
+          Input OccEvent, to find the coordinates of
+      phenomenal_occevent : List[libcasm.occ_events.OccEvent]
+          The phenomenal OccEvent for the equivalent local basis sets
+      unitcell_index_converter : libcasm.xtal.UnitCellIndexConverter
+          A :class:`~libcasm.xtal.UnitCellIndexConverter` for the supercell in which the OccEvent is located
+
+      Returns
+      -------
+      (unitcell_index, equivalent_index) : tuple[int, int]
+          The coordinates (unitcell_index, equivalent_index) of the
+          input OccEvent. Raises if no match can be found, indicating
+          the input OccEvent is not in the same orbit.
+      )pbdoc",
+        py::arg("occ_event"), py::arg("phenomenal_occevent"),
+        py::arg("unitcell_index_converter"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

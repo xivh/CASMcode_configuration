@@ -81,9 +81,10 @@ std::string prim_to_json(std::shared_ptr<config::Prim const> const &prim) {
 // Supercell
 std::shared_ptr<config::Supercell> make_supercell(
     std::shared_ptr<config::Prim const> const &prim,
-    Eigen::Matrix3l const &transformation_matrix_to_super) {
-  return std::make_shared<config::Supercell>(prim,
-                                             transformation_matrix_to_super);
+    Eigen::Matrix3l const &transformation_matrix_to_super,
+    Index max_n_translation_permutations) {
+  return std::make_shared<config::Supercell>(
+      prim, transformation_matrix_to_super, max_n_translation_permutations);
 }
 
 // SupercellSymOp
@@ -241,8 +242,127 @@ PYBIND11_MODULE(_configuration, m) {
 
   // SupercellSet -- declare class
   py::class_<config::SupercellSet, std::shared_ptr<config::SupercellSet>>
-      pySupercellSet(m, "SupercellSet", R"pbdoc(
-     Data structure for holding / reading / writing supercells.
+      pySupercellSet(m, "SupercellSet",
+                     R"pbdoc(
+      Data structure for holding / reading / writing supercells.
+
+      )pbdoc");
+
+  // SupercellRecord -- declare class
+  py::class_<config::SupercellRecord> pySupercellRecord(m, "SupercellRecord",
+                                                        R"pbdoc(
+     Entry in a :class:`~libcasm.configuration.SupercellSet`
+
+   )pbdoc");
+
+  // ConfigurationSet -- declare class
+  py::class_<config::ConfigurationSet,
+             std::shared_ptr<config::ConfigurationSet>>
+      pyConfigurationSet(m, "ConfigurationSet",
+                         R"pbdoc(
+        Data structure for holding unique configurations in canonical supercells.
+
+        Notes
+        -----
+
+        - Only :class:`~libcasm.configuration.Configuration` with degrees of freedom (DoF) values that compare as unique will be kept in :class:`~libcasm.configuration.ConfigurationSet`.
+        - The configuration added to :class:`~libcasm.configuration.ConfigurationSet` **must** already be in the canonical supercell to ensure proper configuration naming, serialization, and deserialization.
+        - Non-canonical and non-primitive configurations may be stored in :class:`~libcasm.configuration.ConfigurationSet`.
+        - If a user only wants canonical or primitive :class:`~libcasm.configuration.Configuration` to be stored in the :class:`~libcasm.configuration.ConfigurationSet`, those checks must be done by the user.
+        - If the configuration to be stored are not in the canonical supercell, a different container type, such as `List[Configuration]`, should be used.
+        - The convenience methods :func:`~libcasm.configuration.io.configuration_list_to_data` and :func:`~libcasm.configuration.io.configuration_list_from_data` can be used when writing and reading `List[Configuration]`.
+
+        .. warning::
+
+            Users must ensure that :class:`~libcasm.configuration.Configuration` added to :class:`~libcasm.configuration.ConfigurationSet` are in the canonical supercell. This is **not** checked by :class:`~libcasm.configuration.ConfigurationSet` but required to ensure proper configuration naming, serialization, and deserialization.
+
+        .. warning::
+
+            Users are responsible for placing any other constraints (canonical configurations only, primitive configurations only, etc.) on which :class:`~libcasm.configuration.Configuration` are added to :class:`~libcasm.configuration.ConfigurationSet`.
+
+
+        Examples
+        --------
+
+        .. rubric:: Constructing ConfigurationSet and adding Configuration
+
+        A :class:`~libcasm.configuration.ConfigurationSet` can be constructed and :class:`~libcasm.configuration.Configuration` added to the set as follows:
+
+        .. code-block:: Python
+
+            from libcasm.configuration import (
+                Configuration,
+                ConfigurationSet,
+            )
+
+            # construct ConfigurationSet
+            configurationset = ConfigurationSet()
+
+            # add Configuration
+            configruationset.add(Configuration(...))
+            configruationset.add(Configuration(...))
+
+
+        Only :class:`~libcasm.configuration.Configuration` with degrees of freedom (DoF) values that compare as unique will be kept in the set.
+
+        Only :class:`~libcasm.configuration.Configuration` with degrees of freedom (DoF) values that compare as unique will be kept in the :class:`~libcasm.configuration.ConfigurationSet`. The configuration must be in the canonical supercell, though this is not checked. If the configuration is not in the canonical supercell, use a different container type. A configuration_id is given automatically, using the next available index.
+
+
+        .. rubric:: Using ConfigurationSet
+
+        The contents of :class:`~libcasm.configuration.ConfigurationSet` are of type :class:`~libcasm.configuration.ConfigurationRecord`, which can be iterated over using a standard for loop:
+
+        .. code-block:: Python
+
+            # iterate over ConfigurationSet contents
+            for record in configurationset:
+                configuration_name = record.name
+                configuration = record.configuration
+                # do something ...
+
+        The convention ``x in set`` can be used to check the contents of :class:`~libcasm.configuration.ConfigurationSet`, using `x` of the following types:
+
+        - `str`: to check by configuration name
+        - :class:`~libcasm.configuration.Configuration`: to check by configuration degrees of freedom (DoF) values
+
+        .. code-block:: Python
+
+            # check if a Configuration is in ConfigurationSet
+            configuration = Configuration(...)
+            if configuration in configurationset:
+                # do something ...
+
+            # check by name if a Configuration is in ConfigurationSet
+            configuration_name = "SCEL2_1_2_1_1_0_0/0"
+            if configuration_name in configurationset:
+                # do something ...
+
+        The value ``None`` is returned by `get` methods if the requested configuration is not present:
+
+        .. code-block:: Python
+
+            # get a configuration by name and use it
+            configuration_name = "SCEL2_1_2_1_1_0_0/0"
+            record = configurationset.get(configuration_name)
+            if record is not None:
+                configuration = record.configuration
+                # do something ...
+            else:
+                # do something else ...
+
+            # check if configuration is already known and get name
+            configuration = Configuration(...)
+            record = configurationset.get(configuration)
+            if record is not None:
+                configuration_name = record.configuration_name
+                # do something ...
+
+      )pbdoc");
+
+  // ConfigurationRecord -- declare class
+  py::class_<config::ConfigurationRecord> pyConfigurationRecord(
+      m, "ConfigurationRecord", R"pbdoc(
+     Entry in a :class:`~libcasm.configuration.ConfigurationSet`
 
    )pbdoc");
 
@@ -256,6 +376,7 @@ PYBIND11_MODULE(_configuration, m) {
       )pbdoc")
       .def(py::init(&make_supercell), py::arg("prim"),
            py::arg("transformation_matrix_to_super"),
+           py::arg("max_n_translation_permutations") = 100,
            R"pbdoc(Constructor
 
       Parameters
@@ -264,6 +385,8 @@ PYBIND11_MODULE(_configuration, m) {
           A :class:`~libcasm.configuration.Prim`
       transformation_matrix_to_super : array_like, shape=(3,3), dtype=int
           The transformation matrix, T, relating the superstructure lattice vectors, S, to the unit structure lattice vectors, L, according to S = L @ T, where S and L are shape=(3,3)  matrices with lattice vectors as columns.
+      max_n_translation_permutations : int = 100
+          The complete set of translation permutations is not generated for large supercells with `n_unitcells` > `max_n_translation_permutations`.
       )pbdoc")
       .def(
           "prim",
@@ -327,7 +450,7 @@ PYBIND11_MODULE(_configuration, m) {
           "unitcell specified by linear index `l`, permutes supercell site DoF "
           "values. When permuting site occupants, the following convention is "
           "used, `after[l] = before[permutation[l]]`. Returns None for large "
-          "supercells (n_unitcells > 100).")
+          "supercells (n_unitcells > max_n_translation_permutations).")
       .def(
           "n_sites",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
@@ -511,12 +634,24 @@ PYBIND11_MODULE(_configuration, m) {
             from_json(supercell, json, *supercells);
             return supercell;
           },
-          "Construct a Supercell from a Python dict. The `Configuration "
-          "reference "
-          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
-          "Configuration/>`_ documents the expected format for Configurations "
-          "and Supercells.",
-          py::arg("data"), py::arg("xtal_tol") = TOL)
+          R"pbdoc(
+        Construct a Supercell from a Python dict
+
+        The `Configuration reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/Configuration/>`_ documents the expected format for Configurations and Supercells."
+
+        Parameters
+        ----------
+        data : dict
+            A :class:`~libcasm.configuration.Supercell` as a dict.
+        supercells : libcasm.configuration.SupercellSet
+            A :class:`~libcasm.configuration.SupercellSet`, which holds shared supercells in order to avoid duplicates.
+
+        Returns
+        -------
+        supercell : libcasm.configuration.Supercell
+            The :class:`~libcasm.configuration.Supercell` constructed from the dict.
+        )pbdoc",
+          py::arg("data"), py::arg("supercells"))
       .def(
           "to_dict",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
@@ -574,6 +709,50 @@ PYBIND11_MODULE(_configuration, m) {
       "Return a list of supercells with distinct, but symmetrically equivalent "
       "lattice vectors, using the prim crystal point group.");
 
+  // SupercellRecord -- define functions
+  pySupercellRecord
+      .def(py::init<std::shared_ptr<config::Supercell const> const &>(),
+           py::arg("supercell"), "Construct a SupercellRecord.")
+      .def_readonly("supercell", &config::SupercellRecord::supercell,
+                    "The shared :class:`~libcasm.configuration.Supercell`")
+      .def_readonly("supercell_name", &config::SupercellRecord::supercell_name,
+                    "The supercell name.")
+      .def_readonly("canonical_supercell_name",
+                    &config::SupercellRecord::canonical_supercell_name,
+                    "The canonical equivalent supercell name.")
+      .def_readonly("is_canonical", &config::SupercellRecord::is_canonical,
+                    "True if the supercell is canonical, False otherwise.")
+      .def(py::self < py::self, "Sorts SupercellRecord.")
+      .def(py::self <= py::self, "Sorts SupercellRecord.")
+      .def(py::self > py::self, "Sorts SupercellRecord.")
+      .def(py::self >= py::self, "Sorts SupercellRecord.")
+      .def(py::self == py::self, "Compare SupercellRecord.")
+      .def(py::self != py::self, "Compare SupercellRecord.");
+
+  // ConfigurationRecord -- define functions
+  pyConfigurationRecord
+      .def(py::init<config::Configuration const &, std::string, std::string>(),
+           py::arg("configuration"), py::arg("supercell_name"),
+           py::arg("configuration_id"), "Construct a ConfigurationRecord.")
+      .def_readonly("configuration",
+                    &config::ConfigurationRecord::configuration,
+                    "The :class:`~libcasm.configuration.Configuration`")
+      .def_readonly("supercell_name",
+                    &config::ConfigurationRecord::supercell_name,
+                    "The supercell name.")
+      .def_readonly("configuration_id",
+                    &config::ConfigurationRecord::configuration_id,
+                    "The configuration id.")
+      .def_readonly("configuration_name",
+                    &config::ConfigurationRecord::configuration_name,
+                    "The configuration name.")
+      .def(py::self < py::self, "Sorts ConfigurationRecord.")
+      .def(py::self <= py::self, "Sorts ConfigurationRecord.")
+      .def(py::self > py::self, "Sorts ConfigurationRecord.")
+      .def(py::self >= py::self, "Sorts ConfigurationRecord.")
+      .def(py::self == py::self, "Compare ConfigurationRecord.")
+      .def(py::self != py::self, "Compare ConfigurationRecord.");
+
   // SupercellSet -- define functions
   pySupercellSet
       .def(py::init<std::shared_ptr<config::Prim const> const &>(),
@@ -590,7 +769,798 @@ PYBIND11_MODULE(_configuration, m) {
            "Returns the internal shared :class:`~libcasm.configuration.Prim`")
       .def("empty", &config::SupercellSet::empty,
            "Returns True if the SupercellSet is empty")
-      .def("__len__", &config::SupercellSet::size);
+      // len(set)
+      .def("__len__", &config::SupercellSet::size)
+      // clear
+      .def("clear", &config::SupercellSet::clear, "Clear SupercellSet")
+      // add
+      .def(
+          "add_supercell",
+          [](config::SupercellSet &m,
+             std::shared_ptr<config::Supercell const> supercell)
+              -> config::SupercellRecord const & {
+            return *(m.insert(supercell).first);
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a supercell to the set
+
+          Parameters
+          ----------
+          supercell : libcasm.configuration.Supercell
+              A supercell to add to the set.
+
+          Returns
+          -------
+          record : libcasm.configuration.SupercellRecord
+              A :class:`~libcasm.configuration.SupercellRecord`, as a const reference.
+          )pbdoc",
+          py::arg("supercell"))
+      .def(
+          "add",
+          [](config::SupercellSet &m,
+             std::shared_ptr<config::Supercell const> supercell)
+              -> config::SupercellRecord const & {
+            return *(m.insert(supercell).first);
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a supercell to the set (equivalent to :func:`~libcasm.configuration.SupercellSet.add_supercell`).
+          )pbdoc",
+          py::arg("supercell"))
+      .def(
+          "add_by_transformation_matrix_to_super",
+          [](config::SupercellSet &m,
+             Eigen::Matrix3l const &transformation_matrix_to_super)
+              -> config::SupercellRecord const & {
+            return *(m.insert(transformation_matrix_to_super).first);
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a supercell to the set, by constructing from the transformation matrix.
+
+          Parameters
+          ----------
+          transformation_matrix_to_super : array_like, shape=(3,3), dtype=int
+              The transformation matrix, T, relating the superstructure lattice vectors, S, to the unit structure lattice vectors, L, according to S = L @ T, where S and L are shape=(3,3)  matrices with lattice vectors as columns.
+
+          Returns
+          -------
+          record : libcasm.configuration.SupercellRecord
+              A :class:`~libcasm.configuration.SupercellRecord`, as a const reference.
+          )pbdoc",
+          py::arg("transformation_matrix_to_super"))
+      .def(
+          "add",
+          [](config::SupercellSet &m,
+             Eigen::Matrix3l const &transformation_matrix_to_super)
+              -> config::SupercellRecord const & {
+            return *(m.insert(transformation_matrix_to_super).first);
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a supercell to the set, by constructing from the transformation matrix (equivalent to :func:`~libcasm.configuration.SupercellSet.add_by_transformation_matrix_to_super`).
+          )pbdoc",
+          py::arg("transformation_matrix_to_super"))
+      .def(
+          "add_record",
+          [](config::SupercellSet &m, config::SupercellRecord const &record)
+              -> config::SupercellRecord const & {
+            return *(m.insert(record).first);
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a supercell record to the set.
+
+          Parameters
+          ----------
+          record : libcasm.configuration.SupercellRecord
+              A supercell record to add.
+
+          Returns
+          -------
+          record : libcasm.configuration.SupercellRecord
+              A :class:`~libcasm.configuration.SupercellRecord`, as a const reference.
+          )pbdoc",
+          py::arg("record"))
+      .def(
+          "add",
+          [](config::SupercellSet &m, config::SupercellRecord const &record)
+              -> config::SupercellRecord const & {
+            return *(m.insert(record).first);
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a supercell record to the set (equivalent to :func:`~libcasm.configuration.SupercellSet.add_record`).
+          )pbdoc",
+          py::arg("record"))
+      .def(
+          "add_by_canonical_name",
+          [](config::SupercellSet &m,
+             std::string supercell_name) -> config::SupercellRecord const & {
+            return *(m.insert_canonical(supercell_name).first);
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Construct the canonical supercell from a supercell name and add to the set.
+
+          Parameters
+          ----------
+          supercell_name : str
+              The name of a canonical supercell. Raises if `supercell_name` is not the name of the canonical equivalent supercell.
+
+          Returns
+          -------
+          record : libcasm.configuration.SupercellRecord
+              A :class:`~libcasm.configuration.SupercellRecord`, as a const reference.
+          )pbdoc",
+          py::arg("supercell_name"))
+      .def(
+          "add",
+          [](config::SupercellSet &m,
+             std::string supercell_name) -> config::SupercellRecord const & {
+            return *(m.insert_canonical(supercell_name).first);
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Construct the canonical supercell from a supercell name and add to the set (equivalent to :func:`~libcasm.configuration.SupercellSet.add_by_canonical_name`).
+          )pbdoc",
+          py::arg("supercell_name"))
+      // remove
+      .def(
+          "remove_supercell",
+          [](config::SupercellSet &m,
+             std::shared_ptr<config::Supercell const> supercell) {
+            auto it = m.find(supercell);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Remove a supercell from the set. Raises if not in the set.
+          )pbdoc",
+          py::arg("supercell"))
+      .def(
+          "remove",
+          [](config::SupercellSet &m,
+             std::shared_ptr<config::Supercell const> supercell) {
+            auto it = m.find(supercell);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Remove a supercell from the set. Raises if not in the set. Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_supercell`.
+          )pbdoc",
+          py::arg("supercell"))
+      .def(
+          "remove_by_transformation_matrix_to_super",
+          [](config::SupercellSet &m,
+             Eigen::Matrix3l const &transformation_matrix_to_super) {
+            auto it = m.find(transformation_matrix_to_super);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Remove a supercell from the set. Raises if not in the set.
+          )pbdoc",
+          py::arg("transformation_matrix_to_super"))
+      .def(
+          "remove",
+          [](config::SupercellSet &m,
+             Eigen::Matrix3l const &transformation_matrix_to_super) {
+            auto it = m.find(transformation_matrix_to_super);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Remove a supercell from the set. Raises if not in the set. Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_by_transformation_matrix_to_super`.
+          )pbdoc",
+          py::arg("transformation_matrix_to_super"))
+      .def(
+          "remove_record",
+          [](config::SupercellSet &m, config::SupercellRecord const &record) {
+            auto it = m.find(record);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Remove a supercell record from the set. Raises if not in the set.
+          )pbdoc",
+          py::arg("record"))
+      .def(
+          "remove",
+          [](config::SupercellSet &m, config::SupercellRecord const &record) {
+            auto it = m.find(record);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Remove a supercell record from the set. Raises if not in the set. Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_record`.
+          )pbdoc",
+          py::arg("record"))
+      .def(
+          "remove_by_canonical_name",
+          [](config::SupercellSet &m, std::string supercell_name) {
+            auto it = m.find_canonical_by_name(supercell_name);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Remove the canonical supercell, determined by supercell name, from the set. Raises if not in the set.
+          )pbdoc",
+          py::arg("supercell_name"))
+      //
+      .def(
+          "remove",
+          [](config::SupercellSet &m, std::string supercell_name) {
+            auto it = m.find_canonical_by_name(supercell_name);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Remove the canonical supercell, determined by supercell name, from the set. Raises if not in the set. Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_by_canonical_name`.
+          )pbdoc",
+          py::arg("supercell_name"))
+      // discard
+      .def(
+          "discard_supercell",
+          [](config::SupercellSet &m,
+             std::shared_ptr<config::Supercell const> supercell) {
+            m.erase(supercell);
+          },
+          R"pbdoc(
+          Remove a supercell from the set if present
+          )pbdoc",
+          py::arg("supercell"))
+      .def(
+          "discard",
+          [](config::SupercellSet &m,
+             std::shared_ptr<config::Supercell const> supercell) {
+            m.erase(supercell);
+          },
+          R"pbdoc(
+          Remove a supercell from the set if present. Equivalent to :func:`~libcasm.configuration.SupercellSet.discard_supercell`.
+          )pbdoc",
+          py::arg("supercell"))
+      .def(
+          "discard_by_transformation_matrix_to_super",
+          [](config::SupercellSet &m,
+             Eigen::Matrix3l const &transformation_matrix_to_super) {
+            m.erase(transformation_matrix_to_super);
+          },
+          R"pbdoc(
+          Remove a supercell from the set if present, by checking for the transformation matrix.
+          )pbdoc",
+          py::arg("transformation_matrix_to_super"))
+      .def(
+          "discard",
+          [](config::SupercellSet &m,
+             Eigen::Matrix3l const &transformation_matrix_to_super) {
+            m.erase(transformation_matrix_to_super);
+          },
+          R"pbdoc(
+          Remove a supercell from the set if present, by checking for the transformation matrix. Equivalent to :func:`~libcasm.configuration.SupercellSet.discard_by_transformation_matrix_to_super`.
+          )pbdoc",
+          py::arg("transformation_matrix_to_super"))
+      .def(
+          "discard_record",
+          [](config::SupercellSet &m, config::SupercellRecord const &record) {
+            m.erase(record);
+          },
+          R"pbdoc(
+          Remove a supercell from the set if present.
+          )pbdoc",
+          py::arg("record"))
+      .def(
+          "discard",
+          [](config::SupercellSet &m, config::SupercellRecord const &record) {
+            m.erase(record);
+          },
+          R"pbdoc(
+          Remove a supercell from the set if present. Equivalent to :func:`~libcasm.configuration.SupercellSet.discard_record`.
+          )pbdoc",
+          py::arg("record"))
+      .def(
+          "discard_by_canonical_name",
+          [](config::SupercellSet &m, std::string supercell_name) {
+            m.erase_canonical_by_name(supercell_name);
+          },
+          R"pbdoc(
+          Remove a canonical supercell, determined by supercell name, from the set if present.
+          )pbdoc",
+          py::arg("supercell_name"))
+      .def(
+          "discard",
+          [](config::SupercellSet &m, std::string supercell_name) {
+            m.erase_canonical_by_name(supercell_name);
+          },
+          R"pbdoc(
+          Remove a canonical supercell, determined by supercell name, from the set if present. Equivalent to :func:`~libcasm.configuration.SupercellSet.discard_by_canonical_name`.
+          )pbdoc",
+          py::arg("supercell_name"))
+      // x in set
+      .def(
+          "__contains__",
+          [](config::SupercellSet &m,
+             std::shared_ptr<config::Supercell const> supercell) {
+            return m.find(supercell) != m.end();
+          },
+          R"pbdoc(
+          Check if a supercell is contained in the set.
+          )pbdoc",
+          py::arg("supercell"))
+      .def(
+          "__contains__",
+          [](config::SupercellSet &m,
+             Eigen::Matrix3l const &transformation_matrix_to_super) {
+            return m.find(transformation_matrix_to_super) != m.end();
+          },
+          R"pbdoc(
+          Check if a supercell is contained in the set, by transformation matrix.
+          )pbdoc",
+          py::arg("transformation_matrix_to_super"))
+      .def(
+          "__contains__",
+          [](config::SupercellSet &m, config::SupercellRecord const &record) {
+            return m.find(record) != m.end();
+          },
+          R"pbdoc(
+          Check if a supercell record is contained in the set.
+          )pbdoc",
+          py::arg("record"))
+      .def(
+          "__contains__",
+          [](config::SupercellSet &m, std::string supercell_name) {
+            return m.find_canonical_by_name(supercell_name) != m.end();
+          },
+          R"pbdoc(
+          Check if a canonical supercell, determined by supercell name, is contained in the set.
+          )pbdoc",
+          py::arg("record"))
+      // for x in set
+      .def(
+          "__iter__",
+          [](config::SupercellSet const &m) {
+            return py::make_iterator(m.begin(), m.end());
+          },
+          py::keep_alive<
+              0, 1>() /* Essential: keep object alive while iterator exists */)
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data,
+             std::shared_ptr<config::Prim const> const &prim)
+              -> std::shared_ptr<config::SupercellSet> {
+            auto supercells = std::make_shared<config::SupercellSet>(prim);
+            jsonParser json{data};
+            from_json(*supercells, json, prim);
+            return supercells;
+          },
+          R"pbdoc(
+          Construct SupercellSet from a Python dict
+
+          Parameters
+          ----------
+          data : dict
+              The serialized SupercellSet. Expected format:
+
+                  version: string
+                      A string indicating format version
+
+                  supercells: Dict[str,array_like]
+                      A dict of canonical supercells, with supercell name as key and the integer transformation matrix, T, as value. T relates the superstructure lattice vectors, S, defining the DoF space to the unit structure lattice vectors, L, according to S = L @ T, where S and L are shape=(3,3)  matrices with lattice vectors as columns.
+
+                  non_canonical_supercells: List[Dict]
+                      A list of non-canonical supercells. The format is:
+
+                          "supercell_name": <supercell_name>,
+                          "canonical_supercell_name": <canonical_supercell_name>,
+                          "transformation_matrix_to_supercell": <transformation_matrix_to_super>
+
+          prim : libcasm.configuration.Prim
+              A :class:`~libcasm.configuration.Prim`
+
+          Returns
+          -------
+          supercells : libcasm.configuration.SupercellSet
+              The :class:`~libcasm.configuration.SupercellSet`.
+          )pbdoc",
+          py::arg("data"), py::arg("prim"))
+      .def(
+          "to_dict",
+          [](std::shared_ptr<config::SupercellSet> supercells,
+             std::string version) -> nlohmann::json {
+            jsonParser json;
+            if (version == "2.0") {
+              to_json(*supercells, json);
+            } else if (version == "1.0") {
+              to_json_v1(*supercells, json);
+            } else {
+              throw std::runtime_error(
+                  "Error in SupercellSet.to_dict: invalid version");
+            }
+            return static_cast<nlohmann::json>(json);
+          },
+          R"pbdoc(
+          Represent the SupercellSet as a Python dict.
+
+          Parameters
+          ----------
+          version : str = "2.0"
+              Specify the format version to output. Options are:
+
+              - "2.0": Includes "supercells" and "non_canonical_supercells"
+              - "1.0": Only includes "supercells"
+
+          Returns
+          -------
+          data :
+              The :class:`~libcasm.configuration.SupercellSet`.
+          )pbdoc",
+          py::arg("version") = std::string("2.0"));
+
+  pyConfigurationSet
+      .def(py::init<>(),
+           R"pbdoc(
+          Construct an empty ConfigurationSet
+          )pbdoc")
+      .def("empty", &config::ConfigurationSet::empty,
+           "Returns True if the ConfigurationSet is empty")
+      // len(set)
+      .def("__len__", &config::ConfigurationSet::size)
+      // clear
+      .def("clear", &config::ConfigurationSet::clear, "Clear ConfigurationSet")
+      // add
+      .def(
+          "add_configuration",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration,
+             std::optional<std::string> supercell_name)
+              -> config::ConfigurationRecord const & {
+            if (supercell_name.has_value()) {
+              return *(m.insert(*supercell_name, configuration).first);
+            } else {
+              return *(m.insert(configuration).first);
+            }
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a configuration to the set
+
+          Parameters
+          ----------
+          configuration : libcasm.configuration.Configuration
+              The configuration to add if it is unique. The configuration must be in the canonical supercell, though this is not checked. If the configuration is not in the canonical supercell, use a different container type. A configuration_id is given automatically, using the next available index.
+          supercell_name : Optional[str] = None
+              If the supercell name is known, insertion may be faster.
+
+          Returns
+          -------
+          record : libcasm.configuration.ConfigurationRecord
+              A :class:`~libcasm.configuration.ConfigurationRecord`, as a const reference.
+
+          )pbdoc",
+          py::arg("configuration"), py::arg("supercell_name") = std::nullopt)
+      .def(  // make "add_configuration" available via "add"
+          "add",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration,
+             std::optional<std::string> supercell_name)
+              -> config::ConfigurationRecord const & {
+            if (supercell_name.has_value()) {
+              return *(m.insert(*supercell_name, configuration).first);
+            } else {
+              return *(m.insert(configuration).first);
+            }
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a configuration to the set (equivalent to :func:`~libcasm.configuration.ConfigurationSet.add_configuration`)
+          )pbdoc",
+          py::arg("configuration"), py::arg("supercell_name") = std::nullopt)
+      .def(
+          "add_record",
+          [](config::ConfigurationSet &m,
+             config::ConfigurationRecord const &record)
+              -> config::ConfigurationRecord const & {
+            return *m.insert(record).first;
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a configuration record to the set, allowing custom configuration_id
+
+          Parameters
+          ----------
+          record : libcasm.configuration.ConfigurationRecord
+              A :class:`~libcasm.configuration.ConfigurationRecord` to insert in the set.
+
+          Returns
+          -------
+          record : libcasm.configuration.ConfigurationRecord
+              A :class:`~libcasm.configuration.ConfigurationRecord` held by the set, as a const reference.
+          )pbdoc",
+          py::arg("record"))
+      .def(  // make "add_record" available via "add"
+          "add",
+          [](config::ConfigurationSet &m,
+             config::ConfigurationRecord const &record)
+              -> config::ConfigurationRecord const & {
+            return *m.insert(record).first;
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Add a configuration to the set (equivalent to :func:`~libcasm.configuration.ConfigurationSet.add_record`)
+          )pbdoc",
+          py::arg("record"))
+      // get
+      .def(
+          "get_configuration",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration) -> py::object {
+            auto it = m.find(configuration);
+            if (it == m.end()) {
+              return py::none();
+            }
+            return py::object(
+                py::cast<config::ConfigurationRecord const &>(*it));
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and return a const reference, else return None.
+          )pbdoc",
+          py::arg("configuration"))
+      .def(
+          "get",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration) -> py::object {
+            auto it = m.find(configuration);
+            if (it == m.end()) {
+              return py::none();
+            }
+            return py::object(
+                py::cast<config::ConfigurationRecord const &>(*it));
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and return a const reference, else return None (equivalent to :func:`~libcasm.configuration.ConfigurationSet.get_configuration`).
+          )pbdoc",
+          py::arg("configuration"))
+      .def(
+          "get_by_name",
+          [](config::ConfigurationSet &m,
+             std::string configuration_name) -> py::object {
+            auto it = m.find_by_name(configuration_name);
+            if (it == m.end()) {
+              return py::none();
+            }
+            return py::object(
+                py::cast<config::ConfigurationRecord const &>(*it));
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration name and return a const reference, else return None.
+          )pbdoc",
+          py::arg("configuration_name"))
+      .def(
+          "get",
+          [](config::ConfigurationSet &m,
+             std::string configuration_name) -> py::object {
+            auto it = m.find_by_name(configuration_name);
+            if (it == m.end()) {
+              return py::none();
+            }
+            return py::object(
+                py::cast<config::ConfigurationRecord const &>(*it));
+          },
+          py::return_value_policy::reference,
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration name and return a const reference, else return None (equivalent to :func:`~libcasm.configuration.ConfigurationSet.get_by_name`).
+          )pbdoc",
+          py::arg("configuration_name"))
+      // remove
+      .def(
+          "remove_configuration",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration) {
+            auto it = m.find(configuration);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and remove from the set. Raise KeyError if not in the set.
+          )pbdoc",
+          py::arg("configuration"))
+      .def(
+          "remove",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration) {
+            auto it = m.find(configuration);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and remove from the set. Raise KeyError if not in the set (equivalent to :func:`~libcasm.configuration.ConfigurationSet.remove_configuration`).
+          )pbdoc",
+          py::arg("configuration"))
+      .def(
+          "remove_by_name",
+          [](config::ConfigurationSet &m, std::string configuration_name) {
+            auto it = m.find_by_name(configuration_name);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration name and remove from the set. Raise KeyError if not in the set.
+          )pbdoc",
+          py::arg("configuration_name"))
+      .def(
+          "remove",
+          [](config::ConfigurationSet &m, std::string configuration_name) {
+            auto it = m.find_by_name(configuration_name);
+            if (it == m.end()) {
+              throw pybind11::key_error("Not in set");
+            }
+            m.erase(it);
+          },
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration name and remove from the set. Raise KeyError if not in the set (equivalent to :func:`~libcasm.configuration.ConfigurationSet.remove_by_name`).
+          )pbdoc",
+          py::arg("configuration_name"))
+      // discard
+      .def(
+          "discard_configuration",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration) {
+            auto it = m.find(configuration);
+            if (it != m.end()) {
+              m.erase(it);
+            }
+          },
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and remove from the set if present.
+          )pbdoc",
+          py::arg("configuration"))
+      .def(
+          "discard",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration) {
+            auto it = m.find(configuration);
+            if (it != m.end()) {
+              m.erase(it);
+            }
+          },
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and remove from the set if present (equivalent to :func:`~libcasm.configuration.ConfigurationSet.discard_configuration`).
+          )pbdoc",
+          py::arg("configuration"))
+      .def(
+          "discard_by_name",
+          [](config::ConfigurationSet &m, std::string configuration_name) {
+            auto it = m.find_by_name(configuration_name);
+            if (it != m.end()) {
+              m.erase(it);
+            }
+          },
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration name and remove from the set if present.
+          )pbdoc",
+          py::arg("configuration_name"))
+      .def(
+          "discard",
+          [](config::ConfigurationSet &m, std::string configuration_name) {
+            auto it = m.find_by_name(configuration_name);
+            if (it != m.end()) {
+              m.erase(it);
+            }
+          },
+          R"pbdoc(
+          Find a ConfigurationRecord by configuration name and remove from the set if present (equivalent to :func:`~libcasm.configuration.ConfigurationSet.discard_by_name`).
+          )pbdoc",
+          py::arg("configuration_name"))
+      // x in set
+      .def(
+          "__contains__",
+          [](config::ConfigurationSet &m,
+             config::Configuration const &configuration) {
+            return m.find(configuration) != m.end();
+          },
+          R"pbdoc(
+          Check by configuration degrees of freedom if configuration is in set.
+          )pbdoc",
+          py::arg("record"))
+      // x in set
+      .def(
+          "__contains__",
+          [](config::ConfigurationSet &m, std::string configuration_name) {
+            return m.find_by_name(configuration_name) != m.end();
+          },
+          R"pbdoc(
+          Check by configuration_name if configuration is in set.
+          )pbdoc",
+          py::arg("record"))
+      // for x in set
+      .def(
+          "__iter__",
+          [](config::ConfigurationSet const &m) {
+            return py::make_iterator(m.begin(), m.end());
+          },
+          py::keep_alive<
+              0, 1>() /* Essential: keep object alive while iterator exists */)
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data,
+             std::shared_ptr<config::SupercellSet> supercells) {
+            jsonParser json{data};
+            std::shared_ptr<config::ConfigurationSet> configurations =
+                std::make_shared<config::ConfigurationSet>();
+            from_json(*supercells, *configurations, json, supercells->prim());
+            return configurations;
+          },
+          R"pbdoc(
+          Construct a ConfigurationSet from a Python dict
+
+          The `Configuration reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/Configuration/>`_ documents the expected format for Configurations and Supercells."
+
+          Parameters
+          ----------
+          data : dict
+              The serialized ConfigurationSet. Expected format:
+
+              .. code-block::
+
+                  {
+                    "version": "1.0",
+                    "supercells": {
+                      "<supercell_name>": {
+                        "<configuration_id>": <Configuration JSON>,
+                          ...
+                        },
+                        ...
+                    }
+                  }
+
+
+          supercells : libcasm.configuration.SupercellSet
+              A :class:`~libcasm.configuration.SupercellSet`, which holds shared supercells used by the constructed :class:`~libcasm.configuration.Configuration` in order to avoid duplicates.
+
+          Returns
+          -------
+          configurations : libcasm.configuration.ConfigurationSet
+              The :class:`~libcasm.configuration.ConfigurationSet` constructed from the dict.
+          )pbdoc",
+          py::arg("data"), py::arg("supercells"))
+      .def(
+          "to_dict",
+          [](config::ConfigurationSet const &configurations) {
+            jsonParser json;
+            to_json(configurations, json);
+            return static_cast<nlohmann::json>(json);
+          },
+          "Represent the ConfigurationSet as a Python dict. The `Configuration "
+          "reference "
+          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
+          "Configuration/>`_ documents the expected format for Configurations "
+          "and Supercells.");
 
   // SupercellSymOp -- declare class
   py::class_<config::SupercellSymOp> pySupercellSymOp(m, "SupercellSymOp",
@@ -758,27 +1728,29 @@ PYBIND11_MODULE(_configuration, m) {
              clexulator::ConfigDoFValues const &other) {
             self.dof_values = other;
           },
-          "Assign all values from other", py::arg("other"))
+          "Assign all values from other, using copy", py::arg("other"))
       .def(
           "dof_values",
           [](config::Configuration const &self) { return self.dof_values; },
           "Return a copy of ConfigDoFValues")
       .def(
           "occupation",
-          [](config::Configuration const &configuration) {
+          [](config::Configuration const &configuration)
+              -> Eigen::VectorXi const & {
             return configuration.dof_values.occupation;
           },
+          py::return_value_policy::reference_internal,
           "Returns the site occupation values, as indices into the allowed "
-          "occupants on the corresponding basis site.")
+          "occupants on the corresponding basis site, as a const reference.")
       .def(
           "set_occupation",
           [](config::Configuration &configuration,
-             Eigen::VectorXi const &occupation) {
+             Eigen::Ref<Eigen::VectorXi const> occupation) {
             if (occupation.size() !=
                 configuration.dof_values.occupation.size()) {
               throw std::runtime_error(
-                  "Error in set_occupation: occupation vector size may not be "
-                  "changed");
+                  "Error in Configuration.set_occupation: occupation vector "
+                  "size may not be changed");
             }
             return configuration.dof_values.occupation = occupation;
           },
@@ -786,11 +1758,12 @@ PYBIND11_MODULE(_configuration, m) {
           "occupation vector results in an exception.")
       .def(
           "occ",
-          [](config::Configuration const &configuration, Index l) {
+          [](config::Configuration const &configuration, Index l) -> int {
             return configuration.dof_values.occupation(l);
           },
           py::arg("l"),
-          "Returns the site occupation value on the specified site.")
+          "Returns the site occupation value on the specified site, using a "
+          "copy.")
       .def(
           "set_occ",
           [](config::Configuration &configuration, Index l, int s) {
@@ -803,57 +1776,66 @@ PYBIND11_MODULE(_configuration, m) {
           "supercell.n_occupants()[l])`.")
       .def(
           "global_dof_values",
-          [](config::Configuration const &configuration, std::string key) {
+          [](config::Configuration const &configuration,
+             std::string key) -> Eigen::VectorXd const & {
             return configuration.dof_values.global_dof_values.at(key);
           },
-          py::arg("key"),
-          "Returns global DoF values of type `key`, in the prim basis.")
+          py::return_value_policy::reference_internal, py::arg("key"),
+          "Returns global DoF values of type `key`, in the prim basis, as a "
+          "const reference.")
       .def(
           "global_standard_dof_values",
-          [](config::Configuration const &configuration, std::string key) {
+          [](config::Configuration const &configuration,
+             std::string key) -> Eigen::VectorXd {
             auto const &prim = configuration.supercell->prim;
             return clexulator::global_to_standard_values(
                 configuration.dof_values.global_dof_values.at(key),
                 prim->global_dof_info.at(key));
           },
           py::arg("key"),
-          "Returns global DoF values of type `key`, in the standard basis.")
+          "Returns global DoF values of type `key`, in the standard basis, as "
+          "a copy.")
       .def(
           "set_global_dof_values",
           [](config::Configuration &configuration, std::string key,
-             Eigen::VectorXd const &dof_values) {
-            Eigen::VectorXd &_dof_values =
+             Eigen::Ref<Eigen::VectorXd const> dof_values) {
+            Eigen::VectorXd &curr_dof_values =
                 configuration.dof_values.global_dof_values.at(key);
-            if (_dof_values.size() != dof_values.size()) {
+            if (curr_dof_values.size() != dof_values.size()) {
               throw std::runtime_error(
                   "Error in set_global_dof_values: size may not be changed");
             }
-            return _dof_values = dof_values;
+            return curr_dof_values = dof_values;
           },
           py::arg("key"), py::arg("dof_values"),
-          "Set global DoF values of type `key`, in the prim basis.")
+          "Set global DoF values of type `key`, in the prim basis, using a "
+          "copy.")
       .def(
           "set_global_standard_dof_values",
           [](config::Configuration &configuration, std::string key,
-             Eigen::VectorXd const &standard_dof_values) {
+             Eigen::Ref<Eigen::VectorXd const> standard_dof_values) {
             auto const &prim = configuration.supercell->prim;
-            Eigen::VectorXd &_dof_values =
+            Eigen::VectorXd &curr_dof_values =
                 configuration.dof_values.global_dof_values.at(key);
-            _dof_values = clexulator::global_from_standard_values(
+            curr_dof_values = clexulator::global_from_standard_values(
                 standard_dof_values, prim->global_dof_info.at(key));
           },
           py::arg("key"), py::arg("standard_dof_values"),
-          "Set global DoF values of type `key`, in the standard basis.")
+          "Set global DoF values of type `key`, in the standard basis, using a "
+          "copy.")
       .def(
           "local_dof_values",
-          [](config::Configuration const &configuration, std::string key) {
+          [](config::Configuration const &configuration,
+             std::string key) -> Eigen::MatrixXd const & {
             return configuration.dof_values.local_dof_values.at(key);
           },
-          py::arg("key"),
-          "Returns local DoF values of type `key`, in the prim basis.")
+          py::return_value_policy::reference_internal, py::arg("key"),
+          "Returns local DoF values of type `key`, in the prim basis, as a "
+          "const reference.")
       .def(
           "local_standard_dof_values",
-          [](config::Configuration const &configuration, std::string key) {
+          [](config::Configuration const &configuration,
+             std::string key) -> Eigen::MatrixXd {
             auto const &supercell = configuration.supercell;
             auto const &prim = supercell->prim;
             auto const &xtal_prim = prim->basicstructure;
@@ -865,45 +1847,48 @@ PYBIND11_MODULE(_configuration, m) {
                 N_unitcells, prim->local_dof_info.at(key));
           },
           py::arg("key"),
-          "Returns local DoF values of type `key`, in the standard basis.")
+          "Returns local DoF values of type `key`, in the standard basis, as a "
+          "copy.")
       .def(
           "set_local_dof_values",
           [](config::Configuration &configuration, std::string key,
-             Eigen::MatrixXd const &dof_values) {
-            Eigen::MatrixXd &_dof_values =
+             Eigen::Ref<Eigen::MatrixXd const> dof_values) {
+            Eigen::MatrixXd &curr_dof_values =
                 configuration.dof_values.local_dof_values.at(key);
-            if (_dof_values.rows() != dof_values.rows()) {
+            if (curr_dof_values.rows() != dof_values.rows()) {
               throw std::runtime_error(
                   "Error in set_local_dof_values: number of rows may not be "
                   "changed");
             }
-            if (_dof_values.cols() != dof_values.cols()) {
+            if (curr_dof_values.cols() != dof_values.cols()) {
               throw std::runtime_error(
                   "Error in set_local_dof_values: number of cols may not be "
                   "changed");
             }
-            return _dof_values = dof_values;
+            return curr_dof_values = dof_values;
           },
           py::arg("key"), py::arg("dof_values"),
-          "Set local DoF values of type `key`, in the prim basis.")
+          "Set local DoF values of type `key`, in the prim basis, using a "
+          "copy.")
       .def(
           "set_local_standard_dof_values",
           [](config::Configuration &configuration, std::string key,
-             Eigen::MatrixXd const &standard_dof_values) {
+             Eigen::Ref<Eigen::MatrixXd const> standard_dof_values) {
             auto const &supercell = configuration.supercell;
             auto const &prim = supercell->prim;
             auto const &xtal_prim = prim->basicstructure;
             Index N_sublat = xtal_prim->basis().size();
             Index N_unitcells =
                 supercell->unitcell_index_converter.total_sites();
-            Eigen::MatrixXd &_dof_values =
+            Eigen::MatrixXd &curr_dof_values =
                 configuration.dof_values.local_dof_values.at(key);
-            _dof_values = clexulator::local_from_standard_values(
+            curr_dof_values = clexulator::local_from_standard_values(
                 standard_dof_values, N_sublat, N_unitcells,
                 prim->local_dof_info.at(key));
           },
           py::arg("key"), py::arg("standard_dof_values"),
-          "Set local DoF values of type `key`, in the standard basis.")
+          "Set local DoF values of type `key`, in the standard basis, using a "
+          "copy.")
       .def(
           "local_dof_site_value",
           [](config::Configuration const &configuration, std::string key,
@@ -912,17 +1897,17 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::arg("key"), py::arg("l"),
           "Returns local DoF values of type `key`, in the prim basis, on site "
-          "`l`.")
+          "`l`, using a copy.")
       .def(
           "set_local_dof_site_value",
           [](config::Configuration &configuration, std::string key, Index l,
-             Eigen::VectorXd const &site_dof_value) {
+             Eigen::Ref<Eigen::VectorXd const> site_dof_value) {
             configuration.dof_values.local_dof_values.at(key).col(l) =
                 site_dof_value;
           },
           py::arg("key"), py::arg("l"), py::arg("site_dof_value"),
           "Set the local DoF values of type `key`, in the prim basis, on site "
-          "`l`.")
+          "`l`, using a copy.")
       .def(
           "local_standard_dof_site_value",
           [](config::Configuration const &configuration, std::string key,
@@ -937,11 +1922,11 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::arg("key"), py::arg("l"),
           "Returns local DoF values of type `key`, in the standard basis, on "
-          "site `l`.")
+          "site `l`, using a copy.")
       .def(
           "set_local_standard_dof_site_value",
           [](config::Configuration &configuration, std::string key, Index l,
-             Eigen::VectorXd const &standard_site_dof_value) {
+             Eigen::Ref<Eigen::VectorXd const> standard_site_dof_value) {
             auto const &prim = configuration.supercell->prim;
             auto const &converter =
                 configuration.supercell->unitcellcoord_index_converter;
@@ -953,7 +1938,7 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::arg("key"), py::arg("l"), py::arg("standard_site_dof_value"),
           "Set the local DoF values of type `key`, in the standard basis, on "
-          "site `l`.")
+          "site `l`, using a copy.")
       .def(py::self < py::self,
            "Sorts configurations, first by supercell, then global DoF, then "
            "occupation DoF, then local continuous DoF. Only configurations "
@@ -1002,7 +1987,24 @@ PYBIND11_MODULE(_configuration, m) {
           "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
           "Configuration/>`_ documents the expected format for Configurations "
           "and Supercells.",
-          py::arg("data"), py::arg("xtal_tol") = TOL)
+          R"pbdoc(
+        Construct a Configuration from a Python dict
+
+        The `Configuration reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/Configuration/>`_ documents the expected format for Configurations and Supercells."
+
+        Parameters
+        ----------
+        data : dict
+            A :class:`~libcasm.configuration.Supercell` as a dict.
+        supercells : libcasm.configuration.SupercellSet
+            A :class:`~libcasm.configuration.SupercellSet`, which holds shared supercells in order to avoid duplicates.
+
+        Returns
+        -------
+        configuration : libcasm.configuration.Configuration
+            The :class:`~libcasm.configuration.Configuration` constructed from the dict.
+        )pbdoc",
+          py::arg("data"), py::arg("supercells"))
       .def(
           "to_dict",
           [](config::Configuration const &self) {

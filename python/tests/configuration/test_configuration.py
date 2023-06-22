@@ -9,11 +9,13 @@ import libcasm.configuration as config
 
 def test_configuration_constructor(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
-    T = np.array([
-        [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 1],
-    ])
+    T = np.array(
+        [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
     assert type(configuration) == config.Configuration
@@ -21,11 +23,13 @@ def test_configuration_constructor(simple_cubic_binary_prim):
 
 def test_configuration_dof_values(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
-    T = np.array([
-        [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 1],
-    ])
+    T = np.array(
+        [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
     dof_values = configuration.dof_values()
@@ -39,11 +43,13 @@ def test_configuration_dof_values(simple_cubic_binary_prim):
 
 def test_configuration_occupation(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
-    T = np.array([
-        [4, 0, 0],
-        [0, 4, 0],
-        [0, 0, 4],
-    ])
+    T = np.array(
+        [
+            [4, 0, 0],
+            [0, 4, 0],
+            [0, 0, 4],
+        ]
+    )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
 
@@ -59,11 +65,13 @@ def test_configuration_occupation(simple_cubic_binary_prim):
 
 def test_canonical_configuration_occupation(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
-    T = np.array([
-        [4, 0, 0],
-        [0, 4, 0],
-        [0, 0, 4],
-    ])
+    T = np.array(
+        [
+            [4, 0, 0],
+            [0, 4, 0],
+            [0, 0, 4],
+        ]
+    )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
 
@@ -79,11 +87,13 @@ def test_canonical_configuration_occupation(simple_cubic_binary_prim):
 
 def test_configuration_invariant_subgroup(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
-    T = np.array([
-        [4, 0, 0],
-        [0, 4, 0],
-        [0, 0, 4],
-    ])
+    T = np.array(
+        [
+            [4, 0, 0],
+            [0, 4, 0],
+            [0, 0, 4],
+        ]
+    )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
 
@@ -97,11 +107,13 @@ def test_configuration_invariant_subgroup(simple_cubic_binary_prim):
 
 def test_configuration_apply(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
-    T = np.array([
-        [4, 0, 0],
-        [0, 4, 0],
-        [0, 0, 4],
-    ])
+    T = np.array(
+        [
+            [4, 0, 0],
+            [0, 4, 0],
+            [0, 0, 4],
+        ]
+    )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
     configuration.set_occ(l=0, s=1)
@@ -123,12 +135,15 @@ def test_configuration_apply(simple_cubic_binary_prim):
 
 def test_copy_configuration(simple_cubic_binary_prim):
     import copy
+
     prim = config.Prim(simple_cubic_binary_prim)
-    T = np.array([
-        [4, 0, 0],
-        [0, 4, 0],
-        [0, 0, 4],
-    ])
+    T = np.array(
+        [
+            [4, 0, 0],
+            [0, 4, 0],
+            [0, 0, 4],
+        ]
+    )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration1 = config.Configuration(supercell)
     configuration2 = copy.copy(configuration1)

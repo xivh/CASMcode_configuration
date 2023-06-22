@@ -15,18 +15,21 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
     def make_occevent_orbit(prim, occ_event):
         prim_factor_group = prim.factor_group()
         prim_rep = occ_events.make_occevent_symgroup_rep(
-            prim_factor_group.elements(), prim.xtal_prim())
+            prim_factor_group.elements(), prim.xtal_prim()
+        )
         return occ_events.make_prim_periodic_orbit(occ_event, prim_rep)
 
     orbit = make_occevent_orbit(prim, occ_event)
     assert len(orbit) == 6
 
     # conventional 4-site FCC
-    T_motif = np.array([
-        [-1, 1, 1],
-        [1, -1, 1],
-        [1, 1, -1],
-    ])
+    T_motif = np.array(
+        [
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ]
+    )
     motif_supercell = config.Supercell(prim, T_motif)
     motif = config.Configuration(motif_supercell)
 
@@ -39,11 +42,13 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
     assert len(suborbits_1[0]) == 6
 
     # supercell to fill: 2x2x3 of the conventional FCC
-    S = np.array([
-        [2, 0, 0],
-        [0, 2, 0],
-        [0, 0, 3],
-    ])
+    S = np.array(
+        [
+            [2, 0, 0],
+            [0, 2, 0],
+            [0, 0, 3],
+        ]
+    )
     supercell_2 = config.Supercell(prim, T_motif @ S)
     assert len(supercell_2.factor_group().elements()) == 16
 
@@ -67,16 +72,19 @@ def test_make_all_distinct_local_perturbations(fcc_1NN_A_Va_event):
         xtal_prim=xtal_prim,
         phenomenal_occ_event=phenomenal_occ_event,
         max_length=[0.0, 0.0],
-        cutoff_radius=[0.0, 2.01])
+        cutoff_radius=[0.0, 2.01],
+    )
     orbits = cluster_specs.make_orbits()
     local_clusters = [orbit[0] for orbit in orbits]
 
     # conventional 4-site FCC
-    T_motif = np.array([
-        [-1, 1, 1],
-        [1, -1, 1],
-        [1, 1, -1],
-    ])
+    T_motif = np.array(
+        [
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ]
+    )
     motif_supercell = config.Supercell(prim, T_motif)
     motif = config.Configuration(motif_supercell)
 
@@ -85,7 +93,8 @@ def test_make_all_distinct_local_perturbations(fcc_1NN_A_Va_event):
 
     # generate unique perturbation configurations
     configurations = enum.make_all_distinct_local_perturbations(
-        supercell, phenomenal_occ_event, motif, local_clusters)
+        supercell, phenomenal_occ_event, motif, local_clusters
+    )
 
     # check the results:
     # expect 9 results:
@@ -102,7 +111,8 @@ def test_make_all_distinct_local_perturbations(fcc_1NN_A_Va_event):
 
         # get interpolated structures
         structures = enum.make_occevent_simple_structures(
-            c, phenomenal_occ_event, [0.0, 0.5, 1.0], system, False)
+            c, phenomenal_occ_event, [0.0, 0.5, 1.0], system, False
+        )
         print(xtal.pretty_json(structures[0].to_dict()))
         print()
 

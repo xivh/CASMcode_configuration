@@ -6,12 +6,13 @@
 
 #include "casm/configuration/Configuration.hh"
 #include "casm/configuration/definitions.hh"
+#include "casm/misc/Comparisons.hh"
 
 namespace CASM {
 namespace config {
 
 /// \brief Data structure for holding / reading / writing configurations
-struct ConfigurationRecord {
+struct ConfigurationRecord : public Comparisons<CRTPBase<ConfigurationRecord>> {
   ConfigurationRecord(Configuration const &_configuration,
                       std::string _supercell_name,
                       std::string _configuration_id);
@@ -19,23 +20,36 @@ struct ConfigurationRecord {
   /// \brief Shared pointer to the configuration
   Configuration configuration;
 
-  /// \brief Name of supercell for the configuration (i.e. "SCEL4_2_2_1_0_0_0")
+  /// \brief Name of canonical supercell for the configuration (i.e.
+  /// "SCEL4_2_2_1_0_0_0")
   std::string supercell_name;
 
-  /// \brief Distinguish configurations in the same supercell (i.e. "2")
+  /// \brief Distinguish configurations in the same canonical supercell (i.e.
+  /// "2")
   std::string configuration_id;
 
-  /// \brief Supercell name and configuration id (i.e. "SCEL4_2_2_1_0_0_0/2")
+  /// \brief Canonical supercell name and configuration id (i.e.
+  /// "SCEL4_2_2_1_0_0_0/2")
   std::string configuration_name;
 
   bool operator<(ConfigurationRecord const &rhs) const {
     return this->configuration < rhs.configuration;
   }
+
+ private:
+  friend struct Comparisons<CRTPBase<ConfigurationRecord>>;
 };
 
-/// \brief Data structure for holding / reading / writing configurations
+/// \brief Data structure for holding / reading / writing canonical
+/// configurations
 ///
 /// Notes:
+/// - This class is **only** valid for use holding configurations with
+///   canonical supercells
+/// - It is valid for use with non-canonical configurations or non-primitive
+///   configurations, if they are in the canonical supercell
+/// - For configurations with non-canonical supercells, do not use this class,
+///   use a std::vector<Configuration> or other container
 /// - Includes a map of supercell_name -> next configuration id that can
 ///   be used to automatically provide new configurations with sequential IDs
 class ConfigurationSet {

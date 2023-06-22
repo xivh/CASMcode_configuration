@@ -4,6 +4,7 @@
 #include <set>
 
 #include "casm/configuration/Supercell.hh"
+#include "casm/configuration/canonical_form.hh"
 #include "casm/configuration/definitions.hh"
 #include "casm/configuration/supercell_name.hh"
 
@@ -17,7 +18,17 @@ SupercellRecord::SupercellRecord(
           "Error in SupercellRecord constructor: value == nullptr")),
       supercell_name(
           make_supercell_name(supercell->superlattice.prim_lattice(),
-                              supercell->superlattice.superlattice())) {}
+                              supercell->superlattice.superlattice())),
+      is_canonical(config::is_canonical(*supercell)) {
+  if (this->is_canonical) {
+    this->canonical_supercell_name = this->supercell_name;
+  } else {
+    auto canonical_supercell = make_canonical_form(*this->supercell);
+    this->canonical_supercell_name =
+        make_supercell_name(canonical_supercell->superlattice.prim_lattice(),
+                            canonical_supercell->superlattice.superlattice());
+  }
+}
 
 bool SupercellRecord::operator<(SupercellRecord const &rhs) const {
   return *this->supercell < *rhs.supercell;
@@ -66,14 +77,33 @@ std::pair<SupercellSet::iterator, bool> SupercellSet::insert(
   }
 }
 
-std::pair<SupercellSet::iterator, bool> SupercellSet::insert(
+/// \brief Insert a canonical supercell by name
+///
+/// \param supercell_name The name of a canonical supercell
+///
+/// \returns Returns a pair consisting of an iterator to the inserted element
+///     (or to the element that prevented the insertion) and a bool value set to
+///     true if and only if the insertion took place.
+///
+/// Notes:
+/// - Throws if `supercell_name` is not the name of the canonical equivalent
+/// supercell.
+///
+std::pair<SupercellSet::iterator, bool> SupercellSet::insert_canonical(
     std::string supercell_name) {
-  auto it = find_by_name(supercell_name);
+  auto it = find_canonical_by_name(supercell_name);
   if (it == end()) {
     auto supercell = std::make_shared<Supercell const>(
         m_prim, make_superlattice_from_supercell_name(
                     m_prim->basicstructure->lattice(), supercell_name));
-    return m_data.emplace(supercell);
+    auto canonical_supercell = make_canonical_form(*supercell);
+    auto result = m_data.emplace(canonical_supercell);
+    if (result.first->canonical_supercell_name != supercell_name) {
+      throw std::runtime_error(
+          "Error in SupercellSet::insert_canonical: supercell_name is not the "
+          "canonical supercell name");
+    }
+    return result;
   } else {
     return std::make_pair(it, false);
   }
@@ -102,12 +132,12 @@ SupercellSet::const_iterator SupercellSet::find(
   return end;
 }
 
-SupercellSet::const_iterator SupercellSet::find_by_name(
+SupercellSet::const_iterator SupercellSet::find_canonical_by_name(
     std::string name) const {
   auto it = this->begin();
   auto end = this->end();
   for (; it != end; ++it) {
-    if (it->supercell_name == name) {
+    if (it->is_canonical && it->supercell_name == name) {
       return it;
     }
   }
@@ -132,11 +162,21 @@ SupercellSet::size_type SupercellSet::count(
   return 0;
 }
 
-SupercellSet::size_type SupercellSet::count_by_name(std::string name) const {
-  if (find_by_name(name) != end()) {
-    return 1;
+SupercellSet::size_type SupercellSet::count_canonical_by_name(
+    std::string name) const {
+  SupercellSet::size_type n = 0;
+  auto it = this->begin();
+  auto end = this->end();
+  for (; it != end; ++it) {
+    if (it->is_canonical && it->supercell_name == name) {
+      ++n;
+    }
   }
-  return 0;
+  return n;
+}
+
+SupercellSet::const_iterator SupercellSet::erase(const_iterator it) {
+  return m_data.erase(it);
 }
 
 SupercellSet::size_type SupercellSet::erase(
@@ -158,8 +198,9 @@ SupercellSet::size_type SupercellSet::erase(
   return 1;
 }
 
-SupercellSet::size_type SupercellSet::erase_by_name(std::string name) {
-  auto it = find_by_name(name);
+SupercellSet::size_type SupercellSet::erase_canonical_by_name(
+    std::string name) {
+  auto it = find_canonical_by_name(name);
   if (it == end()) {
     return 0;
   }
@@ -171,17 +212,20 @@ std::set<SupercellRecord> &SupercellSet::data() { return m_data; }
 
 std::set<SupercellRecord> const &SupercellSet::data() const { return m_data; }
 
-std::map<std::string, SupercellRecord const *> make_index_by_supercell_name(
+std::map<std::string, SupercellRecord const *>
+make_index_by_canonical_supercell_name(
     std::set<SupercellRecord> const &supercells) {
   std::map<std::string, SupercellRecord const *> result;
   for (auto const &s : supercells) {
-    result.emplace(s.supercell_name, &s);
+    if (s.is_canonical) {
+      result.emplace(s.supercell_name, &s);
+    }
   }
   return result;
 }
 
-/// \brief Find or add supercell by name
-SupercellRecord const *find_or_add_supercell_by_name(
+/// \brief Find or add canonical supercell by name
+SupercellRecord const *find_or_add_canonical_supercell_by_name(
     std::string const &supercell_name, std::set<SupercellRecord> &supercells,
     std::map<std::string, SupercellRecord const *> &index_by_supercell_name,
     std::shared_ptr<Prim const> const &prim) {
@@ -191,10 +235,12 @@ SupercellRecord const *find_or_add_supercell_by_name(
     auto supercell = std::make_shared<Supercell const>(
         prim, make_superlattice_from_supercell_name(
                   prim->basicstructure->lattice(), supercell_name));
-    s = &*supercells.insert(supercell).first;
+    auto canonical_supercell = make_canonical_form(*supercell);
+    s = &*supercells.insert(canonical_supercell).first;
     if (supercell_name != s->supercell_name) {
       throw std::runtime_error(
-          "Error in find_or_add_supercell_by_name: supercell_name mismatch");
+          "Error in find_or_add_canonical_supercell_by_name: supercell_name "
+          "mismatch");
     }
     index_by_supercell_name.emplace(supercell_name, s);
   } else {

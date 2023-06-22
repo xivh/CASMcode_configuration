@@ -9,7 +9,7 @@ import libcasm.xtal.prims as xtal_prims
 
 def test_make_canonical_prim_periodic_occevents():
     r = 1.0  # ideal atom radius
-    a = math.sqrt(((4 * r)**2) / 2.)  # conventional FCC lattice parameter
+    a = math.sqrt(((4 * r) ** 2) / 2.0)  # conventional FCC lattice parameter
     tol = 1e-5
     xtal_prim = xtal_prims.FCC(r=r, occ_dof=["A", "B", "Va"])
 
@@ -39,7 +39,8 @@ def test_make_canonical_prim_periodic_occevents():
         xtal_prim=xtal_prim,
         generating_group=sym_info.make_factor_group(xtal_prim),
         max_length=max_length,
-        custom_generators=custom_generators)
+        custom_generators=custom_generators,
+    )
 
     # null, point, 2 pair, 2 triplet
     assert len(cluster_specs.make_orbits()) == 6
@@ -60,11 +61,12 @@ def test_make_canonical_prim_periodic_occevents():
     custom_occevents = []
 
     canonical_occevents = occ_events.make_canonical_prim_periodic_occevents(
-        system, cluster_specs, occevent_counter_params, custom_occevents)
+        system, cluster_specs, occevent_counter_params, custom_occevents
+    )
 
-    print_event = occ_events.OccEventPrinter(f=sys.stdout,
-                                             system=system,
-                                             coordinate_mode='cart')
+    print_event = occ_events.OccEventPrinter(
+        f=sys.stdout, system=system, coordinate_mode="cart"
+    )
 
     for i, x in enumerate(canonical_occevents):
         print(i)

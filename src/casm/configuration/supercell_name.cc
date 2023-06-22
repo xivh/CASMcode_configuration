@@ -109,7 +109,8 @@ std::string make_supercell_name(xtal::Lattice const &prim_lattice,
 /// \param prim_lattice The primitive lattice
 /// \param supercell_name The name of the super lattice
 ///
-/// \returns The superlattice with the specified supercell name
+/// \returns The superlattice with the specified supercell name. The result
+///     may not be in canonical form.
 ///
 xtal::Lattice make_superlattice_from_supercell_name(
     xtal::Lattice const &prim_lattice, std::string supercell_name) {

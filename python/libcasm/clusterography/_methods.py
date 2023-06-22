@@ -6,7 +6,7 @@ import libcasm.xtal as xtal
 def make_periodic_cluster_specs(
     xtal_prim: xtal.Prim,
     max_length: list[float],
-    custom_generators: list[_clust.ClusterOrbitGenerator] = []
+    custom_generators: list[_clust.ClusterOrbitGenerator] = [],
 ) -> _clust.ClusterSpecs:
     """Construct ClusterSpecs for periodic orbits using the prim factor group
 
@@ -30,10 +30,12 @@ def make_periodic_cluster_specs(
         The resulting ClusterSpecs
     """
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
-    return _clust.ClusterSpecs(xtal_prim=xtal_prim,
-                               generating_group=prim_factor_group,
-                               max_length=max_length,
-                               custom_generators=custom_generators)
+    return _clust.ClusterSpecs(
+        xtal_prim=xtal_prim,
+        generating_group=prim_factor_group,
+        max_length=max_length,
+        custom_generators=custom_generators,
+    )
 
 
 def make_local_cluster_specs(
@@ -41,7 +43,7 @@ def make_local_cluster_specs(
     phenomenal_cluster: _clust.Cluster,
     max_length: list[float],
     cutoff_radius: list[float],
-    custom_generators: list[_clust.ClusterOrbitGenerator] = []
+    custom_generators: list[_clust.ClusterOrbitGenerator] = [],
 ) -> _clust.ClusterSpecs:
     """Construct ClusterSpecs for local-cluster orbits around a cluster
 
@@ -74,15 +76,19 @@ def make_local_cluster_specs(
     """
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     symgroup_rep = _clust.make_integral_site_coordinate_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim)
+        prim_factor_group.elements(), xtal_prim
+    )
     occevent_group = _clust.make_cluster_group(
         cluster=phenomenal_cluster,
         group=prim_factor_group,
         lattice=xtal_prim.lattice(),
-        integral_site_coordinate_symgroup_rep=symgroup_rep)
-    return _clust.ClusterSpecs(xtal_prim=xtal_prim,
-                               generating_group=occevent_group,
-                               max_length=max_length,
-                               phenomenal=phenomenal_cluster,
-                               cutoff_radius=cutoff_radius,
-                               custom_generators=custom_generators)
+        integral_site_coordinate_symgroup_rep=symgroup_rep,
+    )
+    return _clust.ClusterSpecs(
+        xtal_prim=xtal_prim,
+        generating_group=occevent_group,
+        max_length=max_length,
+        phenomenal=phenomenal_cluster,
+        cutoff_radius=cutoff_radius,
+        custom_generators=custom_generators,
+    )

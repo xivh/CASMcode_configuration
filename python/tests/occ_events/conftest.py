@@ -19,6 +19,7 @@ def fcc_1NN_A_Va_event():
     Va_initial_pos = OccPosition.molecule(site2, Va_occ_index)
     Va_final_pos = OccPosition.molecule(site1, Va_occ_index)
 
-    return (xtal_prim,
-            OccEvent([[A_initial_pos, A_final_pos],
-                      [Va_initial_pos, Va_final_pos]]))
+    return (
+        xtal_prim,
+        OccEvent([[A_initial_pos, A_final_pos], [Va_initial_pos, Va_final_pos]]),
+    )

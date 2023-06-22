@@ -13,7 +13,8 @@ struct SupercellSymInfo {
   SupercellSymInfo(
       std::shared_ptr<Prim const> const &prim, Superlattice const &superlattice,
       xtal::UnitCellIndexConverter const &unitcell_index_converter,
-      xtal::UnitCellCoordIndexConverter const &unitcellcoord_index_converter);
+      xtal::UnitCellCoordIndexConverter const &unitcellcoord_index_converter,
+      Index max_n_translation_permutations = 100);
 
   /// \brief The subgroup of the prim factor group that leaves
   /// the supercell lattice vectors invariant
@@ -24,7 +25,7 @@ struct SupercellSymInfo {
   ///
   /// The number of translations is equal the supercell volume (as an integer
   /// multiple of the prim unit cell). Not populated for large supercells
-  /// (n_unitcells > 100).
+  /// (n_unitcells > max_n_translation_permutations).
   std::optional<std::vector<sym_info::Permutation>> translation_permutations;
 
   /// \brief Describes how sites permute due to supercell factor group

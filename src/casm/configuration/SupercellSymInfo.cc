@@ -16,17 +16,21 @@ namespace config {
 ///     in this supercell.
 /// \brief bijk_index_converter UnitCellCoord and linear site index conversions
 ///     in this supercell.
+/// \brief max_n_translation_permutations If superlattice.size() is greater than
+///     max_n_translation_permutations, do not populate
+///     SupercellSymInfo::translation_permutations (default=100).
 SupercellSymInfo::SupercellSymInfo(
     std::shared_ptr<Prim const> const &prim, Superlattice const &superlattice,
     xtal::UnitCellIndexConverter const &unitcell_index_converter,
-    xtal::UnitCellCoordIndexConverter const &unitcellcoord_index_converter)
+    xtal::UnitCellCoordIndexConverter const &unitcellcoord_index_converter,
+    Index max_n_translation_permutations)
     : factor_group(std::make_shared<SymGroup const>(
           make_factor_group(prim, superlattice))),
       factor_group_permutations(make_factor_group_permutations(
           factor_group->head_group_index,
           prim->sym_info.unitcellcoord_symgroup_rep,
           unitcellcoord_index_converter)) {
-  if (superlattice.size() <= 100) {
+  if (superlattice.size() <= max_n_translation_permutations) {
     translation_permutations = make_translation_permutations(
         unitcell_index_converter, unitcellcoord_index_converter);
   }

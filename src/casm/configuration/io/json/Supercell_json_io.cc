@@ -50,37 +50,116 @@ jsonParser &to_json(std::shared_ptr<config::Supercell const> const &supercell,
   return json;
 }
 
+/// \brief Read SupercellSet from JSON
 void from_json(config::SupercellSet &supercells, jsonParser const &json,
                std::shared_ptr<config::Prim const> const &prim) {
   supercells.clear();
 
+  std::set<std::string> matching_versions = {"1.0", "2.0"};
+
   // check json version
   if (!json.contains("version") ||
-      json["version"].get<std::string>() != "1.0") {
+      !matching_versions.count(json["version"].get<std::string>())) {
     throw std::runtime_error(
-        std::string("Error jsonDB version mismatch: found: ") +
-        json["version"].get<std::string>() + " expected: 1.0");
+        std::string("Error jsonDB incompatible version: found: ") +
+        json["version"].get<std::string>());
   }
 
   if (!json.is_obj() || !json.contains("supercells")) {
     throw std::runtime_error("Error reading supercells: invalid format");
   }
 
-  auto it = json["supercells"].begin();
-  auto end = json["supercells"].end();
-  for (; it != end; ++it) {
-    Eigen::Matrix3l mat;
-    from_json(mat, *it);
-    supercells.insert(std::make_shared<config::Supercell const>(prim, mat));
+  if (json.contains("supercells")) {
+    auto it = json["supercells"].begin();
+    auto end = json["supercells"].end();
+    for (; it != end; ++it) {
+      Eigen::Matrix3l mat;
+      from_json(mat, *it);
+      supercells.insert(std::make_shared<config::Supercell const>(prim, mat));
+    }
+  }
+  if (json.contains("non_canonical_supercells")) {
+    auto it = json["non_canonical_supercells"].begin();
+    auto end = json["non_canonical_supercells"].end();
+    for (; it != end; ++it) {
+      if (!it->contains("transformation_matrix_to_supercell")) {
+        throw std::runtime_error(
+            "Error reading supercells: missing "
+            "\"transformation_matrix_to_supercell\"");
+      }
+      Eigen::Matrix3l mat;
+      from_json(mat, (*it)["transformation_matrix_to_supercell"]);
+      supercells.insert(std::make_shared<config::Supercell const>(prim, mat));
+    }
   }
 }
 
+/// \brief Write SupercellSet to JSON (version 2.0)
+///
+/// Notes:
+/// - A version 1.0 file does not include non_canonical_supercells
+///
+/// Format:
+/// \code
+/// {
+///   "version": "2.0",
+///   "supercells": { // canonical supercells
+///     <supercell_name>: <transformation_matrix_to_super>,
+///     ...
+///   },
+///   "non_canonical_supercells": [
+///     {
+///       "supercell_name": <supercell_name>,
+///       "canonical_supercell_name": <canonical_supercell_name>,
+///       "transformation_matrix_to_supercell": <transformation_matrix_to_super>
+///     },
+///     ...
+///   ]
+/// }
+/// \endcode
 jsonParser &to_json(config::SupercellSet const &supercells, jsonParser &json) {
   json.put_obj();
+  json["supercells"].put_obj();
+  json["non_canonical_supercells"].put_array();
+  json["version"] = "2.0";
+  for (auto const &s : supercells) {
+    if (s.is_canonical) {
+      json["supercells"][s.supercell_name] =
+          s.supercell->superlattice.transformation_matrix_to_super();
+    } else {
+      jsonParser tjson;
+      tjson["canonical_supercell_name"] = s.canonical_supercell_name;
+      tjson["supercell_name"] = s.supercell_name;
+      tjson["transformation_matrix_to_supercell"] =
+          s.supercell->superlattice.transformation_matrix_to_super();
+      json["non_canonical_supercells"].push_back(tjson);
+    }
+  }
+  return json;
+}
+
+/// \brief Write SupercellSet to JSON (version 1.0)
+///
+/// Format:
+/// \code
+/// {
+///   "version": "1.0",
+///   "supercells": { // canonical supercells
+///     <supercell_name>: <transformation_matrix_to_super>,
+///     ...
+///   }
+/// }
+/// \endcode
+jsonParser &to_json_v1(config::SupercellSet const &supercells,
+                       jsonParser &json) {
+  json.put_obj();
+  json["supercells"].put_obj();
   json["version"] = "1.0";
   for (auto const &s : supercells) {
-    json["supercells"][s.supercell_name] =
-        s.supercell->superlattice.transformation_matrix_to_super();
+    if (s.is_canonical) {
+      json["supercells"][s.supercell_name] =
+          s.supercell->superlattice.transformation_matrix_to_super();
+    }
   }
   return json;
 }

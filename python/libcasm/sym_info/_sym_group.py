@@ -32,8 +32,10 @@ class SymGroup(_sym_info.SymGroup):
         The group multiplication table, where ``k == multiplication_table[i][j]`` indicates that ``element[k] == element[i] * element[j]``.
 
     """
-    def __init__(self, element: list[xtal.SymOp],
-                 multiplication_table: list[list[int]]):
+
+    def __init__(
+        self, element: list[xtal.SymOp], multiplication_table: list[list[int]]
+    ):
         super().__init__(element, multiplication_table)
 
     def conjugacy_classes(self) -> list[list[int]]:
@@ -101,9 +103,8 @@ class SymGroup(_sym_info.SymGroup):
         return super().is_subgroup()
 
     def make_subgroup(
-            self,
-            head_group_index: set[int],
-            element: Optional[list[xtal.SymOp]] = None) -> SymGroupType:
+        self, head_group_index: set[int], element: Optional[list[xtal.SymOp]] = None
+    ) -> SymGroupType:
         r"""Construct a subgroup
 
         Parameters

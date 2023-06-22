@@ -15,4 +15,5 @@ from ._methods import (
     make_point_group,
 )
 from ._sym_group import (
-    SymGroup, )
+    SymGroup,
+)

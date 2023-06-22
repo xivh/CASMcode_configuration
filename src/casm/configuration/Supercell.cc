@@ -6,13 +6,15 @@ namespace CASM {
 namespace config {
 
 Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
-                     Lattice const &_superlattice)
+                     Lattice const &_superlattice,
+                     Index max_n_translation_permutations)
     : Supercell(_prim,
-                Superlattice(_prim->basicstructure->lattice(), _superlattice)) {
-}
+                Superlattice(_prim->basicstructure->lattice(), _superlattice),
+                max_n_translation_permutations) {}
 
 Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
-                     Superlattice const &_superlattice)
+                     Superlattice const &_superlattice,
+                     Index max_n_translation_permutations)
     : prim(_prim),
       superlattice(_superlattice),
       unitcell_index_converter(superlattice.transformation_matrix_to_super()),
@@ -20,12 +22,15 @@ Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
           superlattice.transformation_matrix_to_super(),
           prim->basicstructure->basis().size()),
       sym_info(prim, superlattice, unitcell_index_converter,
-               unitcellcoord_index_converter) {}
+               unitcellcoord_index_converter, max_n_translation_permutations) {}
 
 Supercell::Supercell(std::shared_ptr<Prim const> const &_prim,
-                     Eigen::Matrix3l const &_superlattice_matrix)
-    : Supercell(_prim, Superlattice(_prim->basicstructure->lattice(),
-                                    _superlattice_matrix)) {}
+                     Eigen::Matrix3l const &_superlattice_matrix,
+                     Index max_n_translation_permutations)
+    : Supercell(
+          _prim,
+          Superlattice(_prim->basicstructure->lattice(), _superlattice_matrix),
+          max_n_translation_permutations) {}
 
 /// \brief Less than comparison of Supercell
 bool Supercell::operator<(Supercell const &B) const {
