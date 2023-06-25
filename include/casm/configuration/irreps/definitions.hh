@@ -27,7 +27,7 @@ typedef long Index;
 typedef std::vector<Eigen::MatrixXd> MatrixRep;
 typedef std::set<Index> GroupIndices;
 typedef std::set<GroupIndices> GroupIndicesOrbit;
-typedef std::vector<GroupIndicesOrbit> GroupIndicesOrbitVector;
+typedef std::set<GroupIndicesOrbit> GroupIndicesOrbitSet;
 
 }  // namespace irreps
 }  // namespace CASM

@@ -57,12 +57,12 @@ Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps);
 /// Performs irreducible subspace construction and symmetrization
 struct IrrepDecomposition {
   /// IrrepDecomposition constructor
-  IrrepDecomposition(MatrixRep const &_fullspace_rep,
-                     GroupIndices const &_head_group,
-                     Eigen::MatrixXd const &_init_subspace,
-                     GroupIndicesOrbitVector const &_cyclic_subgroups,
-                     GroupIndicesOrbitVector const &_all_subgroups,
-                     bool allow_complex);
+  IrrepDecomposition(
+      MatrixRep const &_fullspace_rep, GroupIndices const &_head_group,
+      Eigen::MatrixXd const &_init_subspace,
+      std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
+      std::function<GroupIndicesOrbitSet()> make_all_subgroups_f,
+      bool allow_complex);
 
   /// Full space matrix representation
   ///
@@ -72,12 +72,6 @@ struct IrrepDecomposition {
 
   /// Group (as indices into fullspace_rep) used to find irreps
   GroupIndices head_group;
-
-  // Cyclic subgroups of head_group (only first group in each orbit is used)
-  GroupIndicesOrbitVector cyclic_subgroups;
-
-  // All subgroups of head_group (only first group in each orbit is used)
-  GroupIndicesOrbitVector all_subgroups;
 
   /// Space in which to find irreducible subspaces. This space is formed by
   /// expanding `init_subspace`, if necessary, by application of `rep` and

@@ -200,8 +200,8 @@ MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
 std::vector<IrrepInfo> symmetrize_irreps(
     MatrixRep const &subspace_rep, GroupIndices const &head_group,
     std::vector<IrrepInfo> const &irreps,
-    GroupIndicesOrbitVector const &cyclic_subgroups,
-    GroupIndicesOrbitVector const &all_subgroups);
+    std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
+    std::function<GroupIndicesOrbitSet()> make_all_subgroups_f);
 
 }  // namespace IrrepDecompositionImpl
 

@@ -39,9 +39,11 @@ namespace irreps {
 multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
     MatrixRep const &rep, GroupIndices const &head_group,
     Eigen::MatrixXcd const &irrep_subspace, double vec_compare_tol,
-    GroupIndicesOrbitVector const &cyclic_subgroups,
-    GroupIndicesOrbitVector const &all_subgroups, bool use_all_subgroups) {
-  auto const &sgroups = (use_all_subgroups ? all_subgroups : cyclic_subgroups);
+    std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
+    std::function<GroupIndicesOrbitSet()> make_all_subgroups_f,
+    bool use_all_subgroups) {
+  GroupIndicesOrbitSet sgroups =
+      (use_all_subgroups ? make_all_subgroups_f() : make_cyclic_subgroups_f());
 
   std::vector<Eigen::VectorXcd> tdirs;
   Eigen::MatrixXd R;
@@ -91,9 +93,9 @@ multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
   if (use_all_subgroups || result.size() >= irrep_subspace.cols()) {
     return result;
   } else {
-    return make_irrep_special_directions(rep, head_group, irrep_subspace,
-                                         vec_compare_tol, cyclic_subgroups,
-                                         all_subgroups, true);
+    return make_irrep_special_directions(
+        rep, head_group, irrep_subspace, vec_compare_tol,
+        make_cyclic_subgroups_f, make_cyclic_subgroups_f, true);
   }
 }
 

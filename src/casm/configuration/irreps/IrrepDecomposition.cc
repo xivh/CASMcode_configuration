@@ -78,12 +78,10 @@ Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps) {
 IrrepDecomposition::IrrepDecomposition(
     MatrixRep const &_fullspace_rep, GroupIndices const &_head_group,
     Eigen::MatrixXd const &init_subspace,
-    GroupIndicesOrbitVector const &_cyclic_subgroups,
-    GroupIndicesOrbitVector const &_all_subgroups, bool allow_complex)
-    : fullspace_rep(_fullspace_rep),
-      head_group(_head_group),
-      cyclic_subgroups(_cyclic_subgroups),
-      all_subgroups(_all_subgroups) {
+    std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
+    std::function<GroupIndicesOrbitSet()> make_all_subgroups_f,
+    bool allow_complex)
+    : fullspace_rep(_fullspace_rep), head_group(_head_group) {
   using namespace IrrepDecompositionImpl;
 
   Index dim = fullspace_rep[0].rows();
@@ -114,7 +112,7 @@ IrrepDecomposition::IrrepDecomposition(
     // Symmetrize all the irreps that were found
     std::vector<IrrepInfo> symmetrized_subspace_irreps_i =
         symmetrize_irreps(subspace_rep_i, head_group, subspace_irreps_i,
-                          cyclic_subgroups, all_subgroups);
+                          make_cyclic_subgroups_f, make_all_subgroups_f);
     // Transform the irreps trans_mat to act on vectors in the fullspace
     std::vector<IrrepInfo> symmetrized_fullspace_irreps_i =
         make_fullspace_irreps(symmetrized_subspace_irreps_i, subspace_i);

@@ -21,6 +21,7 @@ class SupercellSymOpFCCTest : public testing::Test {
   }
 
   std::shared_ptr<config::Supercell const> supercell;
+  std::shared_ptr<config::SymGroup const> symgroup;
 };
 
 TEST_F(SupercellSymOpFCCTest, Test1) {
@@ -72,8 +73,8 @@ TEST_F(SupercellSymOpFCCTest, Test4) {
     site_indices.emplace(l);
   }
 
-  std::vector<Eigen::MatrixXd> occ_matrix_rep =
-      make_local_dof_matrix_rep(invariant_subgroup, "occ", site_indices);
+  std::vector<Eigen::MatrixXd> occ_matrix_rep = make_local_dof_matrix_rep(
+      invariant_subgroup, "occ", site_indices, symgroup);
 
   // for (Index i=0; i<occ_matrix_rep.size(); ++i) {
   //   std::cout << "i: " << i << "\n" << occ_matrix_rep[i] << std::endl <<
@@ -95,8 +96,8 @@ TEST_F(SupercellSymOpFCCTest, Test5) {
     site_indices.emplace(l);
   }
 
-  std::vector<Eigen::MatrixXd> occ_matrix_rep =
-      make_local_dof_matrix_rep(invariant_subgroup, "occ", site_indices);
+  std::vector<Eigen::MatrixXd> occ_matrix_rep = make_local_dof_matrix_rep(
+      invariant_subgroup, "occ", site_indices, symgroup);
 
   // for (Index i=0; i<occ_matrix_rep.size(); ++i) {
   //   std::cout << "i: " << i << "\n" << occ_matrix_rep[i] << std::endl <<
@@ -116,6 +117,7 @@ class SupercellSymOpFCCTernaryGLStrainDispTest : public testing::Test {
   }
 
   std::shared_ptr<config::Supercell const> supercell;
+  std::shared_ptr<config::SymGroup const> symgroup;
 };
 
 TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, Test1) {
@@ -228,7 +230,7 @@ TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestGlobalMatrixRep1) {
   EXPECT_EQ(invariant_subgroup.size(), 4 * 48);
 
   std::vector<Eigen::MatrixXd> GLstrain_matrix_rep =
-      make_global_dof_matrix_rep(invariant_subgroup, "GLstrain");
+      make_global_dof_matrix_rep(invariant_subgroup, "GLstrain", symgroup);
 
   // for (Index i=0; i<GLstrain_matrix_rep.size(); ++i) {
   //   std::cout << "i: " << i << "\n" << GLstrain_matrix_rep[i] << std::endl <<
@@ -250,7 +252,7 @@ TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestGlobalMatrixRep2) {
   EXPECT_EQ(invariant_subgroup.size(), 2 * 16);
 
   std::vector<Eigen::MatrixXd> GLstrain_matrix_rep =
-      make_global_dof_matrix_rep(invariant_subgroup, "GLstrain");
+      make_global_dof_matrix_rep(invariant_subgroup, "GLstrain", symgroup);
 
   // for (Index i=0; i<GLstrain_matrix_rep.size(); ++i) {
   //   std::cout << "i: " << i << "\n" << GLstrain_matrix_rep[i] << std::endl <<
@@ -273,8 +275,8 @@ TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestLocalMatrixRep1) {
   auto invariant_subgroup = make_invariant_subgroup(configuration, begin, end);
   EXPECT_EQ(invariant_subgroup.size(), 4 * 48);
 
-  std::vector<Eigen::MatrixXd> disp_matrix_rep =
-      make_local_dof_matrix_rep(invariant_subgroup, "disp", site_indices);
+  std::vector<Eigen::MatrixXd> disp_matrix_rep = make_local_dof_matrix_rep(
+      invariant_subgroup, "disp", site_indices, symgroup);
 
   // for (Index i=0; i<disp_matrix_rep.size(); ++i) {
   //   std::cout << "i: " << i << "\n" << disp_matrix_rep[i] << std::endl <<
@@ -299,8 +301,8 @@ TEST_F(SupercellSymOpFCCTernaryGLStrainDispTest, TestLocalMatrixRep2) {
   auto invariant_subgroup = make_invariant_subgroup(configuration, begin, end);
   EXPECT_EQ(invariant_subgroup.size(), 2 * 16);
 
-  std::vector<Eigen::MatrixXd> disp_matrix_rep =
-      make_local_dof_matrix_rep(invariant_subgroup, "disp", site_indices);
+  std::vector<Eigen::MatrixXd> disp_matrix_rep = make_local_dof_matrix_rep(
+      invariant_subgroup, "disp", site_indices, symgroup);
 
   // for (Index i=0; i<disp_matrix_rep.size(); ++i) {
   //   std::cout << "i: " << i << "\n" << disp_matrix_rep[i] << std::endl <<
@@ -318,6 +320,7 @@ class SupercellSymOpSimpleCubicIsingTest : public testing::Test {
   }
 
   std::shared_ptr<config::Supercell const> supercell;
+  std::shared_ptr<config::SymGroup const> symgroup;
 };
 
 TEST_F(SupercellSymOpSimpleCubicIsingTest, Test1) {

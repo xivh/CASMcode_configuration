@@ -820,8 +820,8 @@ MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
 std::vector<IrrepInfo> symmetrize_irreps(
     MatrixRep const &subspace_rep, GroupIndices const &head_group,
     std::vector<IrrepInfo> const &irreps,
-    GroupIndicesOrbitVector const &cyclic_subgroups,
-    GroupIndicesOrbitVector const &all_subgroups) {
+    std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
+    std::function<GroupIndicesOrbitSet()> make_all_subgroups_f) {
   std::vector<IrrepInfo> symmetrized_irreps;
   double vec_compare_tol = TOL;
   bool use_all_subgroups = false;
@@ -830,8 +830,8 @@ std::vector<IrrepInfo> symmetrize_irreps(
 
     multivector<Eigen::VectorXcd>::X<2> irrep_special_directions =
         make_irrep_special_directions(subspace_rep, head_group, irrep_subspace,
-                                      vec_compare_tol, cyclic_subgroups,
-                                      all_subgroups, use_all_subgroups);
+                                      vec_compare_tol, make_cyclic_subgroups_f,
+                                      make_all_subgroups_f, use_all_subgroups);
 
     Eigen::MatrixXcd symmetrizer_matrix = make_irrep_symmetrizer_matrix(
         irrep_special_directions, irrep_subspace, vec_compare_tol);

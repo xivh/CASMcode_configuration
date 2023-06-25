@@ -259,7 +259,6 @@ std::vector<ConfigurationWithProperties> make_equivalents(
   if (equivalents.size() == 0) {
     return equivalents_with_properties;
   }
-  auto const &pair = *equivalents.begin();
   for (auto const &pair : equivalents) {
     equivalents_with_properties.push_back(
         copy_apply(pair.second, configuration_with_properties));
