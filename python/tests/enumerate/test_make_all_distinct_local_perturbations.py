@@ -1,16 +1,16 @@
 import numpy as np
+
 import libcasm.configuration as config
-import libcasm.occ_events as occ_events
 import libcasm.enumerate as enum
+import libcasm.occ_events as occ_events
 import libcasm.xtal as xtal
 
 
 def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
-
     # setup: FCC prim, 1NN A-Va exchange event
     xtal_prim, occ_event = fcc_1NN_A_Va_event
     prim = config.Prim(xtal_prim)
-    system = occ_events.OccSystem(xtal_prim)
+    occ_events.OccSystem(xtal_prim)
 
     def make_occevent_orbit(prim, occ_event):
         prim_factor_group = prim.factor_group()
@@ -31,7 +31,7 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
         ]
     )
     motif_supercell = config.Supercell(prim, T_motif)
-    motif = config.Configuration(motif_supercell)
+    config.Configuration(motif_supercell)
 
     # supercell to fill: 3x3x3 of the conventional FCC
     supercell_1 = config.Supercell(prim, T_motif * 3)
@@ -59,7 +59,6 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
 
 
 def test_make_all_distinct_local_perturbations(fcc_1NN_A_Va_event):
-
     # setup: FCC prim, 1NN A-Va exchange event
     xtal_prim, phenomenal_occ_event = fcc_1NN_A_Va_event
     prim = config.Prim(xtal_prim)

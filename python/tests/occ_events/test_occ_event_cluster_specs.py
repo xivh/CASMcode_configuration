@@ -1,7 +1,3 @@
-import numpy as np
-import libcasm.xtal as xtal
-import libcasm.xtal.prims as xtal_prims
-import libcasm.configuration as config
 import libcasm.clusterography as clust
 import libcasm.occ_events as occ_events
 import libcasm.sym_info as sym_info

@@ -20,7 +20,7 @@ static IrrepWedge _wedge_from_pseudo_irrep(IrrepInfo const &irrep,
   Eigen::VectorXd v = axes.col(0);
   Eigen::VectorXd vbest;
 
-  axes.setZero(irrep.vector_dim(), irrep.irrep_dim());
+  axes.setZero(irrep.vector_dim, irrep.irrep_dim);
 
   axes.col(0) = v;
 
@@ -72,8 +72,9 @@ IrrepWedge make_dummy_irrep_wedge(Eigen::MatrixXd const &axes) {
   return irrep_wedge;
 }
 
-SubWedge::SubWedge(std::vector<IrrepWedge> const &_iwedges)
-    : m_iwedges(_iwedges), m_trans_mat(_subwedge_to_trans_mat(m_iwedges)) {}
+SubWedge::SubWedge(std::vector<IrrepWedge> const &_irrep_wedges)
+    : irrep_wedges(_irrep_wedges),
+      trans_mat(_subwedge_to_trans_mat(irrep_wedges)) {}
 
 Eigen::MatrixXd SubWedge::_subwedge_to_trans_mat(
     std::vector<IrrepWedge> const &_iwedges) {
@@ -127,7 +128,7 @@ std::vector<IrrepWedge> make_irrep_wedges(
     // (orbits size == 1) then irrepdim is 1 and we only need one direction to
     // define wedge
     wedges.emplace_back(
-        irrep, Eigen::MatrixXd::Zero(irrep.vector_dim(), irrep.irrep_dim()));
+        irrep, Eigen::MatrixXd::Zero(irrep.vector_dim, irrep.irrep_dim));
     // std::cout << "Irrep characters: \n" << irrep.characters << std::endl;
     // std::cout << "Irrep directions: " << irrep.directions.size() <<
     // std::endl;
@@ -142,7 +143,7 @@ std::vector<IrrepWedge> make_irrep_wedges(
     // << irrep.directions[0][0].transpose() << std::endl;
     wedges.back().axes.col(0) = irrep.directions[0][0];
     wedges.back().mult.push_back(irrep.directions[0].size());
-    for (Index i = 1; i < irrep.irrep_dim(); i++) {
+    for (Index i = 1; i < irrep.irrep_dim; i++) {
       // std::cout << "Irrep direction orbit" << i << " : " <<
       // irrep.directions[i].size() << std::endl; std::cout << "Irrep direction:
       // " << irrep.directions[i][0].transpose() << std::endl;
@@ -181,8 +182,8 @@ std::vector<SubWedge> make_symrep_subwedges(
     if (a.size() != b.size()) return false;
     for (auto ita = a.begin(), itb = b.begin(); ita != a.end(); ++ita, ++itb)
       if (!irrep_wedge_compare(*ita, *itb)) return false;
-    // std::cout << "Equal: \n" << SubWedge(a).trans_mat() << ",\n" <<
-    // SubWedge(b).trans_mat() << "\n\n";
+    // std::cout << "Equal: \n" << SubWedge(a).trans_mat << ",\n" <<
+    // SubWedge(b).trans_mat << "\n\n";
     return true;
   };
 
@@ -259,8 +260,7 @@ std::vector<SubWedge> make_symrep_subwedges(
     result.emplace_back(twedge);
     for (Index p : subgroups[imax]) {
       for (Index i = 0; i < twedge.size(); i++)
-        twedge[i].axes =
-            fullspace_rep[p] * result.back().irrep_wedges()[i].axes;
+        twedge[i].axes = fullspace_rep[p] * result.back().irrep_wedges[i].axes;
       if (!contains(tot_wedge_orbits.back(), twedge, tot_wedge_compare)) {
         tot_wedge_orbits.back().push_back(twedge);
       }

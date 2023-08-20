@@ -3,10 +3,6 @@
 Constructing local-cluster orbits
 =================================
 
-.. toctree::
-    :maxdepth: 2
-    :hidden:
-
 Construct a prototype OccEvent
 ------------------------------
 

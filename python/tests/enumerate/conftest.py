@@ -1,7 +1,8 @@
+import pytest
+
 import libcasm.xtal as xtal
 import libcasm.xtal.prims as xtal_prims
-from libcasm.occ_events import OccPosition, OccEvent
-import pytest
+from libcasm.occ_events import OccEvent, OccPosition
 
 
 @pytest.fixture

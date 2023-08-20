@@ -1,5 +1,6 @@
 """Additional methods for supercell and configuration IO"""
 from typing import Dict, List, Optional
+
 import libcasm.configuration._configuration as _config
 
 
@@ -48,9 +49,11 @@ def supercell_list_from_data(
     data_list: List[Dict]
         A representation of List[:class:`~libcasm.configuration.Supercell`].
     prim: :class:`~libcasm.configuration.Prim`
-        A :class:`~libcasm.configuration.Prim`, which is required if `supercells` is not provided.
+        A :class:`~libcasm.configuration.Prim`, which is required if `supercells` is
+        not provided.
     supercells: :class:`~libcasm.configuration.SupercellSet`
-        A :class:`~libcasm.configuration.SupercellSet`, which may be provided to hold shared supercells in order to avoid duplicates.
+        A :class:`~libcasm.configuration.SupercellSet`, which may be provided to hold
+        shared supercells in order to avoid duplicates.
 
     Returns
     -------
@@ -103,7 +106,9 @@ def configuration_list_from_data(
     .. code-block:: Python
 
         from libcasm.configuration import Configuration
-        supercell_list = [Configuration.from_dict(data, supercells) for data in data_list]
+        supercell_list = [
+            Configuration.from_dict(data, supercells) for data in data_list
+        ]
 
 
     Parameters
@@ -111,9 +116,11 @@ def configuration_list_from_data(
     data_list: List[Dict]
         A representation of List[:class:`~libcasm.configuration.Configuration`].
     prim: :class:`~libcasm.configuration.Prim`
-        A :class:`~libcasm.configuration.Prim`, which is required if `supercells` is not provided.
+        A :class:`~libcasm.configuration.Prim`, which is required if `supercells` is
+        not provided.
     supercells: :class:`~libcasm.configuration.SupercellSet`
-        A :class:`~libcasm.configuration.SupercellSet`, which may be provided to hold shared supercells in order to avoid duplicates.
+        A :class:`~libcasm.configuration.SupercellSet`, which may be provided to hold
+        shared supercells in order to avoid duplicates.
 
     Returns
     -------
@@ -122,7 +129,8 @@ def configuration_list_from_data(
     """
     if prim is None and supercells is None:
         raise Exception(
-            "Error in configuration_list_from_data: One of prim or supercells is required"
+            "Error in configuration_list_from_data: "
+            "One of prim or supercells is required"
         )
     if supercells is None:
         supercells = _config.SupercellSet(prim)

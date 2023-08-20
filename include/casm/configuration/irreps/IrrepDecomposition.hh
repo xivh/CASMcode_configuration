@@ -12,10 +12,10 @@ struct IrrepInfo {
   IrrepInfo(Eigen::MatrixXcd _trans_mat, Eigen::VectorXcd _characters);
 
   /// Dimension of irreducible vector space (less than or equal to vector_dim())
-  Index irrep_dim() const { return trans_mat.rows(); }
+  Index irrep_dim;
 
   // Dimension of initial vector space (greater than or equal to irrep_dim())
-  Index vector_dim() const { return trans_mat.cols(); }
+  Index vector_dim;
 
   /// irrep_dim() x vector_dim() matrix that transforms a vector from the
   /// initial vector space into a vector in the irreducible vector space

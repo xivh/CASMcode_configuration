@@ -1,11 +1,8 @@
+import libcasm.occ_events as occ_events
 import libcasm.xtal as xtal
 import libcasm.xtal.prims as xtal_prims
-import libcasm.occ_events as occ_events
 from libcasm.occ_events import (
     OccEvent,
-    OccSystem,
-    make_occevent_symgroup_rep,
-    make_prim_periodic_orbit,
 )
 
 

@@ -1,7 +1,5 @@
-import math
 import numpy as np
-import pytest
-import libcasm.xtal as xtal
+
 import libcasm.configuration as config
 
 

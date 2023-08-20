@@ -11,6 +11,8 @@ namespace irreps {
 
 IrrepInfo::IrrepInfo(Eigen::MatrixXcd _trans_mat, Eigen::VectorXcd _characters)
     : trans_mat(std::move(_trans_mat)),
+      irrep_dim(trans_mat.rows()),
+      vector_dim(trans_mat.cols()),
       characters(std::move(_characters)),
       complex(!almost_zero(trans_mat.imag())),
       pseudo_irrep(false),
@@ -44,15 +46,15 @@ Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps) {
   Index row = 0;
   Index col = 0;
   for (auto const &irrep : irreps) {
-    col = irrep.vector_dim();
-    row += irrep.irrep_dim();
+    col = irrep.vector_dim;
+    row += irrep.irrep_dim;
   }
   Eigen::MatrixXd trans_mat(row, col);
   row = 0;
   for (auto const &irrep : irreps) {
-    trans_mat.block(row, 0, irrep.irrep_dim(), irrep.vector_dim()) =
+    trans_mat.block(row, 0, irrep.irrep_dim, irrep.vector_dim) =
         irrep.trans_mat.real();
-    row += irrep.irrep_dim();
+    row += irrep.irrep_dim;
   }
   return trans_mat;
 }

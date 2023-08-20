@@ -1,9 +1,7 @@
-import numpy as np
-import libcasm.xtal as xtal
-import libcasm.xtal.prims as xtal_prims
-import libcasm.configuration as config
 import libcasm.clusterography as clust
 import libcasm.sym_info as sym_info
+import libcasm.xtal as xtal
+import libcasm.xtal.prims as xtal_prims
 
 
 def test_cluster_specs():

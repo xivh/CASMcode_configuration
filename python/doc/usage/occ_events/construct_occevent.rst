@@ -4,11 +4,7 @@
 Occupation event basics
 =======================
 
-.. toctree::
-    :maxdepth: 2
-    :hidden:
-
-The class :class:`~libcasm.occ_events.OccEvent` is used to represents any change in occupation. For example, this could be:
+The class :class:`~libcasm.occ_events.OccEvent` is used to represent changes in occupation. For example, this could be:
 
 - the change in occupation due to a diffusive hop
 - the change in occupation due to a molecular re-orientation

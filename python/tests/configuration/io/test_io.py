@@ -1,7 +1,7 @@
 import numpy as np
+
 import libcasm.configuration as config
 import libcasm.configuration.io as config_io
-import libcasm.xtal as xtal
 
 
 def test_supercell_list_io(simple_cubic_binary_prim):

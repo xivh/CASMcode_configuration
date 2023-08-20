@@ -1,3 +1,0 @@
-# libcasm-configuration
-
-TODO

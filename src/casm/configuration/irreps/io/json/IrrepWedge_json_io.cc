@@ -10,13 +10,13 @@ namespace CASM {
 namespace irreps {
 
 jsonParser &to_json(SubWedge const &wedge, jsonParser &json) {
-  json["full_wedge_axes"] = wedge.trans_mat().transpose();
+  json["full_wedge_axes"] = wedge.trans_mat.transpose();
 
-  for (Index i = 0; i < wedge.irrep_wedges().size(); ++i) {
+  for (Index i = 0; i < wedge.irrep_wedges.size(); ++i) {
     std::string irrep_name =
-        "irrep_" + to_sequential_string(i + 1, wedge.irrep_wedges().size());
+        "irrep_" + to_sequential_string(i + 1, wedge.irrep_wedges.size());
     json["irrep_wedge_axes"][irrep_name] =
-        wedge.irrep_wedges()[i].axes.transpose();
+        wedge.irrep_wedges[i].axes.transpose();
   }
   return json;
 }

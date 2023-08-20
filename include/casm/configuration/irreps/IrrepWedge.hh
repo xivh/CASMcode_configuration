@@ -34,21 +34,18 @@ IrrepWedge make_dummy_irrep_wedge(Eigen::MatrixXd const &axes);
 /// the entire space. Then multiple SubWedge combine to fill the entire space.
 class SubWedge {
  public:
-  SubWedge(std::vector<IrrepWedge> const &_iwedges);
+  SubWedge(std::vector<IrrepWedge> const &_irrep_wedges);
 
   /// IrrepWedges comprising the Subwedge
-  std::vector<IrrepWedge> const &irrep_wedges() const { return m_iwedges; }
+  std::vector<IrrepWedge> irrep_wedges;
 
   /// Transformation matrix to convert from a vector in terms of the SubWedge
   /// axes to a vector in the original vector space
-  Eigen::MatrixXd const &trans_mat() const { return m_trans_mat; }
+  Eigen::MatrixXd trans_mat;
 
  private:
-  std::vector<IrrepWedge> m_iwedges;
-  Eigen::MatrixXd m_trans_mat;
-
   static Eigen::MatrixXd _subwedge_to_trans_mat(
-      std::vector<IrrepWedge> const &_iwedges);
+      std::vector<IrrepWedge> const &_irrep_wedges);
 };
 
 /// Makes a "dummy" SubWedge from a single "dummy" IrrepWedge with given axes

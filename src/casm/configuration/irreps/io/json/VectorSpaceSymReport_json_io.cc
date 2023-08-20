@@ -38,13 +38,13 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
       // json["irreducible_representations"][irrep_name]["multiplicity"] = mult;
       if (obj.irreducible_wedge.size()) {
         json["irreducible_representations"]["irreducible_wedge"][irrep_name] =
-            (irrep.trans_mat * obj.irreducible_wedge[0].irrep_wedges()[l].axes)
+            (irrep.trans_mat * obj.irreducible_wedge[0].irrep_wedges[l].axes)
                 .real()
                 .transpose();
       }
       jsonParser subspace_json = jsonParser::array();
       json["irreducible_representations"]["irrep_axes"][irrep_name].put_array();
-      for (Index a = 0; a < irrep.irrep_dim(); ++a, ++q) {
+      for (Index a = 0; a < irrep.irrep_dim; ++a, ++q) {
         std::string axis_name = "q" + to_sequential_string(q, NQ);
         json["irreducible_representations"]["irrep_axes"][irrep_name].push_back(
             axis_name);
@@ -99,7 +99,7 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
         "subwedge_axes_" +
         to_sequential_string(i + 1, obj.irreducible_wedge.size());
     json["irreducible_wedge"][subwedge_name] =
-        obj.irreducible_wedge[i].trans_mat().transpose();
+        obj.irreducible_wedge[i].trans_mat.transpose();
   }
 
   return json;

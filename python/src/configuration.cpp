@@ -16,9 +16,12 @@
 #include "casm/configuration/SupercellSymInfo.hh"
 #include "casm/configuration/SupercellSymOp.hh"
 #include "casm/configuration/canonical_form.hh"
+#include "casm/configuration/config_space_analysis.hh"
 #include "casm/configuration/copy_configuration.hh"
+#include "casm/configuration/dof_space_analysis.hh"
 #include "casm/configuration/io/json/Configuration_json_io.hh"
 #include "casm/configuration/io/json/Supercell_json_io.hh"
+#include "casm/configuration/irreps/VectorSpaceSymReport.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "casm/crystallography/io/BasicStructureIO.hh"
 #include "pybind11_json/pybind11_json.hpp"
@@ -110,6 +113,18 @@ config::SupercellSymOp make_supercell_symop(
   }
 }
 
+config::ConfigSpaceAnalysisResults make_ConfigSpaceAnalysisResults(
+    clexulator::DoFSpace const &_standard_dof_space,
+    std::map<std::string, std::vector<Eigen::VectorXd>> _equivalent_dof_values,
+    std::map<std::string, std::vector<config::Configuration>>
+        _equivalent_configurations,
+    Eigen::MatrixXd const &_projector, Eigen::VectorXd const &_eigenvalues,
+    clexulator::DoFSpace const &_symmetry_adapted_config_space) {
+  return config::ConfigSpaceAnalysisResults(
+      _standard_dof_space, _equivalent_dof_values, _equivalent_configurations,
+      _projector, _eigenvalues, _symmetry_adapted_config_space);
+}
+
 }  // namespace CASMpy
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
@@ -121,13 +136,14 @@ PYBIND11_MODULE(_configuration, m) {
         Configuration comparison and enumeration
 
         libcasm.configuration
-        --------------------
+        ---------------------
 
         The libcasm.configuration package contains data structures and methods for representing configurations, applying symmetry to configurations, and comparing configurations.
 
     )pbdoc";
   py::module::import("libcasm.xtal");
   py::module::import("libcasm.clexulator");
+  py::module::import("libcasm.irreps");
   py::module::import("libcasm.sym_info");
 
   py::class_<config::Prim, std::shared_ptr<config::Prim>>(m, "Prim", R"pbdoc(
@@ -2320,9 +2336,14 @@ PYBIND11_MODULE(_configuration, m) {
           is the origin in new configuration
       )pbdoc");
 
-  m.def("make_all_super_configurations", &config::make_all_super_configurations,
-        py::arg("motif"), py::arg("supercell"),
-        R"pbdoc(
+  m.def(
+      "make_all_super_configurations",
+      [](config::Configuration const &motif,
+         std::shared_ptr<config::Supercell const> const &supercell) {
+        return config::make_all_super_configurations(motif, supercell);
+      },
+      py::arg("motif"), py::arg("supercell"),
+      R"pbdoc(
       Make all equivalent configurations with respect to the prim factor group
       that fill a supercell
 
@@ -2345,25 +2366,193 @@ PYBIND11_MODULE(_configuration, m) {
         "Return true if no translations within the supercell result in the "
         "same configuration");
 
-  m.def("make_primitive_configuration", &config::make_primitive,
-        py::arg("configuration"),
-        "Return the primitive configuration. Does not apply any symmetry "
-        "operations. Use `make_canonical_configuration` with "
-        "`in_canonical_supercell=True` aftwards to obtain the "
-        "primitive canonical configuration in the canonical supercell.");
+  m.def(
+      "make_primitive_configuration",
+      [](config::Configuration const &configuration) {
+        return config::make_primitive(configuration);
+      },
+      py::arg("configuration"),
+      "Return the primitive configuration. Does not apply any symmetry "
+      "operations. Use `make_canonical_configuration` with "
+      "`in_canonical_supercell=True` aftwards to obtain the "
+      "primitive canonical configuration in the canonical supercell.");
 
-  m.def("make_global_dof_matrix_rep", &config::make_global_dof_matrix_rep,
-        py::arg("group"), py::arg("key"),
-        "Make the matrix representation of `group` that describes the "
-        "transformation of a particular global DoF, specified by `key`");
+  m.def(
+      "make_global_dof_matrix_rep",
+      [](std::vector<config::SupercellSymOp> const &group, config::DoFKey key) {
+        std::shared_ptr<config::SymGroup const> symgroup;
+        return config::make_global_dof_matrix_rep(group, key, symgroup);
+      },
+      py::arg("group"), py::arg("key"),
+      "Make the matrix representation of `group` that describes the "
+      "transformation of a particular global DoF, specified by `key`");
 
-  m.def("make_local_dof_matrix_rep", &config::make_local_dof_matrix_rep,
-        py::arg("group"), py::arg("key"), py::arg("site_indices"),
-        "Make the matrix representation of `group` that describes the "
-        "transformation of a particular local DoF, specified by `key` "
-        "(may be \"occ\") amongst a subset of supercell sites, "
-        "specified by `site_indices` (a set of linear index of sites in "
-        "the supercell).");
+  m.def(
+      "make_local_dof_matrix_rep",
+      [](std::vector<config::SupercellSymOp> const &group, config::DoFKey key,
+         std::set<Index> const &site_indices) {
+        std::shared_ptr<config::SymGroup const> symgroup;
+        return config::make_local_dof_matrix_rep(group, key, site_indices,
+                                                 symgroup);
+      },
+      py::arg("group"), py::arg("key"), py::arg("site_indices"),
+      "Make the matrix representation of `group` that describes the "
+      "transformation of a particular local DoF, specified by `key` "
+      "(may be \"occ\") amongst a subset of supercell sites, "
+      "specified by `site_indices` (a set of linear index of sites in "
+      "the supercell).");
+
+  //
+  py::class_<config::ConfigSpaceAnalysisResults>(m,
+                                                 "ConfigSpaceAnalysisResults",
+                                                 R"pbdoc(
+      Holds results from :func:`~libcasm.configuration.config_space_analysis`.
+
+    )pbdoc")
+      .def(py::init(&make_ConfigSpaceAnalysisResults),
+           "Construct ConfigSpaceAnalysisResults.",
+           py::arg("standard_dof_space"), py::arg("equivalent_dof_values"),
+           py::arg("equivalent_configurations"), py::arg("projector"),
+           py::arg("eigenvalues"), py::arg("symmetry_adapted_config_space"))
+      .def_readonly("standard_dof_space",
+                    &config::ConfigSpaceAnalysisResults::standard_dof_space,
+                    ":class:`~libcasm.clexulator.DoFSpace`: The shared "
+                    ":class:`~libcasm.clexulator.DoFSpace`")
+      .def_readonly("equivalent_dof_values",
+                    &config::ConfigSpaceAnalysisResults::equivalent_dof_values,
+                    R"pbdoc(
+                    Dict[str,np.ndarray]: DoF values of all equivalent configurations in the fully commensurate supercell, expressed in the basis of the standard DoF space, with key == input configuration identifier
+                    )pbdoc")
+      .def_readonly(
+          "equivalent_dof_values",
+          &config::ConfigSpaceAnalysisResults::equivalent_configurations,
+          R"pbdoc(
+                    Dict[str,List[:class:`~libcasm.configuration.Configuration`]]: All equivalent configurations in the fully commensurate supercell, with key == input configuration identifier
+                    )pbdoc")
+      .def_readonly("projector", &config::ConfigSpaceAnalysisResults::projector,
+                    "np.ndarray: Projection matrix")
+      .def_readonly("eigenvalues",
+                    &config::ConfigSpaceAnalysisResults::eigenvalues,
+                    "np.ndarray: Non-zero eigenvalues of projector")
+      .def_readonly(
+          "symmetry_adapted_config_space",
+          &config::ConfigSpaceAnalysisResults::symmetry_adapted_config_space,
+          ":class:`~libcasm.clexulator.DoFSpace`: Symmetry-adapted config "
+          "space, with basis formed by eigenvectors of P.");
+
+  m.def("config_space_analysis", &config::config_space_analysis,
+        R"pbdoc(
+      Construct symmetry adapted bases in the DoF space spanned by the set of configurations symmetrically equivalent to the input configurations
+
+      This method:
+
+      - Constructs a projector onto the DoF space spanned by all configurations symmetrically equivalent to a set of input configurations, and
+      - Finds the eigenvectors spanning that space. The eigenvectors are axes that can be used as a basis for symmetry adapted order parameters.
+
+      This method is faster than the function `dof_space_analysis`, and
+      often the resulting axes do lie along high-symmetry directions, but
+      they may not lie within a single irreducible subspace, and they are
+      not explicitly rotated to the highest symmetry directions.
+
+      configurations : Dict[std,:class:`~libcasm.configuration.Configuration`]
+          Map of identifier string -> :class:`~libcasm.configuration.Configuration`,
+          providing the configurations defining the DoF vector space to be
+          spanned by the symmetry adapated bases that are constructed.
+      dofs : Optional[list[str]] = None
+          Names of degree of freedoms for which the analysis is run. The default
+          includes all DoF types in the prim.
+      exclude_homogeneous_modes : Optional[bool] = None
+          Exclude homogeneous modes if this is true, or include if this is false.
+          If this is None (default), exclude homogeneous modes for dof==\"disp\" only.
+      include_default_occ_modes : bool = False
+          Include the dof component for the default occupation value on each site with occupation DoF. The default is to exclude these modes because they are not independent. This parameter is only checked dof==\"occ\".
+      tol : float = libcasm.TOL
+          Tolerance used for identifying zero-valued eigenvalues.
+
+      Returns
+      -------
+      results : Dict[str,:class:`~libcasm.configuration.ConfigSpaceAnalysisResults`]
+          Results including equivalent DoF values and configurations, projection matrix,
+          eigenvalues, and symmetry adapted configuration space, for each requested DoF type.
+      )pbdoc",
+        py::arg("configurations"), py::arg("dofs") = std::nullopt,
+        py::arg("exclude_homogeneous_modes") = std::nullopt,
+        py::arg("include_default_occ_modes") = false,
+        py::arg("tol") = CASM::TOL);
+
+  //
+  py::class_<config::DoFSpaceAnalysisResults>(m, "DoFSpaceAnalysisResults",
+                                              R"pbdoc(
+      Holds results from :func:`~libcasm.configuration.dof_space_analysis`.
+
+      )pbdoc")
+      .def(py::init<clexulator::DoFSpace, irreps::VectorSpaceSymReport>(),
+           "Construct DoFSpaceAnalysisResults.",
+           py::arg("symmetry_adapted_dof_space"), py::arg("symmetry_report"))
+      .def_readonly(
+          "symmetry_adapted_dof_space",
+          &config::DoFSpaceAnalysisResults::symmetry_adapted_dof_space,
+          ":class:`~libcasm.clexulator.DoFSpace`: The symmetry adapated "
+          ":class:`~libcasm.clexulator.DoFSpace`")
+      .def_readonly("symmetry_report",
+                    &config::DoFSpaceAnalysisResults::symmetry_report,
+                    ":class:`~libcasm.irreps.VectorSpaceSymReport`: Holds the "
+                    "irreducible space decomposition");
+
+  m.def("dof_space_analysis", &config::dof_space_analysis,
+        R"pbdoc(
+      Construct symmetry adapted bases in a DoFSpace
+
+      This method:
+
+      - Constructs symmetry representation matrices describing the affect of applying
+        symmetry operations on DoF values in the specified DoFSpace.
+      - Performs an irreducible space decomposition to find invariant subspaces
+      - Finds high symmetry directions in each subspace
+      - Constructs a symmetry adapated basis, preferring to use basis vectors
+        aligned along the high symmetry directions.
+
+      This method is slower than the function `config_space_analysis`, but
+      the resulting axes do lie along high-symmetry directions, and within a
+      single irreducible subspace.
+
+      dof_space : :class:`~libcasm.clexulator.DoFSpace`
+          The :class:`~libcasm.clexulator.DoFSpace` for which a symmetry
+          adapted basis is constructed.
+      prim : :class:`~libcasm.configuration.Prim`
+          A :class:`~libcasm.configuration.Prim`, for symmetry representation
+          information.
+      configuration : Optional[:class:`~libcasm.configuration.Configuration`] = None
+          If None, use the full symmetry of the DoFSpace. If has value, use the
+          factor group of the provided configuration. For DoFSpace of occupant
+          or local continuous DoF, this should have the same supercell as
+          `dof_space`.
+      exclude_homogeneous_modes : Optional[bool] = None
+          Exclude homogeneous modes if this is true, or include if this is false.
+          If this is None (default), exclude homogeneous modes for dof==\"disp\" only.
+      include_default_occ_modes : bool = False
+          Include the dof component for the default occupation value on each site
+          with occupation DoF. The default is to exclude these modes because they
+          are not independent. This parameter is only checked dof==\"occ\".
+      calc_wedges : bool = False
+          If True, calculate the irreducible wedges for the vector space.
+          This may take a long time, but provides the symmetrically unique
+          portions of the vector space, which is useful for enumeration.
+
+
+      Returns
+      -------
+      results : :class:`~libcasm.configuration.DoFSpaceAnalysisResults`
+          Results include a :class:`~libcasm.clexulator.DoFSpace` with symmetry
+          adapted basis, and a :class:`~libcasm.irreps.VectorSpaceSymReport`
+          holding the irreducible space decomposition used to construct the
+          symmetry adapted basis.
+      )pbdoc",
+        py::arg("dof_space"), py::arg("prim"),
+        py::arg("configuration") = std::nullopt,
+        py::arg("exclude_homogeneous_modes") = std::nullopt,
+        py::arg("include_default_occ_modes") = false,
+        py::arg("calc_wedges") = false);
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

@@ -1,31 +1,35 @@
+.. image:: _static/logo.svg
+  :alt: CASM logo
+  :width: 600
 
-libcasm-configuration: The Python interface to CASM configuration library
-=========================================================================
+libcasm-configuration
+=====================
 
-The libcasm.configuration module is a Python interface to the classes and methods in the CASM C++ libraries that deal with constructing and using configurations, clusters, and occupation events. This includes:
+The libcasm-configuration package is the CASM configuration comparison and enumeration module. This includes:
 
-
-**Configurations:**
-
-- Constructing configurations
-- Copying configurations to make sub- or super-configurations
-- Enumerating unique configurations
-
-
-**Clusters:**
-
-- Constructing clusters of sites
-- Generating orbits of symmetrically equivalent clusters
-- Enumerating unique clusters
-
-**Occupation events:**
-
-- Constructing occupation events for kinetic Monte Carlo calculations
-- Enumerating unique events
-- Enumerating local environments around events
+- Classes for representing supercells, configurations, clusters, and occupation events
+- Methods for comparing and enumerating unique configurations, clusters, occupation events, and local environments
+- Methods for generating orbits of symmetrically equivalent configurations, clusters, and occupation events
+- Methods for copying configurations to make sub- or super-configurations
+- Methods for generating symmetry groups, and constructing and applying symmetry representations
+- Methods for performing irreducible space decompositions and finding symmetry adapted order parameters
+- Methods for creating configurations with properties from mapped structures
 
 
-For each of these objects, there are methods to generate symmetry representations, apply symmetry operations, compare instances and find a canonical form, generate orbits of symmetrically equivalent objects, and enumerate symmetrically unique objects.
+About CASM
+==========
+
+The libcasm-clexulator package is part of the CASM_ open source software package, which is designed to perform first-principles statistical mechanical studies of multi-component crystalline solids.
+
+CASM is developed by the Van der Ven group, originally at the University of Michigan and currently at the University of California Santa Barbara.
+
+For more information, see the `CASM homepage <CASM_>`_.
+
+
+License
+=======
+
+GNU Lesser General Public License (LGPL). Please see the LICENSE file available on GitHub_.
 
 
 Documentation
@@ -37,9 +41,10 @@ Documentation
     Installation <installation>
     Usage <usage/usage>
     Reference <reference/libcasm/index>
-    About <about>
 
 
 libcasm-configuration is available on GitHub_.
 
+.. _CASM: https://prisms-center.github.io/CASMcode_docs/
 .. _GitHub: https://github.com/prisms-center/CASMcode_configuration
+

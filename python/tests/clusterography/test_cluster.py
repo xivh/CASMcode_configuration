@@ -1,5 +1,5 @@
 import numpy as np
-import libcasm.xtal as xtal
+
 import libcasm.clusterography as clust
 
 

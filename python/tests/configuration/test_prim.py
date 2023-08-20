@@ -1,8 +1,7 @@
-import copy
 import json
-import pytest
-import libcasm.xtal as xtal
+
 import libcasm.configuration as config
+import libcasm.xtal as xtal
 
 
 def test_simple_cubic_binary_factor_group(simple_cubic_binary_prim):

@@ -53,6 +53,24 @@ ConfigSpaceAnalysisResults::ConfigSpaceAnalysisResults(
       eigenvalues(_eigenvalues),
       symmetry_adapted_config_space(_symmetry_adapted_config_space) {}
 
+/// \brief Construct symmetry adapted bases in the DoF space spanned by the
+///    set of configurations symmetrically equivalent to the input
+///    configurations
+///
+/// This method:
+///
+/// 1. Constructs a projector onto the DoF space spanned by all
+///    configurations symmetrically equivalent to a set of input
+///    configurations, and
+/// 2. Finds the eigenvectors spanning that space. The eigenvectors
+///    are axes that can be used as a basis for symmetry adapted order
+///    parameters.
+///
+/// This method is faster than the function `dof_space_analysis`, and
+/// often the resulting axes do lie along high-symmetry directions, but
+/// they may not lie within a single irreducible subspace, and they are
+/// not explicitly rotated to the highest symmetry directions.
+///
 /// \param dofs Names of degree of freedoms for which the analysis
 ///     is run. The default includes all DoF types in the prim.
 /// \param configurations Map of identifier string -> Configuration
@@ -63,11 +81,15 @@ ConfigSpaceAnalysisResults::ConfigSpaceAnalysisResults(
 ///     default occupation value on each site with occupation DoF. The
 ///     default is to exclude these modes because they are not
 ///     independent. This parameter is only checked dof==\"occ\".
+/// \param tol Tolerance used for identifying zero-valued eigenvalues.
+///
+/// \returns Results, including project, eigenvalues, and symmetry
+///     adapted basis, for each requested DoF type.
 std::map<DoFKey, ConfigSpaceAnalysisResults> config_space_analysis(
     std::map<std::string, Configuration> const &configurations,
-    std::optional<std::vector<DoFKey>> dofs = std::nullopt,
-    std::optional<bool> exclude_homogeneous_modes = std::nullopt,
-    bool include_default_occ_modes = false, double tol = TOL) {
+    std::optional<std::vector<DoFKey>> dofs,
+    std::optional<bool> exclude_homogeneous_modes,
+    bool include_default_occ_modes, double tol) {
   std::map<DoFKey, ConfigSpaceAnalysisResults> results;
 
   if (configurations.size() == 0) {

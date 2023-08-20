@@ -1,11 +1,11 @@
 import numpy as np
-import libcasm.xtal as xtal
 import pytest
+
+import libcasm.xtal as xtal
 
 
 @pytest.fixture
 def tetragonal_lattice():
-
     # Lattice vectors
     lattice_column_vector_matrix = np.array(
         [
@@ -19,7 +19,6 @@ def tetragonal_lattice():
 
 @pytest.fixture
 def simple_cubic_binary_prim():
-
     # Lattice vectors
     lattice_column_vector_matrix = np.array(
         [
@@ -60,7 +59,6 @@ def simple_cubic_binary_prim():
 
 @pytest.fixture
 def ZrO_prim():
-
     # Lattice vectors
     lattice_column_vector_matrix = np.array(
         [

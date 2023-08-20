@@ -1,6 +1,5 @@
-from libcasm.clusterography import (
-    Cluster,
-)
+from typing import TextIO
+
 from libcasm.occ_events._occ_events import (
     OccEvent,
     OccPosition,
@@ -10,8 +9,6 @@ from libcasm.xtal import (
     IntegralSiteCoordinate,
     cartesian_to_fractional,
 )
-
-from typing import TextIO
 
 
 class OccEventPrinter:
@@ -71,7 +68,8 @@ class OccEventPrinter:
     system: OccSystem
         Occupation system, for index conversions
     single_atom_occupant_as_mol: bool = True
-        If True, print single atom occupant trajectories using the molecule trajectory format (i.e. do not show atom position index and atom name separately).
+        If True, print single atom occupant trajectories using the molecule trajectory
+        format (i.e. do not show atom position index and atom name separately).
     coordinate_mode: str = 'integral'
         Mode for printing coordinates. Options are:
 
@@ -87,7 +85,8 @@ class OccEventPrinter:
     system: OccSystem
         Occupation system, for index conversions
     single_atom_occupant_as_mol: bool = True
-        If True, print single atom occupant trajectories using the molecule trajectory format (i.e. do not show atom position index and atom name separately).
+        If True, print single atom occupant trajectories using the molecule trajectory
+        format (i.e. do not show atom position index and atom name separately).
     coordinate_mode: str = 'integral'
         Mode for printing coordinates. Options are:
 
@@ -115,12 +114,16 @@ class OccEventPrinter:
         coordinate_mode: str = 'integral'
             Mode for printing coordinates. Options are:
 
-            - 'integral': Use :class:`~libcasm.xtal.IntegralSiteCoordinate` ([b, i, j, k])
+            - 'integral': Use :class:`~libcasm.xtal.IntegralSiteCoordinate`
+              ([b, i, j, k])
             - 'cart': Use Cartesian coordinates
-            - 'frac': Use fractional coordinates, with respect to the Prim lattice vectors
+            - 'frac': Use fractional coordinates, with respect to the Prim lattice
+              vectors
 
         single_atom_occupant_as_mol: bool = True
-            If True, print single atom occupant trajectories using the molecule trajectory format (i.e. do not show atom position index and atom name separately).
+            If True, print single atom occupant trajectories using the molecule
+            trajectory format (i.e. do not show atom position index and atom name
+            separately).
         """
         self.f = f
         self.system = system
@@ -212,7 +215,8 @@ class OccEventPrinter:
                 atom_position_index = pos.atom_position_index()
                 atom_name = self.system.get_atom_name(pos)
                 return self.f.write(
-                    f"{poslist} == {orientation_name}, atom[{atom_position_index}]={atom_name}"
+                    f"{poslist} == {orientation_name}, "
+                    f"atom[{atom_position_index}]={atom_name}"
                 )
 
     def _write_traj(self, pos0: OccPosition, pos1: OccPosition):
@@ -255,7 +259,7 @@ class OccEventPrinter:
             b = site.sublattice()
             name_init = occ_dof[b][occ_init[i]]
             name_final = occ_dof[b][occ_final[i]]
-            pos_final = OccPosition.occupant(site, occ_final[i])
+            OccPosition.occupant(site, occ_final[i])
             self.f.write("    ")
             self.f.write(str(self._site_coordinate(site)))
             self.f.write(":  " + str(occ_init[i]) + " == " + name_init)

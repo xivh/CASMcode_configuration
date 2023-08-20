@@ -1,8 +1,6 @@
-import math
 import numpy as np
-import pytest
 from sortedcontainers import SortedList
-import libcasm.xtal as xtal
+
 import libcasm.clexulator as casmclex
 import libcasm.configuration as config
 
@@ -76,12 +74,12 @@ def test_canonical_configuration_occupation(simple_cubic_binary_prim):
     configuration = config.Configuration(supercell)
 
     configuration.set_occ(0, 1)
-    assert config.is_canonical_configuration(configuration) == True
+    assert config.is_canonical_configuration(configuration) is True
 
     configuration.set_occ(0, 0)
     configuration.set_occ(10, 1)
     canon_config = config.make_canonical_configuration(configuration)
-    assert config.is_canonical_configuration(canon_config) == True
+    assert config.is_canonical_configuration(canon_config) is True
     assert (canon_config.occupation() == np.array([1] + [0] * 63)).all()
 
 

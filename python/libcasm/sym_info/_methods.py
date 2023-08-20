@@ -1,6 +1,5 @@
-import libcasm.xtal as xtal
-
 import libcasm.sym_info._sym_info as _sym_info
+import libcasm.xtal as xtal
 from libcasm.sym_info._sym_group import SymGroup
 
 
@@ -36,6 +35,9 @@ def make_point_group(xtal_prim: xtal.Prim, factor_group: SymGroup) -> SymGroup:
     Returns
     -------
     point_group : SymGroup
-        The prim point group operations, constructed by removing the translation from prim factor group operations. Degenerate symmetry operations are not added. The resulting point_group is its own head group, not a subgroup of the input factor_group.
+        The prim point group operations, constructed by removing the translation from
+        prim factor group operations. Degenerate symmetry operations are not added. The
+        resulting point_group is its own head group, not a subgroup of the input
+        factor_group.
     """
     return _sym_info.make_point_group(xtal_prim, factor_group)

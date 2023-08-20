@@ -1,11 +1,13 @@
 import copy
+
 import numpy as np
 import pytest
+
 import libcasm.configuration as config
 
 
 def test_ConfigurationSet_constructor_1(simple_cubic_binary_prim):
-    prim = config.Prim(simple_cubic_binary_prim)
+    config.Prim(simple_cubic_binary_prim)
     configurations = config.ConfigurationSet()
 
     assert isinstance(configurations, config.ConfigurationSet)

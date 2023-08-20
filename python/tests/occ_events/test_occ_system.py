@@ -1,4 +1,3 @@
-import libcasm.xtal as xtal
 import libcasm.xtal.prims as xtal_prims
 from libcasm.occ_events import OccSystem
 

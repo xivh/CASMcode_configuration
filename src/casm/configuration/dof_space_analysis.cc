@@ -14,6 +14,33 @@ namespace config {
 
 namespace {  // (anonymous)
 
+clexulator::DoFSpace exclude_homogeneous_mode_space(
+    clexulator::DoFSpace const &dof_space,
+    std::optional<bool> exclude_homogeneous_modes = std::nullopt) {
+  if (!exclude_homogeneous_modes.has_value()) {
+    if (dof_space.dof_key == "disp") {
+      exclude_homogeneous_modes = true;
+    } else {
+      exclude_homogeneous_modes = false;
+    }
+  }
+
+  if (*exclude_homogeneous_modes) {
+    return clexulator::exclude_homogeneous_mode_space(dof_space);
+  } else {
+    return dof_space;
+  }
+}
+
+clexulator::DoFSpace exclude_default_occ_modes(
+    clexulator::DoFSpace const &dof_space,
+    bool include_default_occ_modes = false) {
+  if (dof_space.dof_key == "occ" && !include_default_occ_modes) {
+    return clexulator::exclude_default_occ_modes(dof_space);
+  }
+  return dof_space;
+}
+
 }  // namespace
 
 DoFSpaceAnalysisResults::DoFSpaceAnalysisResults(
@@ -22,24 +49,36 @@ DoFSpaceAnalysisResults::DoFSpaceAnalysisResults(
     : symmetry_adapted_dof_space(std::move(_symmetry_adapted_dof_space)),
       symmetry_report(std::move(_symmetry_report)){};
 
-/// \param dof_space Names of degree of freedoms for which the analysis
-///     is run. The default includes all DoF types in the prim.
-/// \param supercell Map of identifier string -> Configuration
-/// \param group Exclude homogeneous modes if this
+/// \param dof_space_in The DoFSpace for which a symmetry adapted basis is
+/// constructed. \param prim The prim \param configuration If null, use the full
+/// symmetry of the DoFSpace. If has_value,
+///     use the symmetry of the configuration.
+/// \param exclude_homogeneous_modes Exclude homogeneous modes if this
 ///     is true, or include if this is false. If this is null (default),
 ///     exclude homogeneous modes for dof==\"disp\" only.
 /// \param include_default_occ_modes Include the dof component for the
 ///     default occupation value on each site with occupation DoF. The
 ///     default is to exclude these modes because they are not
 ///     independent. This parameter is only checked dof==\"occ\".
+/// \param calc_wedges If true, calculate the irreducible wedges for the vector
+///     space. This may take a long time.
 DoFSpaceAnalysisResults dof_space_analysis(
-    clexulator::DoFSpace const &dof_space, std::shared_ptr<Prim const> prim,
-    std::optional<Configuration> configuration, bool calc_wedges) {
+    clexulator::DoFSpace const &dof_space_in, std::shared_ptr<Prim const> prim,
+    std::optional<Configuration> configuration,
+    std::optional<bool> exclude_homogeneous_modes,
+    bool include_default_occ_modes, bool calc_wedges) {
   Eigen::Matrix3l T = Eigen::Matrix3l::Identity();
-  if (dof_space.transformation_matrix_to_super.has_value()) {
-    T = *dof_space.transformation_matrix_to_super;
+  if (dof_space_in.transformation_matrix_to_super.has_value()) {
+    T = *dof_space_in.transformation_matrix_to_super;
   }
   auto supercell = std::make_shared<Supercell const>(prim, T);
+
+  // --- Construct the standard DoF space ---
+  clexulator::DoFSpace dof_space_pre1 =
+      exclude_homogeneous_mode_space(dof_space_in, exclude_homogeneous_modes);
+
+  clexulator::DoFSpace dof_space =
+      exclude_default_occ_modes(dof_space_pre1, include_default_occ_modes);
 
   // construct symmetry group based on invariance of dof_space and configuration
   std::vector<SupercellSymOp> group(SupercellSymOp::begin(supercell),

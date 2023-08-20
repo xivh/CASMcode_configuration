@@ -9,8 +9,9 @@ Reference (libcasm)
     :template: custom-module-template.rst
     :recursive:
 
-    libcasm.sym_info
     libcasm.clusterography
-    libcasm.occ_events
     libcasm.configuration
     libcasm.enumerate
+    libcasm.irreps
+    libcasm.occ_events
+    libcasm.sym_info

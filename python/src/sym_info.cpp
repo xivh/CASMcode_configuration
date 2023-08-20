@@ -57,8 +57,7 @@ PYBIND11_MODULE(_sym_info, m) {
   py::module::import("libcasm.xtal");
 
   py::class_<sym_info::SymGroup, std::shared_ptr<sym_info::SymGroup>>(
-      m, "SymGroup",
-      R"pbdoc(
+      m, "SymGroup", R"pbdoc(
       Data structure holding group elements and other group info, such as group-subgroup relationships.
       )pbdoc")
       .def(py::init(&make_symgroup), py::arg("element"),

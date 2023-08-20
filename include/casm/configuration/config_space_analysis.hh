@@ -45,8 +45,8 @@ struct ConfigSpaceAnalysisResults {
 };
 
 std::map<DoFKey, ConfigSpaceAnalysisResults> config_space_analysis(
-    std::vector<DoFKey> dofs,
     std::map<std::string, Configuration> const &configurations,
+    std::optional<std::vector<DoFKey>> dofs = std::nullopt,
     std::optional<bool> exclude_homogeneous_modes = std::nullopt,
     bool include_default_occ_modes = false, double tol = TOL);
 

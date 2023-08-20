@@ -1,7 +1,7 @@
 import math
+
 import numpy as np
-import pytest
-import libcasm.xtal as xtal
+
 import libcasm.configuration as config
 
 
@@ -96,9 +96,9 @@ def test_simple_cubic_binary_supercell_compare(simple_cubic_binary_prim):
     )
     canonical_supercell = config.make_canonical_supercell(supercell1)
     assert canonical_supercell == supercell3
-    assert config.is_canonical_supercell(supercell1) == False
-    assert config.is_canonical_supercell(supercell2) == False
-    assert config.is_canonical_supercell(supercell3) == True
+    assert config.is_canonical_supercell(supercell1) is False
+    assert config.is_canonical_supercell(supercell2) is False
+    assert config.is_canonical_supercell(supercell3) is True
     assert np.allclose(
         canonical_supercell.superlattice().column_vector_matrix(), expected_S_canonical
     )

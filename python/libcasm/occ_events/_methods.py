@@ -1,5 +1,6 @@
 import json
 import pathlib
+
 import libcasm.clusterography as clust
 import libcasm.occ_events._occ_events as _occ_events
 import libcasm.sym_info as sym_info
@@ -187,7 +188,8 @@ def make_canonical_prim_periodic_occevents(
         - "required_occ_init": Optional[list[int]] = None
         - "required_occ_final": Optional[list[int]] = None
 
-        Filter by atom type count, using indices defined by the order in :py:class:`~libcasm.occ_events.OccSystem.atom_name_list`:
+        Filter by atom type count, using indices defined by the order in
+        :py:class:`~libcasm.occ_events.OccSystem.atom_name_list`:
 
         - "min_init_atom_count": Optional[list[int]] = None
         - "max_init_atom_count": Optional[list[int]] = None
@@ -196,7 +198,8 @@ def make_canonical_prim_periodic_occevents(
         - "max_final_atom_count": Optional[list[int]] = None
         - "required_final_atom_count": Optional[list[int]] = None
 
-        Filter by molecule type count, using indices defined by the order in :py:class:`~libcasm.occ_events.OccSystem.chemical_name_list`:
+        Filter by molecule type count, using indices defined by the order in
+        :py:class:`~libcasm.occ_events.OccSystem.chemical_name_list`:
 
         - "min_init_molecule_count": Optional[list[int]] = None
         - "max_init_molecule_count": Optional[list[int]] = None
@@ -205,7 +208,8 @@ def make_canonical_prim_periodic_occevents(
         - "max_final_molecule_count": Optional[list[int]] = None
         - "required_final_molecule_count": Optional[list[int]] = None
 
-        Filter by molecule orientation type count, using indices defined by the order in :py:class:`~libcasm.occ_events.OccSystem.orientation_name_list`:
+        Filter by molecule orientation type count, using indices defined by the order
+        in :py:class:`~libcasm.occ_events.OccSystem.orientation_name_list`:
 
         - "min_init_orientation_count": Optional[list[int]] = None
         - "max_init_orientation_count": Optional[list[int]] = None
@@ -216,10 +220,14 @@ def make_canonical_prim_periodic_occevents(
 
         Filter by type of event:
 
-        - "allow_subcluster_events": Optional[bool] = False, Optionally include multisite events that do not result in any change on some sites.
-        - "do_not_allow_breakup": Optional[bool] = False, Do not include events that break up a multi-atom molecule.
-        - "skip_direct_exchange": Optional[bool] = True, Optionally include events in which non-vacancies directly exchange sites.
-        - "print_state_info": Optional[bool] = False, Print information about the step-by-step state of the algorithm.
+        - "allow_subcluster_events": Optional[bool] = False, Optionally include
+          multisite events that do not result in any change on some sites.
+        - "do_not_allow_breakup": Optional[bool] = False, Do not include events that
+          break up a multi-atom molecule.
+        - "skip_direct_exchange": Optional[bool] = True, Optionally include events in
+          which non-vacancies directly exchange sites.
+        - "print_state_info": Optional[bool] = False, Print information about the
+          step-by-step state of the algorithm.
 
     custom_events: list[~libcasm.clusterography.ClusterOrbitGenerator]=[]
           Specifies OccEvent that should be included in the results
