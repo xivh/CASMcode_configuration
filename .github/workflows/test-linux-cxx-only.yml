@@ -100,5 +100,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: libcasm-clexulator-cxx-test-log
+          name: libcasm-configuration-cxx-test-log
           path: build_cxx_test/Testing/Temporary/LastTest.log

@@ -39,5 +39,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: libcasm-mapping-macos-latest-x86_64-dist
+          name: libcasm-configuration-macos-latest-x86_64-dist
           path: dist
