@@ -206,10 +206,10 @@ if(DEFINED SKBUILD)
   install(TARGETS _clusterography DESTINATION clusterography)
   if(APPLE)
     set_target_properties(
-      _clusterography PROPERTIES INSTALL_RPATH "@loader_path/../../lib")
+      _clusterography PROPERTIES INSTALL_RPATH "@loader_path/../lib")
   else()
     set_target_properties(
-      _clusterography PROPERTIES INSTALL_RPATH "$ORIGIN/../../lib")
+      _clusterography PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 
   ### libcasm.configuration._configuration ###
@@ -224,10 +224,10 @@ if(DEFINED SKBUILD)
   install(TARGETS _configuration DESTINATION configuration)
   if(APPLE)
     set_target_properties(
-      _configuration PROPERTIES INSTALL_RPATH "@loader_path/../../lib")
+      _configuration PROPERTIES INSTALL_RPATH "@loader_path/../lib")
   else()
     set_target_properties(
-      _configuration PROPERTIES INSTALL_RPATH "$ORIGIN/../../lib")
+      _configuration PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 
   ### libcasm.enumerate._enumerate ###
@@ -242,10 +242,10 @@ if(DEFINED SKBUILD)
   install(TARGETS _enumerate DESTINATION enumerate)
   if(APPLE)
     set_target_properties(
-      _enumerate PROPERTIES INSTALL_RPATH "@loader_path/../../lib")
+      _enumerate PROPERTIES INSTALL_RPATH "@loader_path/../lib")
   else()
     set_target_properties(
-      _enumerate PROPERTIES INSTALL_RPATH "$ORIGIN/../../lib")
+      _enumerate PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 
   ### libcasm.irreps._irreps ###
@@ -260,10 +260,10 @@ if(DEFINED SKBUILD)
   install(TARGETS _irreps DESTINATION irreps)
   if(APPLE)
     set_target_properties(
-      _irreps PROPERTIES INSTALL_RPATH "@loader_path/../../lib")
+      _irreps PROPERTIES INSTALL_RPATH "@loader_path/../lib")
   else()
     set_target_properties(
-      _irreps PROPERTIES INSTALL_RPATH "$ORIGIN/../../lib")
+      _irreps PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 
   ### libcasm.occ_events._occ_events ###
@@ -278,10 +278,10 @@ if(DEFINED SKBUILD)
   install(TARGETS _occ_events DESTINATION occ_events)
   if(APPLE)
     set_target_properties(
-      _occ_events PROPERTIES INSTALL_RPATH "@loader_path/../../lib")
+      _occ_events PROPERTIES INSTALL_RPATH "@loader_path/../lib")
   else()
     set_target_properties(
-      _occ_events PROPERTIES INSTALL_RPATH "$ORIGIN/../../lib")
+      _occ_events PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 
   ### libcasm.sym_info._sym_info ###
@@ -296,10 +296,10 @@ if(DEFINED SKBUILD)
   install(TARGETS _sym_info DESTINATION sym_info)
   if(APPLE)
     set_target_properties(
-      _sym_info PROPERTIES INSTALL_RPATH "@loader_path/../../lib")
+      _sym_info PROPERTIES INSTALL_RPATH "@loader_path/../lib")
   else()
     set_target_properties(
-      _sym_info PROPERTIES INSTALL_RPATH "$ORIGIN/../../lib")
+      _sym_info PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 
 endif()

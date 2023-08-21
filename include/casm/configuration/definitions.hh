@@ -42,6 +42,7 @@
 #define CASM_config_definitions
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <vector>
 
