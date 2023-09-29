@@ -120,6 +120,7 @@ set(
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/Symmetrizer.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/SimpleOrbit_impl.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/definitions.hh
+  ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/misc.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/SimpleOrbit.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/VectorSymCompare_v2.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/to_real.hh

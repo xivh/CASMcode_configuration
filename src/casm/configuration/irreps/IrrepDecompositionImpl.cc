@@ -13,58 +13,9 @@ namespace irreps {
 
 namespace IrrepDecompositionImpl {
 
-/// \brief Round entries that are within tol of being integer to that integer
-/// value
-Eigen::MatrixXcd prettyc(const Eigen::MatrixXcd &M) {
-  double tol = 1e-10;
-  Eigen::MatrixXcd Mp(M);
-  for (int i = 0; i < M.rows(); i++) {
-    for (int j = 0; j < M.cols(); j++) {
-      if (std::abs(std::round(M(i, j).real()) - M(i, j).real()) < tol) {
-        Mp(i, j).real(std::round(M(i, j).real()));
-      }
-      if (std::abs(std::round(M(i, j).imag()) - M(i, j).imag()) < tol) {
-        Mp(i, j).imag(std::round(M(i, j).imag()));
-      }
-    }
-  }
-  return Mp;
-}
-
-/// \brief Round entries that are within tol of being integer to that integer
-/// value
-Eigen::MatrixXd pretty(const Eigen::MatrixXd &M) {
-  double tol = 1e-10;
-  Eigen::MatrixXd Mp(M);
-  for (int i = 0; i < M.rows(); i++) {
-    for (int j = 0; j < M.cols(); j++) {
-      if (std::abs(std::round(M(i, j)) - M(i, j)) < tol) {
-        Mp(i, j) = std::round(M(i, j));
-      }
-    }
-  }
-  return Mp;
-}
-
 // note: there are a number of floating point comparisons, currently all set
 // to use CASM::TOL as the tolerance. If necessary, they could be tuned here or
 // via function parameters. To find them search for TOL or "almost".
-
-Eigen::MatrixXd real_I(Index rows, Index cols) {
-  return Eigen::MatrixXd::Identity(rows, cols);
-}
-
-Eigen::MatrixXd real_Zero(Index rows, Index cols) {
-  return Eigen::MatrixXd::Zero(rows, cols);
-}
-
-Eigen::MatrixXcd complex_I(Index rows, Index cols) {
-  return Eigen::MatrixXcd::Identity(rows, cols);
-}
-
-Eigen::MatrixXcd complex_Zero(Index rows, Index cols) {
-  return Eigen::MatrixXcd::Zero(rows, cols);
-}
 
 CommuterParamsCounter::CommuterParamsCounter() : m_valid(false) {}
 
@@ -550,6 +501,9 @@ IrrepInfo subspace_to_full_space(IrrepInfo const &subspace_irrep,
 
   result.trans_mat = subspace_irrep.trans_mat *
                      subspace.adjoint().template cast<std::complex<double>>();
+
+  result.irrep_dim = result.trans_mat.rows();
+  result.vector_dim = result.trans_mat.cols();
 
   result.directions.clear();
   for (const auto &direction_orbit : subspace_irrep.directions) {

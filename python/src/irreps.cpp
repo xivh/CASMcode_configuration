@@ -154,11 +154,11 @@ PYBIND11_MODULE(_irreps, m) {
           "list[np.ndarray]: The symmetry group representation matrices")
       .def_readonly(
           "irreps", &irreps::VectorSpaceSymReport::irreps,
-          "list[`~libcasm.irreps.IrrepInfo`]: The irreducible subspaces")
-      .def_readonly("irreducible_wedge",
-                    &irreps::VectorSpaceSymReport::irreducible_wedge,
-                    "list[`~libcasm.irreps.SubWedge`]: The irreducible wedge "
-                    "(if calculated)")
+          "list[:class:`~libcasm.irreps.IrrepInfo`]: The irreducible subspaces")
+      .def_readonly(
+          "irreducible_wedge", &irreps::VectorSpaceSymReport::irreducible_wedge,
+          "list[:class:`~libcasm.irreps.SubWedge`]: The irreducible wedge "
+          "(if calculated)")
       .def_readonly("symmetry_adapted_subspace",
                     &irreps::VectorSpaceSymReport::symmetry_adapted_subspace,
                     "np.ndarray: The symmetry adapted basis vectors, as a "

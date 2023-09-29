@@ -62,11 +62,21 @@ DoFSpaceAnalysisResults::DoFSpaceAnalysisResults(
 ///     independent. This parameter is only checked dof==\"occ\".
 /// \param calc_wedges If true, calculate the irreducible wedges for the vector
 ///     space. This may take a long time.
+/// \param log Optional logger. If has value and `log->verbosity() >=
+/// Log::verbose`,
+///     prints step-by-step results to log.
 DoFSpaceAnalysisResults dof_space_analysis(
     clexulator::DoFSpace const &dof_space_in, std::shared_ptr<Prim const> prim,
     std::optional<Configuration> configuration,
     std::optional<bool> exclude_homogeneous_modes,
-    bool include_default_occ_modes, bool calc_wedges) {
+    bool include_default_occ_modes, bool calc_wedges, std::optional<Log> log) {
+  if (dof_space_in.basis.cols() == 0) {
+    std::stringstream msg;
+    msg << "Error in dof_space_analysis: "
+        << "Initial DoF space: basis.cols() == 0";
+    throw dof_space_analysis_error(msg.str());
+  }
+
   Eigen::Matrix3l T = Eigen::Matrix3l::Identity();
   if (dof_space_in.transformation_matrix_to_super.has_value()) {
     T = *dof_space_in.transformation_matrix_to_super;
@@ -76,9 +86,21 @@ DoFSpaceAnalysisResults dof_space_analysis(
   // --- Construct the standard DoF space ---
   clexulator::DoFSpace dof_space_pre1 =
       exclude_homogeneous_mode_space(dof_space_in, exclude_homogeneous_modes);
+  if (dof_space_pre1.basis.cols() == 0) {
+    std::stringstream msg;
+    msg << "Error in dof_space_analysis: "
+        << "After excluding homogeneous mode space: basis.cols() == 0";
+    throw dof_space_analysis_error(msg.str());
+  }
 
   clexulator::DoFSpace dof_space =
       exclude_default_occ_modes(dof_space_pre1, include_default_occ_modes);
+  if (dof_space.basis.cols() == 0) {
+    std::stringstream msg;
+    msg << "Error in dof_space_analysis: "
+        << "After excluding default occ modes: basis.cols() == 0";
+    throw dof_space_analysis_error(msg.str());
+  }
 
   // construct symmetry group based on invariance of dof_space and configuration
   std::vector<SupercellSymOp> group(SupercellSymOp::begin(supercell),
@@ -117,7 +139,7 @@ DoFSpaceAnalysisResults dof_space_analysis(
   try {
     irreps::IrrepDecomposition irrep_decomposition(
         matrix_rep, group_indices, dof_space.basis, make_cyclic_subgroups_f,
-        make_all_subgroups_f, allow_complex);
+        make_all_subgroups_f, allow_complex, log);
 
     // Generate report, based on constructed inputs
     symmetry_report = vector_space_sym_report(irrep_decomposition, calc_wedges);

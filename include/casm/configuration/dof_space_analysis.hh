@@ -38,7 +38,8 @@ DoFSpaceAnalysisResults dof_space_analysis(
     clexulator::DoFSpace const &dof_space, std::shared_ptr<Prim const> prim,
     std::optional<Configuration> configuration = std::nullopt,
     std::optional<bool> exclude_homogeneous_modes = std::nullopt,
-    bool include_default_occ_modes = false, bool calc_wedges = false);
+    bool include_default_occ_modes = false, bool calc_wedges = false,
+    std::optional<Log> log = std::nullopt);
 
 }  // namespace config
 }  // namespace CASM

@@ -48,7 +48,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: CASMcode_clexulator/dist
-          key: ${{ runner.os }}-libcasm-clexulator-v2-0a1
+          key: ${{ runner.os }}-libcasm-clexulator-v2-0a2
 
       - name: Install CASM dependencies
         run: |

@@ -33,7 +33,9 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
                                to_sequential_string(m + 1, mult);
       auto const &irrep = obj.irreps[l];
       if (irrep.pseudo_irrep) {
-        json["irreducible_representations"]["pseudo_irrep"][irrep_name] = irrep;
+        add_pseudo_irrep_characters(
+            irrep,
+            json["irreducible_representations"]["pseudo_irrep"][irrep_name]);
       }
       // json["irreducible_representations"][irrep_name]["multiplicity"] = mult;
       if (obj.irreducible_wedge.size()) {
@@ -56,7 +58,7 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
           json["irreducible_representations"]["symop_matrices"]
               [irrep_name];  //.put_array();
       for (Index o = 0; o < obj.symgroup_rep.size(); ++o) {
-        Eigen::MatrixXd const &op = obj.symgroup_rep[i];
+        Eigen::MatrixXd const &op = obj.symgroup_rep[o];
         std::string op_name =
             "op_" + to_sequential_string(o + 1, obj.symgroup_rep.size());
         irrep_matrices[op_name] =

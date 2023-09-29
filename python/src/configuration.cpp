@@ -8,6 +8,7 @@
 #include "casm/casm_io/Log.hh"
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
+#include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
 #include "casm/configuration/ConfigCompare.hh"
 #include "casm/configuration/ConfigurationSet.hh"
 #include "casm/configuration/Prim.hh"
@@ -55,10 +56,66 @@ using namespace CASM;
 //                                             head_group_index);
 // }
 
+inline std::map<DoFKey, std::vector<xtal::SiteDoFSet>> _make_local_dof_info(
+    xtal::BasicStructure const &basic_structure) {
+  std::map<DoFKey, std::vector<xtal::SiteDoFSet>> result;
+  auto const &basis = basic_structure.basis();
+
+  auto make_null_dofset = [](DoFKey const &type) {
+    std::cout << "~~ 0 " << std::endl;
+    AnisoValTraits dof_traits(type);
+    std::cout << "~~ 1 " << std::endl;
+    std::vector<std::string> component_names({});
+    std::cout << "~~ 2 " << std::endl;
+    Eigen::MatrixXd basis = Eigen::MatrixXd::Zero(dof_traits.dim(), 0);
+    std::cout << "~~ 3 " << std::endl;
+    std::unordered_set<std::string> excluded_occs({});
+    std::cout << "~~ 4 " << std::endl;
+    return xtal::SiteDoFSet(dof_traits, component_names, basis, excluded_occs);
+  };
+
+  std::cout << "-here 0" << std::endl;
+  for (DoFKey const &type : xtal::continuous_local_dof_types(basic_structure)) {
+    std::cout << "-here 1" << std::endl;
+    std::vector<xtal::SiteDoFSet> &type_info = result[type];
+
+    std::cout << "-here 2" << std::endl;
+    for (Index b = 0; b < basis.size(); ++b) {
+      std::cout << "  -here 3: " << b << std::endl;
+      if (basis[b].has_dof(type)) {
+        std::cout << "    -here 4: " << std::endl;
+        type_info.push_back(basis[b].dof(type));
+        std::cout << "    -here 5: " << std::endl;
+      } else {
+        std::cout << "    -here 6: " << std::endl;
+        type_info.push_back(make_null_dofset(type));
+        std::cout << "    -here 7: " << std::endl;
+      }
+    }
+  }
+  std::cout << "-here 8: " << std::endl;
+  return result;
+}
+
 // Prim
 
 std::shared_ptr<config::Prim> make_prim(
     std::shared_ptr<xtal::BasicStructure const> const &xtal_prim) {
+  std::cout << "make_prim 1" << std::endl;
+  std::shared_ptr<xtal::BasicStructure const> basicstructure(xtal_prim);
+  std::cout << "make_prim 2" << std::endl;
+  std::map<DoFKey, xtal::DoFSet> global_dof_info(
+      clexulator::make_global_dof_info(*basicstructure));
+  std::cout << "make_prim 3" << std::endl;
+  std::map<DoFKey, std::vector<xtal::SiteDoFSet>> local_dof_info(
+      _make_local_dof_info(*basicstructure));
+  std::cout << "make_prim 4" << std::endl;
+  config::PrimSymInfo sym_info(*basicstructure);
+
+  std::cout << "make_prim 5" << std::endl;
+  auto prim = std::make_shared<config::Prim>(xtal_prim);
+  std::cout << "make_prim 6" << std::endl;
+
   return std::make_shared<config::Prim>(xtal_prim);
 }
 
@@ -2499,8 +2556,21 @@ PYBIND11_MODULE(_configuration, m) {
                     ":class:`~libcasm.irreps.VectorSpaceSymReport`: Holds the "
                     "irreducible space decomposition");
 
-  m.def("dof_space_analysis", &config::dof_space_analysis,
-        R"pbdoc(
+  m.def(
+      "dof_space_analysis",
+      [](clexulator::DoFSpace const &dof_space,
+         std::shared_ptr<config::Prim const> prim,
+         std::optional<config::Configuration> configuration,
+         std::optional<bool> exclude_homogeneous_modes,
+         bool include_default_occ_modes,
+         bool calc_wedges) -> config::DoFSpaceAnalysisResults {
+        std::optional<Log> log = std::nullopt;
+        //        std::optional<Log> log = Log(std::cout, Log::debug, true);
+        return config::dof_space_analysis(
+            dof_space, prim, configuration, exclude_homogeneous_modes,
+            include_default_occ_modes, calc_wedges, log);
+      },
+      R"pbdoc(
       Construct symmetry adapted bases in a DoFSpace
 
       This method:
@@ -2548,11 +2618,11 @@ PYBIND11_MODULE(_configuration, m) {
           holding the irreducible space decomposition used to construct the
           symmetry adapted basis.
       )pbdoc",
-        py::arg("dof_space"), py::arg("prim"),
-        py::arg("configuration") = std::nullopt,
-        py::arg("exclude_homogeneous_modes") = std::nullopt,
-        py::arg("include_default_occ_modes") = false,
-        py::arg("calc_wedges") = false);
+      py::arg("dof_space"), py::arg("prim"),
+      py::arg("configuration") = std::nullopt,
+      py::arg("exclude_homogeneous_modes") = std::nullopt,
+      py::arg("include_default_occ_modes") = false,
+      py::arg("calc_wedges") = false);
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
