@@ -63,6 +63,11 @@ class DoFSpaceAnalysisTest : public testing::Test {
   /// checked dof==\"occ\".
   bool include_default_occ_modes = false;
 
+  std::optional<std::map<int, int>> sublattice_index_to_default_occ =
+      std::nullopt;
+
+  std::optional<std::map<Index, int>> site_index_to_default_occ = std::nullopt;
+
   /// If true, calculate the irreducible wedges for the vector space.
   /// This may take a long time.
   bool calc_wedges = false;
@@ -78,7 +83,8 @@ TEST_F(DoFSpaceAnalysisTest, Test1) {
   // Perform DoF space analysis
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
-      include_default_occ_modes, calc_wedges, log);
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -110,7 +116,8 @@ TEST_F(DoFSpaceAnalysisTest, Test2) {
   // Perform DoF space analysis
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
-      include_default_occ_modes, calc_wedges, log);
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -121,6 +128,86 @@ TEST_F(DoFSpaceAnalysisTest, Test2) {
   EXPECT_EQ(irreps.size(), 2);
   EXPECT_EQ(symmetry_adapted_subspace.rows(), 8);
   EXPECT_EQ(symmetry_adapted_subspace.cols(), 4);
+
+  // Check basis
+  Eigen::MatrixXd const &basis = results.symmetry_adapted_dof_space.basis;
+  //  std::cout << "basis:" << std::endl;
+  //  std::cout << basis << std::endl;
+  EXPECT_EQ(basis.rows(), 8);
+  EXPECT_EQ(basis.cols(), 4);
+}
+
+TEST_F(DoFSpaceAnalysisTest, Test2a) {
+  make_prim(test::FCC_binary_prim());
+
+  Eigen::Matrix3l T;
+  T << -1, 1, 1,  //
+      1, -1, 1,   //
+      1, 1, -1;   //
+  transformation_matrix_to_super = T;
+  make_dof_space("occ");
+
+  site_index_to_default_occ =
+      std::map<Index, int>({{0, 0}, {1, 0}, {2, 0}, {3, 1}});
+
+  // Perform DoF space analysis
+  config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
+      *dof_space, prim, configuration, exclude_homogeneous_modes,
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
+
+  // Check results
+  irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
+  std::vector<irreps::IrrepInfo> const &irreps = symmetry_report.irreps;
+  Eigen::MatrixXd const &symmetry_adapted_subspace =
+      symmetry_report.symmetry_adapted_subspace;
+
+  EXPECT_EQ(irreps.size(), 4);
+  EXPECT_EQ(symmetry_adapted_subspace.rows(), 8);
+  EXPECT_EQ(symmetry_adapted_subspace.cols(), 8);
+
+  // Check basis
+  Eigen::MatrixXd const &basis = results.symmetry_adapted_dof_space.basis;
+  //  std::cout << "basis:" << std::endl;
+  //  std::cout << basis << std::endl;
+  EXPECT_EQ(basis.rows(), 8);
+  EXPECT_EQ(basis.cols(), 8);
+}
+
+TEST_F(DoFSpaceAnalysisTest, Test2b) {
+  make_prim(test::FCC_binary_prim());
+
+  Eigen::Matrix3l T;
+  T << -1, 1, 1,  //
+      1, -1, 1,   //
+      1, 1, -1;   //
+  transformation_matrix_to_super = T;
+  make_dof_space("occ");
+
+  sublattice_index_to_default_occ = std::map<int, int>({{0, 1}});
+
+  // Perform DoF space analysis
+  config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
+      *dof_space, prim, configuration, exclude_homogeneous_modes,
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
+
+  // Check results
+  irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
+  std::vector<irreps::IrrepInfo> const &irreps = symmetry_report.irreps;
+  Eigen::MatrixXd const &symmetry_adapted_subspace =
+      symmetry_report.symmetry_adapted_subspace;
+
+  EXPECT_EQ(irreps.size(), 2);
+  EXPECT_EQ(symmetry_adapted_subspace.rows(), 8);
+  EXPECT_EQ(symmetry_adapted_subspace.cols(), 4);
+
+  // Check basis
+  Eigen::MatrixXd const &basis = results.symmetry_adapted_dof_space.basis;
+  //  std::cout << "basis:" << std::endl;
+  //  std::cout << basis << std::endl;
+  EXPECT_EQ(basis.rows(), 8);
+  EXPECT_EQ(basis.cols(), 4);
 }
 
 TEST_F(DoFSpaceAnalysisTest, Test3) {
@@ -130,7 +217,8 @@ TEST_F(DoFSpaceAnalysisTest, Test3) {
   // Perform DoF space analysis
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
-      include_default_occ_modes, calc_wedges, log);
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -156,7 +244,8 @@ TEST_F(DoFSpaceAnalysisTest, Test4) {
   // Perform DoF space analysis
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
-      include_default_occ_modes, calc_wedges, log);
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -176,7 +265,8 @@ TEST_F(DoFSpaceAnalysisTest, Test5) {
   // Perform DoF space analysis
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
-      include_default_occ_modes, calc_wedges, log);
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -196,7 +286,8 @@ TEST_F(DoFSpaceAnalysisTest, Test6) {
   // Perform DoF space analysis
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
-      include_default_occ_modes, calc_wedges, log);
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;

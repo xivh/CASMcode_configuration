@@ -168,6 +168,7 @@ add_executable(casm_unit_configuration
   ${PROJECT_SOURCE_DIR}/unit/configuration/make_simple_structure_test.cpp
   ${PROJECT_SOURCE_DIR}/unit/configuration/canonical_form_test.cpp
   ${PROJECT_SOURCE_DIR}/unit/configuration/ConfigCompare_test.cpp
+  ${PROJECT_SOURCE_DIR}/unit/configuration/config_space_analysis_test.cpp
   ${PROJECT_SOURCE_DIR}/unit/configuration/PrimSymInfo_test.cpp
 )
 target_link_libraries(casm_unit_configuration

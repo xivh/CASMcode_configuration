@@ -56,66 +56,16 @@ using namespace CASM;
 //                                             head_group_index);
 // }
 
-inline std::map<DoFKey, std::vector<xtal::SiteDoFSet>> _make_local_dof_info(
-    xtal::BasicStructure const &basic_structure) {
-  std::map<DoFKey, std::vector<xtal::SiteDoFSet>> result;
-  auto const &basis = basic_structure.basis();
-
-  auto make_null_dofset = [](DoFKey const &type) {
-    std::cout << "~~ 0 " << std::endl;
-    AnisoValTraits dof_traits(type);
-    std::cout << "~~ 1 " << std::endl;
-    std::vector<std::string> component_names({});
-    std::cout << "~~ 2 " << std::endl;
-    Eigen::MatrixXd basis = Eigen::MatrixXd::Zero(dof_traits.dim(), 0);
-    std::cout << "~~ 3 " << std::endl;
-    std::unordered_set<std::string> excluded_occs({});
-    std::cout << "~~ 4 " << std::endl;
-    return xtal::SiteDoFSet(dof_traits, component_names, basis, excluded_occs);
-  };
-
-  std::cout << "-here 0" << std::endl;
-  for (DoFKey const &type : xtal::continuous_local_dof_types(basic_structure)) {
-    std::cout << "-here 1" << std::endl;
-    std::vector<xtal::SiteDoFSet> &type_info = result[type];
-
-    std::cout << "-here 2" << std::endl;
-    for (Index b = 0; b < basis.size(); ++b) {
-      std::cout << "  -here 3: " << b << std::endl;
-      if (basis[b].has_dof(type)) {
-        std::cout << "    -here 4: " << std::endl;
-        type_info.push_back(basis[b].dof(type));
-        std::cout << "    -here 5: " << std::endl;
-      } else {
-        std::cout << "    -here 6: " << std::endl;
-        type_info.push_back(make_null_dofset(type));
-        std::cout << "    -here 7: " << std::endl;
-      }
-    }
-  }
-  std::cout << "-here 8: " << std::endl;
-  return result;
-}
-
 // Prim
 
 std::shared_ptr<config::Prim> make_prim(
     std::shared_ptr<xtal::BasicStructure const> const &xtal_prim) {
-  std::cout << "make_prim 1" << std::endl;
   std::shared_ptr<xtal::BasicStructure const> basicstructure(xtal_prim);
-  std::cout << "make_prim 2" << std::endl;
   std::map<DoFKey, xtal::DoFSet> global_dof_info(
       clexulator::make_global_dof_info(*basicstructure));
-  std::cout << "make_prim 3" << std::endl;
   std::map<DoFKey, std::vector<xtal::SiteDoFSet>> local_dof_info(
-      _make_local_dof_info(*basicstructure));
-  std::cout << "make_prim 4" << std::endl;
+      clexulator::make_local_dof_info(*basicstructure));
   config::PrimSymInfo sym_info(*basicstructure);
-
-  std::cout << "make_prim 5" << std::endl;
-  auto prim = std::make_shared<config::Prim>(xtal_prim);
-  std::cout << "make_prim 6" << std::endl;
-
   return std::make_shared<config::Prim>(xtal_prim);
 }
 
@@ -176,10 +126,10 @@ config::ConfigSpaceAnalysisResults make_ConfigSpaceAnalysisResults(
     std::map<std::string, std::vector<config::Configuration>>
         _equivalent_configurations,
     Eigen::MatrixXd const &_projector, Eigen::VectorXd const &_eigenvalues,
-    clexulator::DoFSpace const &_symmetry_adapted_config_space) {
+    clexulator::DoFSpace const &_symmetry_adapted_dof_space) {
   return config::ConfigSpaceAnalysisResults(
       _standard_dof_space, _equivalent_dof_values, _equivalent_configurations,
-      _projector, _eigenvalues, _symmetry_adapted_config_space);
+      _projector, _eigenvalues, _symmetry_adapted_dof_space);
 }
 
 }  // namespace CASMpy
@@ -195,7 +145,9 @@ PYBIND11_MODULE(_configuration, m) {
         libcasm.configuration
         ---------------------
 
-        The libcasm.configuration package contains data structures and methods for representing configurations, applying symmetry to configurations, and comparing configurations.
+        The libcasm.configuration package contains data structures and methods
+        for representing configurations, applying symmetry to configurations,
+        and comparing configurations.
 
     )pbdoc";
   py::module::import("libcasm.xtal");
@@ -338,12 +290,25 @@ PYBIND11_MODULE(_configuration, m) {
         Notes
         -----
 
-        - Only :class:`~libcasm.configuration.Configuration` with degrees of freedom (DoF) values that compare as unique will be kept in :class:`~libcasm.configuration.ConfigurationSet`.
-        - The configuration added to :class:`~libcasm.configuration.ConfigurationSet` **must** already be in the canonical supercell to ensure proper configuration naming, serialization, and deserialization.
-        - Non-canonical and non-primitive configurations may be stored in :class:`~libcasm.configuration.ConfigurationSet`.
-        - If a user only wants canonical or primitive :class:`~libcasm.configuration.Configuration` to be stored in the :class:`~libcasm.configuration.ConfigurationSet`, those checks must be done by the user.
-        - If the configuration to be stored are not in the canonical supercell, a different container type, such as `List[Configuration]`, should be used.
-        - The convenience methods :func:`~libcasm.configuration.io.configuration_list_to_data` and :func:`~libcasm.configuration.io.configuration_list_from_data` can be used when writing and reading `List[Configuration]`.
+        - Only :class:`~libcasm.configuration.Configuration` with degrees of \
+          freedom (DoF) values that compare as unique will be kept in \
+          :class:`~libcasm.configuration.ConfigurationSet`.
+        - The configuration added to \
+          :class:`~libcasm.configuration.ConfigurationSet` **must** already be \
+          in the canonical supercell to ensure proper configuration naming, \
+          serialization, and deserialization.
+        - Non-canonical and non-primitive configurations may be stored in \
+          :class:`~libcasm.configuration.ConfigurationSet`.
+        - If a user only wants canonical or primitive \
+          :class:`~libcasm.configuration.Configuration` to be stored in the \
+          :class:`~libcasm.configuration.ConfigurationSet`, those checks must \
+          be done by the user.
+        - If the configuration to be stored are not in the canonical supercell, a
+          different container type, such as `List[Configuration]`, should be used.
+        - The convenience methods \
+          :func:`~libcasm.configuration.io.configuration_list_to_data` and \
+          :func:`~libcasm.configuration.io.configuration_list_from_data` can be
+          used when writing and reading `List[Configuration]`.
 
         .. warning::
 
@@ -351,7 +316,10 @@ PYBIND11_MODULE(_configuration, m) {
 
         .. warning::
 
-            Users are responsible for placing any other constraints (canonical configurations only, primitive configurations only, etc.) on which :class:`~libcasm.configuration.Configuration` are added to :class:`~libcasm.configuration.ConfigurationSet`.
+            Users are responsible for placing any other constraints (canonical
+            configurations only, primitive configurations only, etc.) on which
+            :class:`~libcasm.configuration.Configuration` are added to
+            :class:`~libcasm.configuration.ConfigurationSet`.
 
 
         Examples
@@ -359,7 +327,9 @@ PYBIND11_MODULE(_configuration, m) {
 
         .. rubric:: Constructing ConfigurationSet and adding Configuration
 
-        A :class:`~libcasm.configuration.ConfigurationSet` can be constructed and :class:`~libcasm.configuration.Configuration` added to the set as follows:
+        A :class:`~libcasm.configuration.ConfigurationSet` can be constructed
+        and :class:`~libcasm.configuration.Configuration` added to the set as
+        follows:
 
         .. code-block:: Python
 
@@ -376,14 +346,23 @@ PYBIND11_MODULE(_configuration, m) {
             configruationset.add(Configuration(...))
 
 
-        Only :class:`~libcasm.configuration.Configuration` with degrees of freedom (DoF) values that compare as unique will be kept in the set.
+        Only :class:`~libcasm.configuration.Configuration` with degrees of
+        freedom (DoF) values that compare as unique will be kept in the set.
 
-        Only :class:`~libcasm.configuration.Configuration` with degrees of freedom (DoF) values that compare as unique will be kept in the :class:`~libcasm.configuration.ConfigurationSet`. The configuration must be in the canonical supercell, though this is not checked. If the configuration is not in the canonical supercell, use a different container type. A configuration_id is given automatically, using the next available index.
+        Only :class:`~libcasm.configuration.Configuration` with degrees of
+        freedom (DoF) values that compare as unique will be kept in the
+        :class:`~libcasm.configuration.ConfigurationSet`. The configuration
+        must be in the canonical supercell, though this is not checked. If
+        the configuration is not in the canonical supercell, use a different
+        container type. A configuration_id is given automatically, using the
+        next available index.
 
 
         .. rubric:: Using ConfigurationSet
 
-        The contents of :class:`~libcasm.configuration.ConfigurationSet` are of type :class:`~libcasm.configuration.ConfigurationRecord`, which can be iterated over using a standard for loop:
+        The contents of :class:`~libcasm.configuration.ConfigurationSet` are of
+        type :class:`~libcasm.configuration.ConfigurationRecord`, which can be
+        iterated over using a standard for loop:
 
         .. code-block:: Python
 
@@ -393,10 +372,13 @@ PYBIND11_MODULE(_configuration, m) {
                 configuration = record.configuration
                 # do something ...
 
-        The convention ``x in set`` can be used to check the contents of :class:`~libcasm.configuration.ConfigurationSet`, using `x` of the following types:
+        The convention ``x in set`` can be used to check the contents of
+        :class:`~libcasm.configuration.ConfigurationSet`, using `x` of the
+        following types:
 
         - `str`: to check by configuration name
-        - :class:`~libcasm.configuration.Configuration`: to check by configuration degrees of freedom (DoF) values
+        - :class:`~libcasm.configuration.Configuration`: to check by configuration
+          degrees of freedom (DoF) values
 
         .. code-block:: Python
 
@@ -410,7 +392,8 @@ PYBIND11_MODULE(_configuration, m) {
             if configuration_name in configurationset:
                 # do something ...
 
-        The value ``None`` is returned by `get` methods if the requested configuration is not present:
+        The value ``None`` is returned by `get` methods if the requested
+        configuration is not present:
 
         .. code-block:: Python
 
@@ -457,9 +440,13 @@ PYBIND11_MODULE(_configuration, m) {
       prim : libcasm.configuration.Prim
           A :class:`~libcasm.configuration.Prim`
       transformation_matrix_to_super : array_like, shape=(3,3), dtype=int
-          The transformation matrix, T, relating the superstructure lattice vectors, S, to the unit structure lattice vectors, L, according to S = L @ T, where S and L are shape=(3,3)  matrices with lattice vectors as columns.
+          The transformation matrix, T, relating the superstructure lattice
+          vectors, S, to the unit structure lattice vectors, L, according to
+          ``S = L @ T``, where S and L are shape=(3,3)  matrices with lattice
+          vectors as columns.
       max_n_translation_permutations : int = 100
-          The complete set of translation permutations is not generated for large supercells with `n_unitcells` > `max_n_translation_permutations`.
+          The complete set of translation permutations is not generated for
+          large supercells with `n_unitcells` > `max_n_translation_permutations`.
       )pbdoc")
       .def(
           "prim",
@@ -717,7 +704,8 @@ PYBIND11_MODULE(_configuration, m) {
         data : dict
             A :class:`~libcasm.configuration.Supercell` as a dict.
         supercells : libcasm.configuration.SupercellSet
-            A :class:`~libcasm.configuration.SupercellSet`, which holds shared supercells in order to avoid duplicates.
+            A :class:`~libcasm.configuration.SupercellSet`, which holds shared
+            supercells in order to avoid duplicates.
 
         Returns
         -------
@@ -893,7 +881,8 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Add a supercell to the set (equivalent to :func:`~libcasm.configuration.SupercellSet.add_supercell`).
+          Add a supercell to the set (equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.add_supercell`).
           )pbdoc",
           py::arg("supercell"))
       .def(
@@ -910,7 +899,10 @@ PYBIND11_MODULE(_configuration, m) {
           Parameters
           ----------
           transformation_matrix_to_super : array_like, shape=(3,3), dtype=int
-              The transformation matrix, T, relating the superstructure lattice vectors, S, to the unit structure lattice vectors, L, according to S = L @ T, where S and L are shape=(3,3)  matrices with lattice vectors as columns.
+              The transformation matrix, T, relating the superstructure lattice
+              vectors, S, to the unit structure lattice vectors, L, according to
+              ``S = L @ T``, where S and L are shape=(3,3)  matrices with lattice
+              vectors as columns.
 
           Returns
           -------
@@ -927,7 +919,8 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Add a supercell to the set, by constructing from the transformation matrix (equivalent to :func:`~libcasm.configuration.SupercellSet.add_by_transformation_matrix_to_super`).
+          Add a supercell to the set, by constructing from the transformation \
+          matrix (equivalent to :func:`~libcasm.configuration.SupercellSet.add_by_transformation_matrix_to_super`).
           )pbdoc",
           py::arg("transformation_matrix_to_super"))
       .def(
@@ -959,7 +952,8 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Add a supercell record to the set (equivalent to :func:`~libcasm.configuration.SupercellSet.add_record`).
+          Add a supercell record to the set (equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.add_record`).
           )pbdoc",
           py::arg("record"))
       .def(
@@ -975,7 +969,8 @@ PYBIND11_MODULE(_configuration, m) {
           Parameters
           ----------
           supercell_name : str
-              The name of a canonical supercell. Raises if `supercell_name` is not the name of the canonical equivalent supercell.
+              The name of a canonical supercell. Raises if `supercell_name` is not
+              the name of the canonical equivalent supercell.
 
           Returns
           -------
@@ -991,7 +986,9 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Construct the canonical supercell from a supercell name and add to the set (equivalent to :func:`~libcasm.configuration.SupercellSet.add_by_canonical_name`).
+          Construct the canonical supercell from a supercell name and add to \
+          the set (equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.add_by_canonical_name`).
           )pbdoc",
           py::arg("supercell_name"))
       // remove
@@ -1020,7 +1017,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Remove a supercell from the set. Raises if not in the set. Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_supercell`.
+          Remove a supercell from the set. Raises if not in the set. Equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.remove_supercell`.
           )pbdoc",
           py::arg("supercell"))
       .def(
@@ -1048,7 +1046,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Remove a supercell from the set. Raises if not in the set. Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_by_transformation_matrix_to_super`.
+          Remove a supercell from the set. Raises if not in the set. Equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.remove_by_transformation_matrix_to_super`.
           )pbdoc",
           py::arg("transformation_matrix_to_super"))
       .def(
@@ -1074,7 +1073,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Remove a supercell record from the set. Raises if not in the set. Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_record`.
+          Remove a supercell record from the set. Raises if not in the set. \
+          Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_record`.
           )pbdoc",
           py::arg("record"))
       .def(
@@ -1087,7 +1087,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Remove the canonical supercell, determined by supercell name, from the set. Raises if not in the set.
+          Remove the canonical supercell, determined by supercell name, from \
+          the set. Raises if not in the set.
           )pbdoc",
           py::arg("supercell_name"))
       //
@@ -1101,7 +1102,9 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Remove the canonical supercell, determined by supercell name, from the set. Raises if not in the set. Equivalent to :func:`~libcasm.configuration.SupercellSet.remove_by_canonical_name`.
+          Remove the canonical supercell, determined by supercell name, from \
+          the set. Raises if not in the set. Equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.remove_by_canonical_name`.
           )pbdoc",
           py::arg("supercell_name"))
       // discard
@@ -1122,7 +1125,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(supercell);
           },
           R"pbdoc(
-          Remove a supercell from the set if present. Equivalent to :func:`~libcasm.configuration.SupercellSet.discard_supercell`.
+          Remove a supercell from the set if present. Equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.discard_supercell`.
           )pbdoc",
           py::arg("supercell"))
       .def(
@@ -1132,7 +1136,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(transformation_matrix_to_super);
           },
           R"pbdoc(
-          Remove a supercell from the set if present, by checking for the transformation matrix.
+          Remove a supercell from the set if present, by checking for the \
+          transformation matrix.
           )pbdoc",
           py::arg("transformation_matrix_to_super"))
       .def(
@@ -1142,7 +1147,9 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(transformation_matrix_to_super);
           },
           R"pbdoc(
-          Remove a supercell from the set if present, by checking for the transformation matrix. Equivalent to :func:`~libcasm.configuration.SupercellSet.discard_by_transformation_matrix_to_super`.
+          Remove a supercell from the set if present, by checking for the \
+          transformation matrix. Equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.discard_by_transformation_matrix_to_super`.
           )pbdoc",
           py::arg("transformation_matrix_to_super"))
       .def(
@@ -1160,7 +1167,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(record);
           },
           R"pbdoc(
-          Remove a supercell from the set if present. Equivalent to :func:`~libcasm.configuration.SupercellSet.discard_record`.
+          Remove a supercell from the set if present. Equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.discard_record`.
           )pbdoc",
           py::arg("record"))
       .def(
@@ -1169,7 +1177,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase_canonical_by_name(supercell_name);
           },
           R"pbdoc(
-          Remove a canonical supercell, determined by supercell name, from the set if present.
+          Remove a canonical supercell, determined by supercell name, from the \
+          set if present.
           )pbdoc",
           py::arg("supercell_name"))
       .def(
@@ -1178,7 +1187,9 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase_canonical_by_name(supercell_name);
           },
           R"pbdoc(
-          Remove a canonical supercell, determined by supercell name, from the set if present. Equivalent to :func:`~libcasm.configuration.SupercellSet.discard_by_canonical_name`.
+          Remove a canonical supercell, determined by supercell name, from the \
+          set if present. Equivalent to \
+          :func:`~libcasm.configuration.SupercellSet.discard_by_canonical_name`.
           )pbdoc",
           py::arg("supercell_name"))
       // x in set
@@ -1217,7 +1228,8 @@ PYBIND11_MODULE(_configuration, m) {
             return m.find_canonical_by_name(supercell_name) != m.end();
           },
           R"pbdoc(
-          Check if a canonical supercell, determined by supercell name, is contained in the set.
+          Check if a canonical supercell, determined by supercell name, is \
+          contained in the set.
           )pbdoc",
           py::arg("record"))
       // for x in set
@@ -1250,7 +1262,12 @@ PYBIND11_MODULE(_configuration, m) {
                       A string indicating format version
 
                   supercells: Dict[str,array_like]
-                      A dict of canonical supercells, with supercell name as key and the integer transformation matrix, T, as value. T relates the superstructure lattice vectors, S, defining the DoF space to the unit structure lattice vectors, L, according to S = L @ T, where S and L are shape=(3,3)  matrices with lattice vectors as columns.
+                      A dict of canonical supercells, with supercell name as key
+                      and the integer transformation matrix, T, as value. T relates
+                      the superstructure lattice vectors, S, defining the DoF space
+                      to the unit structure lattice vectors, L, according to
+                      ``S = L @ T``, where S and L are shape=(3,3) matrices with
+                      lattice vectors as columns.
 
                   non_canonical_supercells: List[Dict]
                       A list of non-canonical supercells. The format is:
@@ -1332,14 +1349,19 @@ PYBIND11_MODULE(_configuration, m) {
           Parameters
           ----------
           configuration : libcasm.configuration.Configuration
-              The configuration to add if it is unique. The configuration must be in the canonical supercell, though this is not checked. If the configuration is not in the canonical supercell, use a different container type. A configuration_id is given automatically, using the next available index.
+              The configuration to add if it is unique. The configuration must
+              be in the canonical supercell, though this is not checked. If the
+              configuration is not in the canonical supercell, use a different
+              container type. A configuration_id is given automatically, using
+              the next available index.
           supercell_name : Optional[str] = None
               If the supercell name is known, insertion may be faster.
 
           Returns
           -------
           record : libcasm.configuration.ConfigurationRecord
-              A :class:`~libcasm.configuration.ConfigurationRecord`, as a const reference.
+              A :class:`~libcasm.configuration.ConfigurationRecord`, as a
+              const reference.
 
           )pbdoc",
           py::arg("configuration"), py::arg("supercell_name") = std::nullopt)
@@ -1357,7 +1379,8 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Add a configuration to the set (equivalent to :func:`~libcasm.configuration.ConfigurationSet.add_configuration`)
+          Add a configuration to the set (equivalent to \
+          :func:`~libcasm.configuration.ConfigurationSet.add_configuration`)
           )pbdoc",
           py::arg("configuration"), py::arg("supercell_name") = std::nullopt)
       .def(
@@ -1374,12 +1397,14 @@ PYBIND11_MODULE(_configuration, m) {
           Parameters
           ----------
           record : libcasm.configuration.ConfigurationRecord
-              A :class:`~libcasm.configuration.ConfigurationRecord` to insert in the set.
+              A :class:`~libcasm.configuration.ConfigurationRecord` to insert in
+              the set.
 
           Returns
           -------
           record : libcasm.configuration.ConfigurationRecord
-              A :class:`~libcasm.configuration.ConfigurationRecord` held by the set, as a const reference.
+              A :class:`~libcasm.configuration.ConfigurationRecord` held by the
+              set, as a const reference.
           )pbdoc",
           py::arg("record"))
       .def(  // make "add_record" available via "add"
@@ -1391,7 +1416,8 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Add a configuration to the set (equivalent to :func:`~libcasm.configuration.ConfigurationSet.add_record`)
+          Add a configuration to the set (equivalent to \
+          :func:`~libcasm.configuration.ConfigurationSet.add_record`)
           )pbdoc",
           py::arg("record"))
       // get
@@ -1408,7 +1434,8 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and return a const reference, else return None.
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) \
+          and return a const reference, else return None.
           )pbdoc",
           py::arg("configuration"))
       .def(
@@ -1424,7 +1451,9 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and return a const reference, else return None (equivalent to :func:`~libcasm.configuration.ConfigurationSet.get_configuration`).
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) \
+          and return a const reference, else return None (equivalent to \
+          :func:`~libcasm.configuration.ConfigurationSet.get_configuration`).
           )pbdoc",
           py::arg("configuration"))
       .def(
@@ -1440,7 +1469,8 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Find a ConfigurationRecord by configuration name and return a const reference, else return None.
+          Find a ConfigurationRecord by configuration name and return a const \
+          reference, else return None.
           )pbdoc",
           py::arg("configuration_name"))
       .def(
@@ -1456,7 +1486,9 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::return_value_policy::reference,
           R"pbdoc(
-          Find a ConfigurationRecord by configuration name and return a const reference, else return None (equivalent to :func:`~libcasm.configuration.ConfigurationSet.get_by_name`).
+          Find a ConfigurationRecord by configuration name and return a const \
+          reference, else return None (equivalent to \
+          :func:`~libcasm.configuration.ConfigurationSet.get_by_name`).
           )pbdoc",
           py::arg("configuration_name"))
       // remove
@@ -1471,7 +1503,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and remove from the set. Raise KeyError if not in the set.
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) \
+          and remove from the set. Raise KeyError if not in the set.
           )pbdoc",
           py::arg("configuration"))
       .def(
@@ -1485,7 +1518,9 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and remove from the set. Raise KeyError if not in the set (equivalent to :func:`~libcasm.configuration.ConfigurationSet.remove_configuration`).
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) \
+          and remove from the set. Raise KeyError if not in the set (equivalent \
+          to :func:`~libcasm.configuration.ConfigurationSet.remove_configuration`).
           )pbdoc",
           py::arg("configuration"))
       .def(
@@ -1498,7 +1533,8 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Find a ConfigurationRecord by configuration name and remove from the set. Raise KeyError if not in the set.
+          Find a ConfigurationRecord by configuration name and remove from the \
+          set. Raise KeyError if not in the set.
           )pbdoc",
           py::arg("configuration_name"))
       .def(
@@ -1511,7 +1547,9 @@ PYBIND11_MODULE(_configuration, m) {
             m.erase(it);
           },
           R"pbdoc(
-          Find a ConfigurationRecord by configuration name and remove from the set. Raise KeyError if not in the set (equivalent to :func:`~libcasm.configuration.ConfigurationSet.remove_by_name`).
+          Find a ConfigurationRecord by configuration name and remove from the \
+          set. Raise KeyError if not in the set (equivalent to \
+          :func:`~libcasm.configuration.ConfigurationSet.remove_by_name`).
           )pbdoc",
           py::arg("configuration_name"))
       // discard
@@ -1525,7 +1563,8 @@ PYBIND11_MODULE(_configuration, m) {
             }
           },
           R"pbdoc(
-          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and remove from the set if present.
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) \
+          and remove from the set if present.
           )pbdoc",
           py::arg("configuration"))
       .def(
@@ -1538,7 +1577,9 @@ PYBIND11_MODULE(_configuration, m) {
             }
           },
           R"pbdoc(
-          Find a ConfigurationRecord by configuration degrees of freedom (DoF) and remove from the set if present (equivalent to :func:`~libcasm.configuration.ConfigurationSet.discard_configuration`).
+          Find a ConfigurationRecord by configuration degrees of freedom (DoF) \
+          and remove from the set if present (equivalent to \
+          :func:`~libcasm.configuration.ConfigurationSet.discard_configuration`).
           )pbdoc",
           py::arg("configuration"))
       .def(
@@ -1550,7 +1591,8 @@ PYBIND11_MODULE(_configuration, m) {
             }
           },
           R"pbdoc(
-          Find a ConfigurationRecord by configuration name and remove from the set if present.
+          Find a ConfigurationRecord by configuration name and remove from \
+          the set if present.
           )pbdoc",
           py::arg("configuration_name"))
       .def(
@@ -1562,7 +1604,9 @@ PYBIND11_MODULE(_configuration, m) {
             }
           },
           R"pbdoc(
-          Find a ConfigurationRecord by configuration name and remove from the set if present (equivalent to :func:`~libcasm.configuration.ConfigurationSet.discard_by_name`).
+          Find a ConfigurationRecord by configuration name and remove from the \
+          set if present (equivalent to \
+          :func:`~libcasm.configuration.ConfigurationSet.discard_by_name`).
           )pbdoc",
           py::arg("configuration_name"))
       // x in set
@@ -1629,12 +1673,16 @@ PYBIND11_MODULE(_configuration, m) {
 
 
           supercells : libcasm.configuration.SupercellSet
-              A :class:`~libcasm.configuration.SupercellSet`, which holds shared supercells used by the constructed :class:`~libcasm.configuration.Configuration` in order to avoid duplicates.
+              A :class:`~libcasm.configuration.SupercellSet`, which holds shared
+              supercells used by the constructed
+              :class:`~libcasm.configuration.Configuration` in order to avoid
+              duplicates.
 
           Returns
           -------
           configurations : libcasm.configuration.ConfigurationSet
-              The :class:`~libcasm.configuration.ConfigurationSet` constructed from the dict.
+              The :class:`~libcasm.configuration.ConfigurationSet` constructed from
+              the dict.
           )pbdoc",
           py::arg("data"), py::arg("supercells"))
       .def(
@@ -2083,7 +2131,8 @@ PYBIND11_MODULE(_configuration, m) {
         data : dict
             A :class:`~libcasm.configuration.Supercell` as a dict.
         supercells : libcasm.configuration.SupercellSet
-            A :class:`~libcasm.configuration.SupercellSet`, which holds shared supercells in order to avoid duplicates.
+            A :class:`~libcasm.configuration.SupercellSet`, which holds shared
+            supercells in order to avoid duplicates.
 
         Returns
         -------
@@ -2470,7 +2519,7 @@ PYBIND11_MODULE(_configuration, m) {
            "Construct ConfigSpaceAnalysisResults.",
            py::arg("standard_dof_space"), py::arg("equivalent_dof_values"),
            py::arg("equivalent_configurations"), py::arg("projector"),
-           py::arg("eigenvalues"), py::arg("symmetry_adapted_config_space"))
+           py::arg("eigenvalues"), py::arg("symmetry_adapted_dof_space"))
       .def_readonly("standard_dof_space",
                     &config::ConfigSpaceAnalysisResults::standard_dof_space,
                     ":class:`~libcasm.clexulator.DoFSpace`: The shared "
@@ -2478,43 +2527,54 @@ PYBIND11_MODULE(_configuration, m) {
       .def_readonly("equivalent_dof_values",
                     &config::ConfigSpaceAnalysisResults::equivalent_dof_values,
                     R"pbdoc(
-                    Dict[str,np.ndarray]: DoF values of all equivalent configurations in the fully commensurate supercell, expressed in the basis of the standard DoF space, with key == input configuration identifier
-                    )pbdoc")
+          Dict[str,np.ndarray]: DoF values of all equivalent \
+          configurations in the fully commensurate supercell, \
+          expressed in the basis of the standard DoF space, \
+          with key == input configuration identifier
+          )pbdoc")
       .def_readonly(
-          "equivalent_dof_values",
+          "equivalent_configurations",
           &config::ConfigSpaceAnalysisResults::equivalent_configurations,
           R"pbdoc(
-                    Dict[str,List[:class:`~libcasm.configuration.Configuration`]]: All equivalent configurations in the fully commensurate supercell, with key == input configuration identifier
-                    )pbdoc")
+          Dict[str,List[:class:`~libcasm.configuration.Configuration`]]: All \
+          equivalent configurations in the fully commensurate supercell, with \
+          key == input configuration identifier
+          )pbdoc")
       .def_readonly("projector", &config::ConfigSpaceAnalysisResults::projector,
                     "np.ndarray: Projection matrix")
       .def_readonly("eigenvalues",
                     &config::ConfigSpaceAnalysisResults::eigenvalues,
                     "np.ndarray: Non-zero eigenvalues of projector")
       .def_readonly(
-          "symmetry_adapted_config_space",
-          &config::ConfigSpaceAnalysisResults::symmetry_adapted_config_space,
+          "symmetry_adapted_dof_space",
+          &config::ConfigSpaceAnalysisResults::symmetry_adapted_dof_space,
           ":class:`~libcasm.clexulator.DoFSpace`: Symmetry-adapted config "
           "space, with basis formed by eigenvectors of P.");
 
   m.def("config_space_analysis", &config::config_space_analysis,
         R"pbdoc(
-      Construct symmetry adapted bases in the DoF space spanned by the set of configurations symmetrically equivalent to the input configurations
+      Construct symmetry adapted bases in the DoF space spanned by the set of
+      configurations symmetrically equivalent to the input configurations
 
       This method:
 
-      - Constructs a projector onto the DoF space spanned by all configurations symmetrically equivalent to a set of input configurations, and
-      - Finds the eigenvectors spanning that space. The eigenvectors are axes that can be used as a basis for symmetry adapted order parameters.
+      - Constructs a projector onto the DoF space spanned by all configurations
+        symmetrically equivalent to a set of input configurations, and
+      - Finds the eigenvectors spanning that space. The eigenvectors are axes that
+        can be used as a basis for symmetry adapted order parameters.
 
       This method is faster than the function `dof_space_analysis`, and
       often the resulting axes do lie along high-symmetry directions, but
       they may not lie within a single irreducible subspace, and they are
       not explicitly rotated to the highest symmetry directions.
 
-      configurations : Dict[std,:class:`~libcasm.configuration.Configuration`]
-          Map of identifier string -> :class:`~libcasm.configuration.Configuration`,
-          providing the configurations defining the DoF vector space to be
-          spanned by the symmetry adapated bases that are constructed.
+      Parameters
+      ----------
+      configurations : Dict[str,:class:`~libcasm.configuration.Configuration`]
+          Map of identifier string (key) to
+          :class:`~libcasm.configuration.Configuration`, providing the
+          configurations defining the DoF vector space to be spanned by the
+          symmetry adapated bases that are constructed.
       dofs : Optional[list[str]] = None
           Names of degree of freedoms for which the analysis is run. The default
           includes all DoF types in the prim.
@@ -2522,19 +2582,34 @@ PYBIND11_MODULE(_configuration, m) {
           Exclude homogeneous modes if this is true, or include if this is false.
           If this is None (default), exclude homogeneous modes for dof==\"disp\" only.
       include_default_occ_modes : bool = False
-          Include the dof component for the default occupation value on each site with occupation DoF. The default is to exclude these modes because they are not independent. This parameter is only checked dof==\"occ\".
+          Include the dof component for the default occupation value on each site
+          with occupation DoF. The default is to exclude these modes because they
+          are not independent. This parameter is only checked dof==\"occ\". If
+          false, the default occupation is determined using
+          `site_index_to_default_occ` if that is provided, else using
+          `sublattice_index_to_default_occ` if that is provided, else using
+          occupation index 0.
+      sublattice_index_to_default_occ: Optional[dict[int,int]]
+          Optional values of default occupation index (the value), specified by
+          sublattice index (the key).
+      site_index_to_default_occ: Optional[dict[int,int]]
+          Optional values of default occupation index (the value), specified by
+          supercell site index (the key).
       tol : float = libcasm.TOL
           Tolerance used for identifying zero-valued eigenvalues.
 
       Returns
       -------
       results : Dict[str,:class:`~libcasm.configuration.ConfigSpaceAnalysisResults`]
-          Results including equivalent DoF values and configurations, projection matrix,
-          eigenvalues, and symmetry adapted configuration space, for each requested DoF type.
+          Results including equivalent DoF values and configurations, projection
+          matrix, eigenvalues, and symmetry adapted configuration space, for each
+          requested DoF type.
       )pbdoc",
         py::arg("configurations"), py::arg("dofs") = std::nullopt,
         py::arg("exclude_homogeneous_modes") = std::nullopt,
         py::arg("include_default_occ_modes") = false,
+        py::arg("sublattice_index_to_default_occ") = std::nullopt,
+        py::arg("site_index_to_default_occ") = std::nullopt,
         py::arg("tol") = CASM::TOL);
 
   //
@@ -2563,12 +2638,15 @@ PYBIND11_MODULE(_configuration, m) {
          std::optional<config::Configuration> configuration,
          std::optional<bool> exclude_homogeneous_modes,
          bool include_default_occ_modes,
+         std::optional<std::map<int, int>> sublattice_index_to_default_occ,
+         std::optional<std::map<Index, int>> site_index_to_default_occ,
          bool calc_wedges) -> config::DoFSpaceAnalysisResults {
         std::optional<Log> log = std::nullopt;
-        //        std::optional<Log> log = Log(std::cout, Log::debug, true);
+        // std::optional<Log> log = Log(std::cout, Log::debug, true);
         return config::dof_space_analysis(
             dof_space, prim, configuration, exclude_homogeneous_modes,
-            include_default_occ_modes, calc_wedges, log);
+            include_default_occ_modes, sublattice_index_to_default_occ,
+            site_index_to_default_occ, calc_wedges, log);
       },
       R"pbdoc(
       Construct symmetry adapted bases in a DoFSpace
@@ -2586,6 +2664,8 @@ PYBIND11_MODULE(_configuration, m) {
       the resulting axes do lie along high-symmetry directions, and within a
       single irreducible subspace.
 
+      Parameters
+      ----------
       dof_space : :class:`~libcasm.clexulator.DoFSpace`
           The :class:`~libcasm.clexulator.DoFSpace` for which a symmetry
           adapted basis is constructed.
@@ -2603,7 +2683,17 @@ PYBIND11_MODULE(_configuration, m) {
       include_default_occ_modes : bool = False
           Include the dof component for the default occupation value on each site
           with occupation DoF. The default is to exclude these modes because they
-          are not independent. This parameter is only checked dof==\"occ\".
+          are not independent. This parameter is only checked dof==\"occ\". If
+          false, the default occupation is determined using
+          `site_index_to_default_occ` if that is provided, else using
+          `sublattice_index_to_default_occ` if that is provided, else using
+          occupation index 0.
+      sublattice_index_to_default_occ: Optional[dict[int,int]]
+          Optional values of default occupation index (the value), specified by
+          sublattice index (the key).
+      site_index_to_default_occ: Optional[dict[int,int]]
+          Optional values of default occupation index (the value), specified by
+          supercell site index (the key).
       calc_wedges : bool = False
           If True, calculate the irreducible wedges for the vector space.
           This may take a long time, but provides the symmetrically unique
@@ -2622,6 +2712,8 @@ PYBIND11_MODULE(_configuration, m) {
       py::arg("configuration") = std::nullopt,
       py::arg("exclude_homogeneous_modes") = std::nullopt,
       py::arg("include_default_occ_modes") = false,
+      py::arg("sublattice_index_to_default_occ") = std::nullopt,
+      py::arg("site_index_to_default_occ") = std::nullopt,
       py::arg("calc_wedges") = false);
 
 #ifdef VERSION_INFO

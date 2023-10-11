@@ -26,16 +26,10 @@ class SymGroup(_sym_info.SymGroup):
 
     .. rubric:: Factory Functions
 
-    +------------------------------------------------+---------------------------------\
-    ---------+
-    | :func:`~libcasm.sym_info.make_factor_group`    | Make the prim factor group      \
-             |
-    +------------------------------------------------+---------------------------------\
-    ---------+
-    | :func:`~libcasm.sym_info.make_point_group`     | Make the prim point group       \
-             |
-    +------------------------------------------------+---------------------------------\
-    ---------+
+    - :func:`~libcasm.sym_info.make_factor_group`:  Make the \
+      :class:`libcasm.xtal.Prim` factor group
+    - :func:`~libcasm.sym_info.make_point_group`: Make the \
+      :class:`libcasm.xtal.Prim` point group
 
 
     Parameters

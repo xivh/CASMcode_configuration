@@ -65,11 +65,103 @@ def test_dof_space_analysis_2(FCC_binary_prim):
         # configuration=None,
         # exclude_homogeneous_modes=None,
         # include_default_occ_modes=False,
+        # sublattice_index_to_default_occ=None,
+        # site_index_to_default_occ=None,
         # calc_wedges=False,
     )
 
     symmetry_adapted_dof_space = results.symmetry_adapted_dof_space
     sym_report = results.symmetry_report
+
+    assert len(sym_report.irreps) == 2
+    assert sym_report.symmetry_adapted_subspace.shape[0] == 8
+    assert sym_report.symmetry_adapted_subspace.shape[1] == 4
+
+    assert np.allclose(
+        symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
+    )
+
+
+def test_dof_space_analysis_2a(FCC_binary_prim):
+    prim = casmconfig.Prim(FCC_binary_prim)
+    T_dof_space = np.array(
+        [  # conventional FCC cubic cell
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ],
+        dtype=int,
+    )
+
+    # construct occ DoFSpace with default basis
+    dof_space = casmclex.DoFSpace(
+        dof_key="occ",
+        xtal_prim=FCC_binary_prim,
+        transformation_matrix_to_super=T_dof_space,
+    )
+
+    site_index_to_default_occ = {0: 0, 1: 0, 2: 0, 3: 1}
+
+    # Perform DoF space analysis
+    results = casmconfig.dof_space_analysis(
+        dof_space=dof_space,
+        prim=prim,
+        # configuration=None,
+        # exclude_homogeneous_modes=None,
+        # include_default_occ_modes=False,
+        # sublattice_index_to_default_occ=None,
+        site_index_to_default_occ=site_index_to_default_occ,
+        # calc_wedges=False,
+    )
+
+    symmetry_adapted_dof_space = results.symmetry_adapted_dof_space
+    sym_report = results.symmetry_report
+    # print("basis:\n", symmetry_adapted_dof_space.basis)
+
+    assert len(sym_report.irreps) == 4
+    assert sym_report.symmetry_adapted_subspace.shape[0] == 8
+    assert sym_report.symmetry_adapted_subspace.shape[1] == 8
+
+    assert np.allclose(
+        symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
+    )
+
+
+def test_dof_space_analysis_2b(FCC_binary_prim):
+    prim = casmconfig.Prim(FCC_binary_prim)
+    T_dof_space = np.array(
+        [  # conventional FCC cubic cell
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ],
+        dtype=int,
+    )
+
+    # construct occ DoFSpace with default basis
+    dof_space = casmclex.DoFSpace(
+        dof_key="occ",
+        xtal_prim=FCC_binary_prim,
+        transformation_matrix_to_super=T_dof_space,
+    )
+
+    sublattice_index_to_default_occ = {0: 1}
+
+    # Perform DoF space analysis
+    results = casmconfig.dof_space_analysis(
+        dof_space=dof_space,
+        prim=prim,
+        # configuration=None,
+        # exclude_homogeneous_modes=None,
+        # include_default_occ_modes=False,
+        sublattice_index_to_default_occ=sublattice_index_to_default_occ,
+        # site_index_to_default_occ=None,
+        # calc_wedges=False,
+    )
+
+    symmetry_adapted_dof_space = results.symmetry_adapted_dof_space
+    sym_report = results.symmetry_report
+    # print("basis:\n", symmetry_adapted_dof_space.basis)
 
     assert len(sym_report.irreps) == 2
     assert sym_report.symmetry_adapted_subspace.shape[0] == 8

@@ -97,6 +97,7 @@ set(
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/version.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/definitions.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/misc.hh
+  ${PROJECT_SOURCE_DIR}/include/casm/configuration/DoFSpace_functions.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/SupercellSymInfo.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/supercell_name.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/Configuration.hh
@@ -182,6 +183,7 @@ set(
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/Supercell.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/dof_space_analysis.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/misc.cc
+  ${PROJECT_SOURCE_DIR}/src/casm/configuration/DoFSpace_functions.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/SupercellSymInfo.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/supercell_name.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/config_space_analysis.cc
