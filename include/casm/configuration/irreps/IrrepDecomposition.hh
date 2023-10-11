@@ -1,6 +1,8 @@
 #ifndef CASM_irreps_IrrepDecomposition
 #define CASM_irreps_IrrepDecomposition
 
+#include <optional>
+
 #include "casm/casm_io/Log.hh"
 #include "casm/configuration/irreps/definitions.hh"
 
