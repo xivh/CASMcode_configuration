@@ -752,9 +752,21 @@ Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
   return subspace;
 }
 
-// Create `subspace_rep`, a transformed copy of `fullspace_rep` that acts
-// on coordinates with `subspace` columns as a basis. Matrices in
-// `subspace_rep` are shape (subspace.cols() x subspace.cols())
+/// \brief Create the subspace rep from the fullspace rep
+///
+/// Create `subspace_rep`, a transformed copy of `fullspace_rep` that acts
+/// on coordinates with `subspace` columns as a basis. Matrices in
+/// `subspace_rep` are shape (subspace.cols() x subspace.cols())
+///
+/// \param fullspace_rep Matrix representation for transforming unrolled vectors
+/// in
+///     the prim basis
+/// \param subspace A subspace basis, x_fullspace = subspace * x_subspace.
+/// Subspace
+///     basis vectors must be unit length and orthogonal.
+/// \return subspace_rep, The matrix representation for transforming vectors in
+/// the
+///     subspace
 MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
                             Eigen::MatrixXd const &subspace) {
   Eigen::MatrixXd trans_mat = subspace.transpose();

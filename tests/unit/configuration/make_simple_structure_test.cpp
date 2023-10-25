@@ -47,7 +47,7 @@ TEST_F(MakeSimpleStructureTest, Test1) {
 
   jsonParser json;
   to_json(structure, json);
-  std::cout << json << std::endl;
+  //  std::cout << json << std::endl;
 
   EXPECT_EQ(structure.atom_info.names.size(), 4);
   EXPECT_EQ(structure.atom_info.coords.rows(), 3);
@@ -87,7 +87,7 @@ TEST_F(MakeSimpleStructureTest, Test2) {
 
   jsonParser json;
   to_json(structure, json);
-  std::cout << json << std::endl;
+  //  std::cout << json << std::endl;
 
   // check dimensions
   EXPECT_EQ(structure.atom_info.names.size(), 4);
@@ -181,7 +181,7 @@ TEST_F(MakeSimpleStructureTestStrainDisp, Test1) {
 
   jsonParser json;
   to_json(structure, json);
-  std::cout << json << std::endl;
+  //  std::cout << json << std::endl;
 
   // check dimensions
   EXPECT_EQ(structure.atom_info.names.size(), 4);

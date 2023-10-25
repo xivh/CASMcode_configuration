@@ -479,6 +479,22 @@ PYBIND11_MODULE(_configuration, m) {
           },
           "Returns the prim lattice.")
       .def(
+          "site_index_converter",
+          [](std::shared_ptr<config::Supercell const> const &supercell) {
+            return supercell->unitcellcoord_index_converter;
+          },
+          py::return_value_policy::reference_internal,
+          "A const reference to the"
+          ":class:`~libcasm.xtal.SiteIndexConverter` for the supercell.")
+      .def(
+          "unitcell_index_converter",
+          [](std::shared_ptr<config::Supercell const> const &supercell) {
+            return supercell->unitcell_index_converter;
+          },
+          py::return_value_policy::reference_internal,
+          "A const reference to the "
+          ":class:`~libcasm.xtal.UnitCellIndexConverter` for the supercell.")
+      .def(
           "factor_group",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->sym_info.factor_group;
@@ -1719,6 +1735,25 @@ PYBIND11_MODULE(_configuration, m) {
 
     )pbdoc");
 
+  // ConfigurationWithProperties -- declare class
+  py::class_<config::ConfigurationWithProperties> pyConfigurationWithProperties(
+      m, "ConfigurationWithProperties", R"pbdoc(
+      A data structure encapsulating a Configuration along with associated
+      local and global continuous properties.
+
+      Notes
+      -----
+
+      - The format for local and global properties follows the format for local and
+        global continuous degrees of freedom (DoF) in the standard basis, as documented
+        for `ConfigDoFValues <https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/config_dof_values.html>`_
+      - Scalar global properties, such as energy, are stored in a vector like other
+        global properties, and can also be accessed using
+        :func:`~libcasm.configuration.ConfigurationWithProperties.scalar_property`.
+      - ConfigurationWithProperties may be copied with `copy.copy` or `copy.deepcopy`.
+
+    )pbdoc");
+
   // SupercellSymOp -- define functions
   pySupercellSymOp
       .def(py::init(&make_supercell_symop), py::arg("supercell"),
@@ -1832,6 +1867,16 @@ PYBIND11_MODULE(_configuration, m) {
       .def(
           "__mul__",
           [](config::SupercellSymOp const &self,
+             config::ConfigurationWithProperties const &configuration) {
+            return copy_apply(self, configuration);
+          },
+          py::arg("configuration"),
+          "Creates a copy of the configuration and applies the symmetry "
+          "operation represented by this SupercellSymOp to its degree of "
+          "freedom (DoF) values and properties.")
+      .def(
+          "__mul__",
+          [](config::SupercellSymOp const &self,
              xtal::UnitCellCoord const &integral_site_coordinate) {
             return copy_apply(self, integral_site_coordinate);
           },
@@ -1869,6 +1914,10 @@ PYBIND11_MODULE(_configuration, m) {
           "dof_values",
           [](config::Configuration const &self) { return self.dof_values; },
           "Return a copy of ConfigDoFValues")
+      .def(
+          "dof_values_ptr",
+          [](config::Configuration &self) { return &self.dof_values; },
+          "Return a pointer to the ConfigDoFValues")
       .def(
           "occupation",
           [](config::Configuration const &configuration)
@@ -2153,6 +2202,141 @@ PYBIND11_MODULE(_configuration, m) {
           "Configuration/>`_ documents the expected format for Configurations "
           "and Supercells.");
 
+  // ConfigurationWithProperties -- define functions
+  pyConfigurationWithProperties
+      .def(py::init<config::Configuration const &,
+                    std::map<std::string, Eigen::MatrixXd> const &,
+                    std::map<std::string, Eigen::VectorXd> const &>(),
+           py::arg("configuration"),
+           py::arg("local_properties") =
+               std::map<std::string, Eigen::MatrixXd>(),
+           py::arg("global_properties") =
+               std::map<std::string, Eigen::VectorXd>(),
+           R"pbdoc(
+      Construct a ConfigurationWithProperties
+
+      Parameters
+      ----------
+      configuration : libcasm.configuration.Configuration
+          The configuration.
+      local_properties : dict[str,numpy.ndarray[numpy.float64[matrix_dim, n_sites]]] = {}
+          Local continuous property values, as two-dimensional floating-point arrays
+          (value), by property type (key), with one column of values
+          for each in the supercell. To be transformed by symmetry operations,
+          the keys must be CASM-supported property types and values are expected
+          to be in the standard basis.
+      global_properties : dict[str,numpy.ndarray[numpy.float64[vector_dim, 1]]] = {}
+          Global continuous property values, as one-dimensional floating-point arrays
+          (value), accessed by property type (key). To be transformed by symmetry
+          operations, the keys must be CASM-supported property types and values are
+          expected to be in the standard basis.
+      )pbdoc")
+      .def_readonly("configuration",
+                    &config::ConfigurationWithProperties::configuration,
+                    py::return_value_policy::reference_internal,
+                    R"pbdoc(
+          Access the configuration.
+          )pbdoc")
+      .def_readonly("local_properties",
+                    &config::ConfigurationWithProperties::local_properties,
+                    py::return_value_policy::reference_internal,
+                    R"pbdoc(
+          dict[str,numpy.ndarray[numpy.float64[matrix_dim, n_sites]]]: \
+          Access the local properties.
+          )pbdoc")
+      .def(
+          "local_property_values",
+          [](config::ConfigurationWithProperties const &configuration,
+             std::string key) -> Eigen::MatrixXd const & {
+            return configuration.local_properties.at(key);
+          },
+          py::return_value_policy::reference_internal, R"pbdoc(
+          numpy.ndarray[numpy.float64[matrix_dim, n_sites]]: Local property values of type `key`, as a const reference.
+          )pbdoc",
+          py::arg("key"))
+      .def_readonly("global_properties",
+                    &config::ConfigurationWithProperties::global_properties,
+                    py::return_value_policy::reference_internal,
+                    R"pbdoc(
+          dict[str,numpy.ndarray[numpy.float64[vector_dim, 1]]]: \
+          Access the global properties.
+          )pbdoc")
+      .def(
+          "global_property_values",
+          [](config::ConfigurationWithProperties const &configuration,
+             std::string key) -> Eigen::VectorXd const & {
+            return configuration.global_properties.at(key);
+          },
+          R"pbdoc(
+          numpy.ndarray[numpy.float64[vector_dim, 1]]: Global property values of type `key`, as a const reference.
+          )pbdoc",
+          py::return_value_policy::reference_internal, py::arg("key"))
+      .def(
+          "scalar_global_property_value",
+          [](config::ConfigurationWithProperties const &configuration,
+             std::string key) -> double {
+            Eigen::VectorXd const &v = configuration.global_properties.at(key);
+            if (v.size() != 1) {
+              std::stringstream ss;
+              ss << "Error in "
+                    "ConfigurationWithProperties.scalar_global_property: "
+                 << "key=" << key << " is not a scalar property";
+              throw std::runtime_error(ss.str());
+            }
+            return v(0);
+          },
+          R"pbdoc(
+          float: Scalar global property value.
+          )pbdoc",
+          py::arg("key"))
+      .def("__copy__",
+           [](config::ConfigurationWithProperties const &self) {
+             return config::ConfigurationWithProperties(self);
+           })
+      .def("__deepcopy__",
+           [](config::ConfigurationWithProperties const &self, py::dict) {
+             return config::ConfigurationWithProperties(self);
+           })
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data,
+             std::shared_ptr<config::SupercellSet> supercells) {
+            jsonParser json{data};
+            InputParser<config::ConfigurationWithProperties> parser(
+                json, *supercells);
+            std::runtime_error error_if_invalid{
+                "Error in "
+                "libcasm.configuration.ConfigurationWithProperties.from_dict"};
+            report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+            return std::move(*parser.value);
+          },
+          "Construct a ConfigurationWithProperties from a Python dict.",
+          R"pbdoc(
+        Construct a ConfigurationWithProperties from a Python dict
+
+        Parameters
+        ----------
+        data : dict
+            A :class:`~libcasm.configuration.Supercell` as a dict.
+        supercells : libcasm.configuration.SupercellSet
+            A :class:`~libcasm.configuration.SupercellSet`, which holds shared
+            supercells in order to avoid duplicates.
+
+        Returns
+        -------
+        configuration_with_properties : libcasm.configuration.ConfigurationWithProperties
+            The :class:`~libcasm.configuration.ConfigurationWithProperties` constructed from the dict.
+        )pbdoc",
+          py::arg("data"), py::arg("supercells"))
+      .def(
+          "to_dict",
+          [](config::ConfigurationWithProperties const &self) {
+            jsonParser json;
+            to_json(self, json);
+            return static_cast<nlohmann::json>(json);
+          },
+          "Represent the ConfigurationWithProperties as a Python dict.");
+
   m.def(
       "apply",
       [](config::SupercellSymOp const &op,
@@ -2173,6 +2357,28 @@ PYBIND11_MODULE(_configuration, m) {
       "Creates a copy of the configuration and applies the symmetry "
       "operation represented by this SupercellSymOp to its degree of freedom "
       "(DoF) values.");
+
+  m.def(
+      "apply",
+      [](config::SupercellSymOp const &op,
+         config::ConfigurationWithProperties &configuration) {
+        return apply(op, configuration);
+      },
+      py::arg("supercell_symop"), py::arg("configuration"),
+      "Applies the symmetry operation represented by the SupercellSymOp to "
+      "transform the configuration's degree of freedom (DoF) values"
+      "and properties.");
+
+  m.def(
+      "copy_apply",
+      [](config::SupercellSymOp const &op,
+         config::ConfigurationWithProperties const &configuration) {
+        return copy_apply(op, configuration);
+      },
+      py::arg("supercell_symop"), py::arg("configuration"),
+      "Creates a copy of the configuration and applies the symmetry "
+      "operation represented by this SupercellSymOp to its degree of freedom "
+      "(DoF) values and properties.");
 
   m.def(
       "apply",
@@ -2507,6 +2713,29 @@ PYBIND11_MODULE(_configuration, m) {
       "(may be \"occ\") amongst a subset of supercell sites, "
       "specified by `site_indices` (a set of linear index of sites in "
       "the supercell).");
+
+  m.def("make_dof_space_rep", &config::make_dof_space_rep, R"pbdoc(
+      Make the matrix representation of a group for transforming values in the DoF
+      space basis
+
+      Parameters
+      ----------
+      group: list[:class:`~libcasm.configuration.SupercellSymOp`]
+          The symmetry group, as a SupercellSymOp representation
+      dof_space: :class:`~libcasm.clexulator.DoFSpace`
+          A DoFSpace, with basis defining vectors in a subspace of the prim degree of
+          freedom (DoF) basis, `x_subspace` according to
+          ``x_prim = dof_space.basis @ x_subspace``, where `x_prim` is a vector in the
+          prim DoF basis.
+
+      Returns
+      -------
+      dof_space_rep: list[numpy.ndarray[numpy.float64[subspace_dim, subspace_dim]]]
+          Elements, `M`, of `dof_space_rep` transform subspace vectors according to
+          ``x_subspace_after = M @ x_subspace_before`.
+
+      )pbdoc",
+        py::arg("group"), py::arg("dof_space"));
 
   //
   py::class_<config::ConfigSpaceAnalysisResults>(m,

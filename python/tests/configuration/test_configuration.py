@@ -52,6 +52,7 @@ def test_configuration_occupation(simple_cubic_binary_prim):
     configuration = config.Configuration(supercell)
 
     occupation = configuration.occupation()
+    assert occupation.shape == (64,)
     assert configuration.occ(0) == 0
     assert (occupation == np.array([0] * 64)).all()
 
@@ -59,6 +60,14 @@ def test_configuration_occupation(simple_cubic_binary_prim):
     occupation = configuration.occupation()
     assert configuration.occ(0) == 1
     assert (occupation == np.array([1] + [0] * 63)).all()
+
+    configuration.set_occupation([1, 1] + [0] * 62)
+    assert (occupation == np.array([1, 1] + [0] * 62)).all()
+
+    occupation = np.array([1] * 3 + [0] * 61, dtype=int)
+    configuration.set_occupation(occupation)
+    assert (configuration.occupation() == np.array([1] * 3 + [0] * 61)).all()
+    assert configuration.occupation().shape == (64,)
 
 
 def test_canonical_configuration_occupation(simple_cubic_binary_prim):

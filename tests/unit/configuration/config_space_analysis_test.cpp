@@ -114,8 +114,8 @@ TEST_F(ConfigSpaceAnalysisTest, Test1) {
   // Check basis
   Eigen::MatrixXd const &basis =
       results.at("occ").symmetry_adapted_dof_space.basis;
-  std::cout << "basis:" << std::endl;
-  std::cout << basis << std::endl;
+  //  std::cout << "basis:" << std::endl;
+  //  std::cout << basis << std::endl;
   EXPECT_EQ(basis.rows(), 8);
   EXPECT_EQ(basis.cols(), 4);
 
@@ -152,8 +152,8 @@ TEST_F(ConfigSpaceAnalysisTest, Test2) {
   // Check basis
   Eigen::MatrixXd const &basis =
       results.at("occ").symmetry_adapted_dof_space.basis;
-  std::cout << "basis:" << std::endl;
-  std::cout << basis << std::endl;
+  //  std::cout << "basis:" << std::endl;
+  //  std::cout << basis << std::endl;
   EXPECT_EQ(basis.rows(), 8);
   EXPECT_EQ(basis.cols(), 4);
 
@@ -191,8 +191,8 @@ TEST_F(ConfigSpaceAnalysisTest, Test3) {
   // Check basis
   Eigen::MatrixXd const &basis =
       results.at("occ").symmetry_adapted_dof_space.basis;
-  std::cout << "basis:" << std::endl;
-  std::cout << basis << std::endl;
+  //  std::cout << "basis:" << std::endl;
+  //  std::cout << basis << std::endl;
   EXPECT_EQ(basis.rows(), 8);
   EXPECT_EQ(basis.cols(), 4);
 
@@ -229,8 +229,8 @@ TEST_F(ConfigSpaceAnalysisTest, Test4) {
   // Check basis
   Eigen::MatrixXd const &basis =
       results.at("occ").symmetry_adapted_dof_space.basis;
-  std::cout << "basis:" << std::endl;
-  std::cout << basis << std::endl;
+  //  std::cout << "basis:" << std::endl;
+  //  std::cout << basis << std::endl;
   EXPECT_EQ(basis.rows(), 8);
   EXPECT_EQ(basis.cols(), 4);
 

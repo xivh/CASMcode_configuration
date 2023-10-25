@@ -170,9 +170,7 @@ Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
                                      GroupIndices const &head_group,
                                      Eigen::MatrixXd const &subspace);
 
-// Create `subspace_rep`, a transformed copy of `fullspace_rep` that acts
-// on coordinates with `subspace` columns as a basis. Matrices in
-// `subspace_rep` are shape (subspace.cols() x subspace.cols())
+/// \brief Create the subspace rep from the fullspace rep
 MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
                             Eigen::MatrixXd const &subspace);
 

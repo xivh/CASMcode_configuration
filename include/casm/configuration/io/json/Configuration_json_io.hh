@@ -8,6 +8,7 @@
 namespace CASM {
 namespace config {
 struct Configuration;
+struct ConfigurationWithProperties;
 class ConfigurationSet;
 struct Prim;
 class SupercellSet;
@@ -35,6 +36,10 @@ struct jsonConstructor<config::Configuration> {
   /// Read Configuration from JSON
   static config::Configuration from_json(
       jsonParser const &json, std::shared_ptr<config::Prim const> const &prim);
+
+  /// Read Configuration from JSON
+  static config::Configuration from_json(jsonParser const &json,
+                                         config::SupercellSet &supercells);
 };
 
 template <>
@@ -42,6 +47,10 @@ struct jsonMake<config::Configuration> {
   /// Read Configuration from JSON
   static std::unique_ptr<config::Configuration> make_from_json(
       jsonParser const &json, std::shared_ptr<config::Prim const> const &prim);
+
+  /// Read Configuration from JSON
+  static std::unique_ptr<config::Configuration> make_from_json(
+      jsonParser const &json, config::SupercellSet &supercells);
 };
 
 /// Insert Configuration to JSON
@@ -54,6 +63,43 @@ void parse(InputParser<config::Configuration> &parser,
 
 /// Parser Configuration from JSON with error messages
 void parse(InputParser<config::Configuration> &parser,
+           config::SupercellSet &supercells);
+
+// --- ConfigurationWithProperties
+
+template <>
+struct jsonConstructor<config::ConfigurationWithProperties> {
+  /// Read Configuration from JSON
+  static config::ConfigurationWithProperties from_json(
+      jsonParser const &json, std::shared_ptr<config::Prim const> const &prim);
+
+  /// Read Configuration from JSON
+  static config::ConfigurationWithProperties from_json(
+      jsonParser const &json, config::SupercellSet &supercells);
+};
+
+template <>
+struct jsonMake<config::ConfigurationWithProperties> {
+  /// Read ConfigurationWithProperties from JSON
+  static std::unique_ptr<config::ConfigurationWithProperties> make_from_json(
+      jsonParser const &json, std::shared_ptr<config::Prim const> const &prim);
+
+  /// Read ConfigurationWithProperties from JSON
+  static std::unique_ptr<config::ConfigurationWithProperties> make_from_json(
+      jsonParser const &json, config::SupercellSet &supercells);
+};
+
+/// Insert ConfigurationWithProperties to JSON
+jsonParser &to_json(
+    config::ConfigurationWithProperties const &configuration_with_properties,
+    jsonParser &json);
+
+/// Parser ConfigurationWithProperties from JSON with error messages
+void parse(InputParser<config::ConfigurationWithProperties> &parser,
+           std::shared_ptr<config::Prim const> const &prim);
+
+/// Parser ConfigurationWithProperties from JSON with error messages
+void parse(InputParser<config::ConfigurationWithProperties> &parser,
            config::SupercellSet &supercells);
 
 }  // namespace CASM

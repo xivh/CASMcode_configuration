@@ -2,6 +2,7 @@
 
 #include "casm/clexulator/ConfigDoFValues.hh"
 #include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
+#include "casm/clexulator/DoFSpace.hh"
 #include "casm/configuration/PrimSymInfo.hh"
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/SupercellSymInfo.hh"
@@ -743,6 +744,39 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
       group::make_group(element, multiply_f, equal_to_f));
 
   return result;
+}
+
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of values in the basis of the given DoFSpace
+///
+/// \param group The group that is to be represented (this may be larger than a
+///     crystallographic factor group)
+/// \param dof_space The DoFSpace. May be any type.
+///
+/// \returns matrix_rep The matrix representation of `group` which transforms
+///     values in the basis of `dof_space`.
+///
+std::vector<Eigen::MatrixXd> make_dof_space_rep(
+    std::vector<config::SupercellSymOp> const &group,
+    clexulator::DoFSpace const &dof_space) {
+  std::shared_ptr<config::SymGroup const> symgroup;
+  std::vector<Eigen::MatrixXd> fullspace_rep;
+  std::vector<Eigen::MatrixXd> dof_space_rep;
+  if (dof_space.is_global) {
+    fullspace_rep =
+        config::make_global_dof_matrix_rep(group, dof_space.dof_key, symgroup);
+  } else {
+    if (!dof_space.sites.has_value()) {
+      throw std::runtime_error(
+          "Error in make_dof_space_rep with local DoF: no DoFSpace sites");
+    }
+    fullspace_rep = config::make_local_dof_matrix_rep(
+        group, dof_space.dof_key, *dof_space.sites, symgroup);
+  }
+  for (auto const &M : fullspace_rep) {
+    dof_space_rep.push_back(dof_space.basis_inv * M * dof_space.basis);
+  }
+  return dof_space_rep;
 }
 
 }  // namespace config
