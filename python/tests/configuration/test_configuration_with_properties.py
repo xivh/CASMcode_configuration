@@ -148,8 +148,8 @@ def test_configuration_with_properties_2(FCC_binary_prim):
     local_properties_init = {
         "disp": disp_init,
     }
-    energy_init = np.array([0.1])
-    Hstrain_init = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06])
+    energy_init = np.array([[0.1]]).transpose()
+    Hstrain_init = np.array([[0.01, 0.02, 0.03, 0.04, 0.05, 0.06]]).transpose()
     global_properties_init = {
         "energy": energy_init,
         "Hstrain": Hstrain_init,
@@ -195,29 +195,29 @@ def test_configuration_with_properties_2(FCC_binary_prim):
         )
 
         # energy
-        transformed_global_properties = symop.apply_to_global(global_properties_init)
+        transformed_global_properties = symop * global_properties_init
         assert transformed.global_properties["energy"].shape == (1,)
         assert np.allclose(
             transformed.global_properties["energy"],
-            transformed_global_properties["energy"],
+            transformed_global_properties["energy"].flatten(),
         )
         assert np.allclose(
             transformed.global_properties["energy"],
-            symop.matrix_rep("energy") @ energy_init,
+            (symop.matrix_rep("energy") @ energy_init).flatten(),
         )
         assert np.isclose(
-            transformed.scalar_global_property_value("energy"), energy_init
+            transformed.scalar_global_property_value("energy"), energy_init[0]
         )
 
         # Hstrain
         assert transformed.global_properties["Hstrain"].shape == (6,)
         assert np.allclose(
             transformed.global_properties["Hstrain"],
-            transformed_global_properties["Hstrain"],
+            transformed_global_properties["Hstrain"].flatten(),
         )
         assert np.allclose(
             transformed.global_properties["Hstrain"],
-            symop.matrix_rep("Hstrain") @ Hstrain_init,
+            (symop.matrix_rep("Hstrain") @ Hstrain_init).flatten(),
         )
 
         # print()
