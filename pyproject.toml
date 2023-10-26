@@ -8,7 +8,7 @@ requires = [
     "pybind11>=2.6",
     "libcasm-global>=2.0.2",
     "libcasm-xtal>=2.0a5",
-    "libcasm-clexulator>=2.0a2",
+    "libcasm-clexulator>=2.0a3",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -32,7 +32,7 @@ classifiers = [
 dependencies = [
   "libcasm-global>=2.0.2",
   "libcasm-xtal>=2.0a5",
-  "libcasm-clexulator>=2.0a2",
+  "libcasm-clexulator>=2.0a3",
   "numpy",
 ]
 
