@@ -1,6 +1,9 @@
 #ifndef CASM_irreps_IrrepDecomposition
 #define CASM_irreps_IrrepDecomposition
 
+#include <optional>
+
+#include "casm/casm_io/Log.hh"
 #include "casm/configuration/irreps/definitions.hh"
 
 namespace CASM {
@@ -11,15 +14,15 @@ struct IrrepInfo {
   /// irreducible characters
   IrrepInfo(Eigen::MatrixXcd _trans_mat, Eigen::VectorXcd _characters);
 
+  /// irrep_dim() x vector_dim() matrix that transforms a vector from the
+  /// initial vector space into a vector in the irreducible vector space
+  Eigen::MatrixXcd trans_mat;
+
   /// Dimension of irreducible vector space (less than or equal to vector_dim())
   Index irrep_dim;
 
   // Dimension of initial vector space (greater than or equal to irrep_dim())
   Index vector_dim;
-
-  /// irrep_dim() x vector_dim() matrix that transforms a vector from the
-  /// initial vector space into a vector in the irreducible vector space
-  Eigen::MatrixXcd trans_mat;
 
   /// vector containing complex character of each group operation's action on
   /// the irreducible vector space
@@ -62,7 +65,7 @@ struct IrrepDecomposition {
       Eigen::MatrixXd const &_init_subspace,
       std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
       std::function<GroupIndicesOrbitSet()> make_all_subgroups_f,
-      bool allow_complex);
+      bool allow_complex, std::optional<Log> _log = std::nullopt);
 
   /// Full space matrix representation
   ///
@@ -94,6 +97,9 @@ struct IrrepDecomposition {
   /// symmetry_adapted_subspace.rows() == full space dimension
   /// symmetry_adapted_subspace.cols() == subspace.cols()
   Eigen::MatrixXd symmetry_adapted_subspace;
+
+  /// If provided, log progress
+  std::optional<Log> log;
 };
 
 }  // namespace irreps

@@ -38,7 +38,12 @@ DoFSpaceAnalysisResults dof_space_analysis(
     clexulator::DoFSpace const &dof_space, std::shared_ptr<Prim const> prim,
     std::optional<Configuration> configuration = std::nullopt,
     std::optional<bool> exclude_homogeneous_modes = std::nullopt,
-    bool include_default_occ_modes = false, bool calc_wedges = false);
+    bool include_default_occ_modes = false,
+    std::optional<std::map<int, int>> sublattice_index_to_default_occ =
+        std::nullopt,
+    std::optional<std::map<Index, int>> site_index_to_default_occ =
+        std::nullopt,
+    bool calc_wedges = false, std::optional<Log> log = std::nullopt);
 
 }  // namespace config
 }  // namespace CASM

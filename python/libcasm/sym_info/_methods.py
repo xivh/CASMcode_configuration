@@ -30,7 +30,8 @@ def make_point_group(xtal_prim: xtal.Prim, factor_group: SymGroup) -> SymGroup:
         The prim
 
     factor_group: SymGroup
-        The factor group of the prim
+        The factor group of `prim`, as calculated by
+        :func:`~libcasm.sym_info.make_factor_group`.
 
     Returns
     -------
