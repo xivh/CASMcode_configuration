@@ -1,3 +1,5 @@
+#include "casm/configuration/make_simple_structure.hh"
+
 #include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
 #include "casm/configuration/Configuration.hh"
 #include "casm/crystallography/SimpleStructure.hh"
@@ -34,7 +36,6 @@ namespace config {
 ///   1) a strain DoF (this is not copied to structure.properties)
 ///   2) "Ustrain" in global_properties (this is copied to structure.properties)
 ///   3) the identify matrix, I
-/// -
 xtal::SimpleStructure make_simple_structure(
     Configuration const &configuration,
     std::map<std::string, Eigen::MatrixXd> const &local_properties,
@@ -146,6 +147,43 @@ xtal::SimpleStructure make_simple_structure(
 
   structure.deform_coords(F);
   return structure;
+}
+
+/// \brief Constructor
+ToAtomicStructure::ToAtomicStructure() {}
+
+/// \brief Convert a Configuration to a SimpleStructure
+///
+/// \param configuration_with_properties The configuration being
+///     converted to a SimpleStructure along with local and
+///     global properties.
+/// \returns simple_structure A SimpleStructure representation
+///     of the configuration
+///
+/// Notes:
+/// - This is a simpler method which accepts configurations from
+///   prim with only atomic occupants
+/// - Deformation gradient applied to ideal lattice vectors to
+///   generate the resulting structure's lattice is obtained from:
+///   1) a strain DoF (this is not copied to structure.properties)
+///   2) "Ustrain" in global_properties (this is copied to
+///      structure.properties)
+///   3) the identify matrix, I
+/// - If "disp" is a DoF, it is included in
+///   SimpleStructure::atom_info.coords, but not included
+///   in SimpleStructure::atom_info.properties.
+/// - If strain is a DoF, it is included in
+///   SimpleStructure::atom_info.coords and
+///   SimpleStructure::lat_column_mat, but not included in
+///   SimpleStructure::properties.
+/// - Other DoF are copied to
+///   SimpleStructure::atom_info.properties or
+///   SimpleStructure::properties.
+xtal::SimpleStructure ToAtomicStructure::operator()(
+    ConfigurationWithProperties const &configuration_with_properties) {
+  auto const &x = configuration_with_properties;
+  return make_simple_structure(x.configuration, x.local_properties,
+                               x.global_properties);
 }
 
 }  // namespace config
