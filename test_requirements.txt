@@ -1,3 +1,4 @@
 pytest
 pytest-datadir
 sortedcontainers
+libcasm-mapping>=2.0a1
