@@ -42,6 +42,14 @@ jobs:
           path: CASMcode_crystallography/dist
           key: ${{ runner.os }}-libcasm-xtal-v2-0a5
 
+      ### libcasm-mapping ###
+      - name: restore libcasm-mapping cache
+        id: cache-libcasm-mapping-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: CASMcode_mapping/dist
+          key: ${{ runner.os }}-libcasm-mapping-v2-0a1
+
       ### libcasm-clexulator ###
       - name: restore libcasm-clexulator cache
         id: cache-libcasm-clexulator-restore

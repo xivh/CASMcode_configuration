@@ -85,6 +85,39 @@ jobs:
           path: CASMcode_crystallography/dist
           key: ${{ steps.cache-libcasm-xtal-restore.outputs.cache-primary-key }}
 
+      ### libcasm-mapping ###
+      - name: restore libcasm-mapping cache
+        id: cache-libcasm-mapping-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: CASMcode_mapping/dist
+          key: ${{ runner.os }}-libcasm-mapping-v2-0a1
+
+      - name: checkout libcasm-mapping
+        if: steps.cache-libcasm-mapping-restore.outputs.cache-hit != 'true'
+        uses: actions/checkout@v3
+        with:
+          repository: prisms-center/CASMcode_mapping
+          path: CASMcode_mapping
+          ref: v2.0a1
+
+      - name: make mapping
+        if: steps.cache-libcasm-mapping-restore.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          cd CASMcode_mapping
+          python -m build
+          pip install dist/*.whl
+          pip install -r test_requirements.txt
+          python -m pytest -rsap python/tests
+
+      - name: save libcasm-mapping cache
+        id: cache-libcasm-mapping-save
+        uses: actions/cache/save@v3
+        with:
+          path: CASMcode_mapping/dist
+          key: ${{ steps.cache-libcasm-mapping-restore.outputs.cache-primary-key }}
+
       ### libcasm-clexulator ###
       - name: restore libcasm-clexulator cache
         id: cache-libcasm-clexulator-restore
