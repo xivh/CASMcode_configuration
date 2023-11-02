@@ -95,7 +95,7 @@ multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
   } else {
     return make_irrep_special_directions(
         rep, head_group, irrep_subspace, vec_compare_tol,
-        make_cyclic_subgroups_f, make_cyclic_subgroups_f, true);
+        make_cyclic_subgroups_f, make_all_subgroups_f, true);
   }
 }
 

@@ -14,6 +14,21 @@ namespace irreps {
 jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
   json["symmetry_representation"] = obj.symgroup_rep;
 
+  json["symmetry_adapted_subspace"] = obj.symmetry_adapted_subspace.transpose();
+
+  json["irrep_names"] = obj.irrep_names;
+
+  json["irrep_axes_indices"] = obj.irrep_axes_indices;
+
+  if (obj.irreducible_wedge.size()) {
+    json["irrep_wedge_axes"].put_obj();
+    for (Index i = 0; i < obj.irrep_names.size(); ++i) {
+      std::string irrep_name = obj.irrep_names[i];
+      json["irrep_wedge_axes"][irrep_name] =
+          obj.irrep_wedge_axes[i].transpose();
+    }
+  }
+
   json["glossary"] = obj.axis_glossary;
 
   std::vector<Index> mults;

@@ -2923,7 +2923,7 @@ PYBIND11_MODULE(_configuration, m) {
       -------
       dof_space_rep: list[numpy.ndarray[numpy.float64[subspace_dim, subspace_dim]]]
           Elements, `M`, of `dof_space_rep` transform subspace vectors according to
-          ``x_subspace_after = M @ x_subspace_before`.
+          ``x_subspace_after = M @ x_subspace_before``.
 
       )pbdoc",
         py::arg("group"), py::arg("dof_space"));

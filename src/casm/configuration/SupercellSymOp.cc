@@ -739,7 +739,8 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
   }
 
   std::multiplies<SymOp> multiply_f;
-  xtal::SymOpPeriodicCompare_f equal_to_f(prim_lattice, xtal_tol);
+  xtal::SymOpPeriodicCompare_f equal_to_f(supercell.superlattice.superlattice(),
+                                          xtal_tol);
   symgroup = std::make_shared<SymGroup const>(
       group::make_group(element, multiply_f, equal_to_f));
 
