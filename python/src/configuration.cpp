@@ -194,6 +194,23 @@ PYBIND11_MODULE(_configuration, m) {
           },
           "Returns the crystal point group.")
       .def(
+          "has_occupation_dofs",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.has_occupation_dofs;
+          },
+          R"pbdoc(
+          Returns True if >1 occupant allowed on any sublattice, False otherwise.
+          )pbdoc")
+      .def(
+          "has_anisotropic_occupants",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.has_aniso_occs;
+          },
+          R"pbdoc(
+          Returns True if any permutation in :func:`Prim.occ_symgroup_rep` is
+          non-trivial, False otherwise.
+          )pbdoc")
+      .def(
           "global_dof_basis",
           [](std::shared_ptr<config::Prim const> const &prim, std::string key) {
             return prim->global_dof_info.at(key).basis();
@@ -255,6 +272,72 @@ PYBIND11_MODULE(_configuration, m) {
           },
           "Returns the symmetry group representation that describes how atom "
           "position indices transform under symmetry.")
+      .def(
+          "local_dof_matrix_rep",
+          [](std::shared_ptr<config::Prim const> const &prim, std::string key) {
+            return prim->sym_info.local_dof_symgroup_rep.at(key);
+          },
+          R"pbdoc(
+          Returns the symmetry group representation that describes how local "
+          continuous DoF transform under symmetry.
+
+          Notes
+          -----
+
+          - For each factor group element there is one matrix representation per
+            sublattice
+          - Local DoF values transform using these symrep matrices *before*
+            permuting among sites.
+          - If ``has_occupation_dofs() is True``, a matrix rep for transforming
+            occupation indicator variables is included with key "occ".
+
+
+          Parameters
+          ----------
+          key: str
+              Specifies the type of DoF
+
+          Returns
+          -------
+          local_dof_matrix_rep: list[list[numpy.ndarray[numpy.float64[m,m]]]]
+              The array ``local_dof_matrix_rep[factor_group_index][sublattice_index]``
+              is the matrix representation for transforming values of DoF `key`, in the
+              prim basis, on `sublattice_index`-th sublattice, by the
+              `factor_group_index`-th prim factor group operation.
+
+              Note that it is possible for the matrices associated with different
+              sublattices to be different sizes, including size zero, depending on the
+              corresponding :class:`~libcasm.xtal.DoFSetBasis`.
+          )pbdoc",
+          py::arg("key"))
+      .def(
+          "global_dof_matrix_rep",
+          [](std::shared_ptr<config::Prim const> const &prim, std::string key) {
+            return prim->sym_info.global_dof_symgroup_rep.at(key);
+          },
+          R"pbdoc(
+          Returns the symmetry group representation that describes how global "
+          continuous DoF transform under symmetry.
+
+          Notes
+          -----
+
+          - For each factor group element there is one matrix representation
+
+
+          Parameters
+          ----------
+          key: str
+              Specifies the type of DoF
+
+          Returns
+          -------
+          global_dof_matrix_rep: list[numpy.ndarray[numpy.float64[m,m]]]
+              The array ``global_dof_matrix_rep[factor_group_index]``
+              is the matrix representation for transforming values of DoF `key`, in the
+              prim basis, by the `factor_group_index`-th prim factor group operation.
+          )pbdoc",
+          py::arg("key"))
       .def_static(
           "from_json", &prim_from_json,
           "Construct a Prim from a JSON-formatted string. The `Prim reference "

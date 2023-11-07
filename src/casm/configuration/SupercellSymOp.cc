@@ -660,26 +660,8 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
   // - Local DoF values transform using these symrep matrices *before*
   //   permuting among sites.
 
-  sym_info::LocalDoFSymGroupRep local_dof_symgroup_rep;
-  if (key == "occ") {
-    // sym_info::Permutation perm =
-    //     occ_symgroup_rep.at(prim_fg_index).at(sublattice_index_before);
-    // convention is: occ_index_after = perm.at(occ_index_before)
-    // -> need to make permutation matrix using inverse(perm), P(perm[i],i)=1.0
-    // -> then, Eigen::VectorXd occ_indicator_after = P * occ_indicator_before;
-
-    sym_info::OccSymGroupRep const &occ_symgroup_rep =
-        prim.sym_info.occ_symgroup_rep;
-    for (sym_info::OccSymOpRep const &occ_symop_rep : occ_symgroup_rep) {
-      std::vector<Eigen::MatrixXd> occ_matrix_rep;
-      for (sym_info::Permutation const &perm : occ_symop_rep) {
-        occ_matrix_rep.push_back(sym_info::as_matrix(sym_info::inverse(perm)));
-      }
-      local_dof_symgroup_rep.push_back(occ_matrix_rep);
-    }
-  } else {
-    local_dof_symgroup_rep = prim.sym_info.local_dof_symgroup_rep.at(key);
-  }
+  sym_info::LocalDoFSymGroupRep local_dof_symgroup_rep =
+      prim.sym_info.local_dof_symgroup_rep.at(key);
   if (local_dof_symgroup_rep.size() == 0) {
     throw std::runtime_error(
         "Error in make_collective_dof_matrix_rep: DoF symgroup rep has "

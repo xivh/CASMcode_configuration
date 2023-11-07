@@ -97,6 +97,8 @@ struct PrimSymInfo {
   /// - For each group element there is one matrix representation per sublattice
   /// - Local DoF values transform using these symrep matrices *before*
   ///   permuting among sites.
+  /// - If has_occupation_dofs==true, a matrix rep for transforming occupation
+  ///   indicator variables is included with key "occ".
   ///
   std::map<DoFKey, sym_info::LocalDoFSymGroupRep> local_dof_symgroup_rep;
 
