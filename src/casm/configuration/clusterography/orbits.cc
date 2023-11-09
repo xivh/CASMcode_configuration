@@ -73,6 +73,81 @@ std::set<IntegralCluster> make_prim_periodic_orbit(
                            prim_periodic_integral_cluster_copy_apply);
 }
 
+/// \brief Make equivalence map of factor group indices for an orbit of
+/// clusters,
+///     with periodic symmetry of a prim
+///
+/// \param orbit A cluster orbit
+/// \param unitcellcoord_symgroup_rep Symmetry group representation (as
+///     xtal::UnitCellCoordRep) of the group (the prim factor group or a
+///     subgroup) used to generate the orbit of clusters.
+///
+/// \returns The vector of indices `equivalence_map[i]` of group elements all
+/// map the
+///     orbit prototype (first element) to the i-th orbit element, up to a
+///     translation and permutation.
+std::vector<std::vector<Index>> make_prim_periodic_equivalence_map_indices(
+    std::set<IntegralCluster> const &orbit,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  std::vector<std::vector<Index>> eq_map_indices;
+  if (orbit.size() == 0) {
+    return eq_map_indices;
+  }
+  eq_map_indices =
+      group::make_equivalence_map(orbit, unitcellcoord_symgroup_rep.begin(),
+                                  unitcellcoord_symgroup_rep.end(),
+                                  prim_periodic_integral_cluster_copy_apply);
+  return eq_map_indices;
+}
+
+/// \brief Make equivalence map for an orbit of clusters, with periodic
+///     symmetry of a prim
+///
+/// \param orbit A cluster orbit
+/// \param symgroup The group (the prim factor group or a subgroup) used to
+/// generate
+///     the orbit of clusters.
+/// \param unitcellcoord_symgroup_rep Symmetry group representation (as
+///     xtal::UnitCellCoordRep) of `symgroup`.
+///
+/// \returns The vector of SymOp `equivalence_map[i]` all map the orbit
+/// prototype
+///     (first element) to the i-th orbit element, up to a permutation.
+std::vector<std::vector<xtal::SymOp>> make_prim_periodic_equivalence_map(
+    std::set<IntegralCluster> const &orbit,
+    std::shared_ptr<SymGroup const> const &symgroup,
+    Eigen::Matrix3d const &lat_column_mat,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  std::vector<std::vector<xtal::SymOp>> eq_map_ops;
+  if (orbit.size() == 0) {
+    return eq_map_ops;
+  }
+
+  // The indices eq_map[i] are the indices of the group
+  // elements transform the first element in the orbit into the
+  // i-th element in the orbit.
+  std::vector<std::vector<Index>> eq_map_indices =
+      group::make_equivalence_map(orbit, unitcellcoord_symgroup_rep.begin(),
+                                  unitcellcoord_symgroup_rep.end(),
+                                  prim_periodic_integral_cluster_copy_apply);
+
+  // Find and add proper translations to factor group ops to make equivalence
+  // map SymOp
+  auto orbit_it = orbit.begin();
+  IntegralCluster prototype = *orbit_it;
+  for (auto const &coset_indices : eq_map_indices) {
+    std::vector<xtal::SymOp> coset_ops;
+    for (Index group_index : coset_indices) {
+      coset_ops.emplace_back(make_equivalence_map_op(
+          prototype, *orbit_it, lat_column_mat, symgroup->element[group_index],
+          unitcellcoord_symgroup_rep[group_index]));
+    }
+    eq_map_ops.emplace_back(std::move(coset_ops));
+    ++orbit_it;
+  }
+  return eq_map_ops;
+}
+
 /// \brief Return xtal::SymOp that leaves phenomenal invariant, and is a
 ///     combination of a factor group operation and a lattice translation
 xtal::SymOp make_cluster_group_element(
@@ -450,11 +525,73 @@ std::set<IntegralCluster> make_local_orbit(
                            local_integral_cluster_copy_apply);
 }
 
+/// \brief Make equivalence map of phenomenal group indices for an orbit of
+/// local
+///     clusters
+///
+/// \param orbit A local cluster orbit
+/// \param unitcellcoord_symgroup_rep Symmetry group representation (as
+///     xtal::UnitCellCoordRep) of the phenomenal cluster group
+///
+/// \returns The vector of indices of phenomenal group indices
+///     `local_equivalence_map[i]` all map the orbit prototype (first element)
+///     to the i-th orbit element, up to a permutation.
+std::vector<std::vector<Index>> make_local_equivalence_map_indices(
+    std::set<IntegralCluster> const &orbit,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  std::vector<std::vector<Index>> eq_map_indices;
+  if (orbit.size() == 0) {
+    return eq_map_indices;
+  }
+  eq_map_indices = group::make_equivalence_map(
+      orbit, unitcellcoord_symgroup_rep.begin(),
+      unitcellcoord_symgroup_rep.end(), local_integral_cluster_copy_apply);
+  return eq_map_indices;
+}
+
+/// \brief Make equivalence map for an orbit of local clusters
+///
+/// \param orbit A local cluster orbit
+/// \param phenomenal_group The phenomenal cluster group used to generate the
+/// orbit of
+///     local clusters.
+/// \param unitcellcoord_symgroup_rep Symmetry group representation (as
+///     xtal::UnitCellCoordRep) of phenomenal_group
+///
+/// \returns The vector of SymOp `local_equivalence_map[i]` all map the orbit
+/// prototype
+///     (first element) to the i-th orbit element, up to a permutation.
+std::vector<std::vector<xtal::SymOp>> make_local_equivalence_map(
+    std::set<IntegralCluster> const &orbit,
+    std::shared_ptr<SymGroup const> const &phenomenal_group,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  std::vector<std::vector<xtal::SymOp>> eq_map_ops;
+  if (orbit.size() == 0) {
+    return eq_map_ops;
+  }
+
+  // The indices eq_map[i] are the indices into the phenomenal group of the
+  // elements transform the first element in the orbit into the
+  // i-th element in the orbit.
+  std::vector<std::vector<Index>> eq_map_indices = group::make_equivalence_map(
+      orbit, unitcellcoord_symgroup_rep.begin(),
+      unitcellcoord_symgroup_rep.end(), local_integral_cluster_copy_apply);
+
+  for (auto const &coset_indices : eq_map_indices) {
+    std::vector<xtal::SymOp> coset_ops;
+    for (Index phenomenal_group_index : coset_indices) {
+      coset_ops.push_back(phenomenal_group->element[phenomenal_group_index]);
+    }
+    eq_map_ops.push_back(coset_ops);
+  }
+  return eq_map_ops;
+}
+
 /// \brief Make groups that leave cluster orbit elements invariant
 ///
 /// \param orbit A cluster orbit
-/// \param head_group The phenomenal cluster group used to generate the orbit.
-/// \param unitcellcoord_symgroup_rep Symmetry group representation (as
+/// \param phenomenal_group The phenomenal cluster group used to generate the
+/// orbit. \param unitcellcoord_symgroup_rep Symmetry group representation (as
 /// xtal::UnitCellCoordRep)
 ///
 /// \returns Cluster invariant groups, where prim_periodic_cluster_groups[i], is
