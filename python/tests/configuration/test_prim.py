@@ -15,7 +15,7 @@ def test_simple_cubic_binary_factor_group(simple_cubic_binary_prim):
     lattice = prim.xtal_prim().lattice()
     for op in prim.factor_group().elements():
         syminfo = xtal.SymInfo(op, lattice)
-        print(syminfo.to_json())
+        print(xtal.pretty_json(syminfo.to_dict()))
 
 
 def test_simple_cubic_binary_conjugacy_classes(simple_cubic_binary_prim):
@@ -34,13 +34,40 @@ def test_simple_cubic_binary_crystal_point_group(simple_cubic_binary_prim):
     assert len(prim.crystal_point_group().elements()) == 48
 
 
-def test_simple_cubic_binary_to_json(simple_cubic_binary_prim):
+def test_simple_cubic_binary_to_json_deprecated(simple_cubic_binary_prim):
     xtal_prim = simple_cubic_binary_prim
     prim = config.Prim(xtal_prim)
     prim_json = json.loads(prim.to_json())
     assert "basis" in prim_json
     assert "coordinate_mode" in prim_json
     assert "lattice_vectors" in prim_json
+
+
+def test_from_json_deprecated():
+    prim_json_str = """{
+        "basis": [{
+            "coordinate": [0.0, 0.0, 0.0],
+            "occupants": ["A", "B"]}
+        ],
+        "coordinate_mode": "Fractional",
+        "lattice_vectors": [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0]
+        ],
+        "title": "prim"}"""
+    prim = config.Prim.from_json(prim_json_str)
+    assert prim.xtal_prim().coordinate_frac().shape == (3, 1)
+    assert len(prim.factor_group().elements()) == 48
+
+
+def test_simple_cubic_binary_to_json(simple_cubic_binary_prim):
+    xtal_prim = simple_cubic_binary_prim
+    prim = config.Prim(xtal_prim)
+    prim_data = json.dumps(prim.xtal_prim().to_dict())
+    assert "basis" in prim_data
+    assert "coordinate_mode" in prim_data
+    assert "lattice_vectors" in prim_data
 
 
 def test_from_json():
@@ -56,6 +83,7 @@ def test_from_json():
             [0.0, 0.0, 1.0]
         ],
         "title": "prim"}"""
-    prim = config.Prim.from_json(prim_json_str)
+    xtal_prim = xtal.Prim.from_dict(json.loads(prim_json_str))
+    prim = config.Prim(xtal_prim)
     assert prim.xtal_prim().coordinate_frac().shape == (3, 1)
     assert len(prim.factor_group().elements()) == 48

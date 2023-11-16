@@ -75,6 +75,11 @@ std::shared_ptr<config::Prim> make_prim(
 /// \brief Construct config::Prim from JSON string
 std::shared_ptr<config::Prim> prim_from_json(std::string const &prim_json_str,
                                              double xtal_tol) {
+  PyErr_WarnEx(PyExc_DeprecationWarning,
+               "libcasm.configuration.Prim.from_json() is deprecated. Use "
+               "xtal.Prim.from_dict() instead.",
+               2);
+
   jsonParser json = jsonParser::parse(prim_json_str);
   ParsingDictionary<AnisoValTraits> const *aniso_val_dict = nullptr;
   auto basicstructure = std::make_shared<xtal::BasicStructure>(
@@ -84,6 +89,11 @@ std::shared_ptr<config::Prim> prim_from_json(std::string const &prim_json_str,
 
 /// \brief Format xtal::BasicStructure as JSON string
 std::string prim_to_json(std::shared_ptr<config::Prim const> const &prim) {
+  PyErr_WarnEx(PyExc_DeprecationWarning,
+               "libcasm.configuration.Prim.to_json() is deprecated. Use "
+               "libcasm.configuration.Prim.xtal_prim().to_dict() instead.",
+               2);
+
   jsonParser json;
   write_prim(*prim->basicstructure, json, FRAC);
   std::stringstream ss;
@@ -338,18 +348,29 @@ PYBIND11_MODULE(_configuration, m) {
               prim basis, by the `factor_group_index`-th prim factor group operation.
           )pbdoc",
           py::arg("key"))
-      .def_static(
-          "from_json", &prim_from_json,
-          "Construct a Prim from a JSON-formatted string. The `Prim reference "
-          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/"
-          "crystallography/BasicStructure/>`_ documents the expected JSON "
-          "format.",
-          py::arg("prim_json_str"), py::arg("xtal_tol") = TOL)
-      .def("to_json", &prim_to_json,
-           "Represent the Prim as a JSON-formatted string. The `Prim reference "
-           "<https://prisms-center.github.io/CASMcode_docs/formats/casm/"
-           "crystallography/BasicStructure/>`_ documents the expected JSON "
-           "format.");
+      .def_static("from_json", &prim_from_json,
+                  R"pbdoc(
+          Construct a Prim from a JSON-formatted string.
+
+          .. deprecated:: 2.0a2
+                Use :func:`libcasm.xtal.Prim.from_dict()` instead, then construct a
+                :class:`libcasm.configuration.Prim` instance.
+
+          The
+          `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_
+          documents the expected JSON format.
+          )pbdoc",
+                  py::arg("prim_json_str"), py::arg("xtal_tol") = TOL)
+      .def("to_json", &prim_to_json, R"pbdoc(
+          Represent the Prim as a JSON-formatted string.
+
+          .. deprecated:: 2.0a2
+                Use ``prim.xtal_prim().to_dict()`` instead.
+
+          The
+          `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_
+          documents the expected JSON format.
+          )pbdoc");
 
   // SupercellSet -- declare class
   py::class_<config::SupercellSet, std::shared_ptr<config::SupercellSet>>
