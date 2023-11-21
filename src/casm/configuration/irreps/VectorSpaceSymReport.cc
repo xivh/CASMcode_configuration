@@ -1,6 +1,6 @@
 #include "casm/configuration/irreps/VectorSpaceSymReport.hh"
 
-#include "casm/misc/CASM_eigen_math.hh"
+#include "casm/misc/CASM_Eigen_math.hh"
 
 namespace CASM {
 namespace irreps {
