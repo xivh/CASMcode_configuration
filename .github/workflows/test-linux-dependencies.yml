@@ -91,7 +91,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: CASMcode_mapping/dist
-          key: ${{ runner.os }}-libcasm-mapping-v2-0a1
+          key: ${{ runner.os }}-libcasm-mapping-v2-0a2
 
       - name: checkout libcasm-mapping
         if: steps.cache-libcasm-mapping-restore.outputs.cache-hit != 'true'
@@ -99,7 +99,7 @@ jobs:
         with:
           repository: prisms-center/CASMcode_mapping
           path: CASMcode_mapping
-          ref: v2.0a1
+          ref: v2.0a2
 
       - name: make mapping
         if: steps.cache-libcasm-mapping-restore.outputs.cache-hit != 'true'

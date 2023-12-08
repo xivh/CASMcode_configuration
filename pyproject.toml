@@ -61,7 +61,7 @@ skip =  "pp*"
 before-build = "pip install -r build_requirements.txt"
 
 # Testing
-test-requires = "pytest pytest-datadir sortedcontainers libcasm-mapping>=2.0a1"
+test-requires = "pytest pytest-datadir sortedcontainers libcasm-mapping>=2.0a2"
 test-command = "pytest -rsap {project}/python/tests"
 
 [tool.cibuildwheel.macos]
