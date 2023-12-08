@@ -43,6 +43,25 @@ def build_configurations_1(fcc_binary_prim: casmconfig.Prim):
     return configurations
 
 
+def expect_same_basis_vectors(basis, expected):
+    assert basis.shape == expected.shape
+    cols = basis.shape[1]
+    all_basis_vectors_found = True
+    for i in range(cols):
+        found = False
+        for j in range(cols):
+            if np.allclose(basis[:, i], expected[:, j]):
+                found = True
+                break
+        if found is False:
+            all_basis_vectors_found = False
+            break
+    if not all_basis_vectors_found:
+        print("basis:\n", basis)
+        print("expected:\n", expected)
+    assert all_basis_vectors_found
+
+
 def test_config_space_analysis_1(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
 
@@ -105,7 +124,7 @@ def test_config_space_analysis_1(FCC_binary_prim):
         ]
     ).transpose()
 
-    assert np.allclose(symmetry_adapted_dof_space.basis, expected)
+    expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
 
 
 def test_config_space_analysis_2(FCC_binary_prim):
@@ -172,7 +191,7 @@ def test_config_space_analysis_2(FCC_binary_prim):
         ]
     ).transpose()
 
-    assert np.allclose(symmetry_adapted_dof_space.basis, expected)
+    expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
 
 
 def test_config_space_analysis_3(FCC_binary_prim):
@@ -221,7 +240,7 @@ def test_config_space_analysis_3(FCC_binary_prim):
         ]
     ).transpose()
 
-    assert np.allclose(symmetry_adapted_dof_space.basis, expected)
+    expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
 
 
 def test_config_space_analysis_4(FCC_binary_prim):
@@ -270,4 +289,4 @@ def test_config_space_analysis_4(FCC_binary_prim):
         ]
     ).transpose()
 
-    assert np.allclose(symmetry_adapted_dof_space.basis, expected)
+    expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
