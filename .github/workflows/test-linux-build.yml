@@ -63,6 +63,7 @@ jobs:
           pip install CASMcode_global/dist/*.whl
           pip install CASMcode_crystallography/dist/*.whl
           pip install CASMcode_clexulator/dist/*.whl
+          pip install CASMcode_mapping/dist/*.whl
           pip install -r build_requirements.txt
           pip install -r test_requirements.txt
           echo "CASM_PREFIX=$(python -m libcasm.casmglobal --prefix)" >> "$GITHUB_ENV"
