@@ -21,7 +21,6 @@ def test_conventional_fcc_matrix_rep(FCC_binary_GLstrain_disp_prim):
     site_indices = set(range(0, supercell.n_sites()))
 
     occ_rep = config.make_local_dof_matrix_rep(invariant_subgroup, "occ", site_indices)
-    # print(occ_rep)
     assert len(occ_rep) == 4 * 48
 
     disp_rep = config.make_local_dof_matrix_rep(

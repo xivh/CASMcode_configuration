@@ -75,6 +75,28 @@ class ConfigSpaceAnalysisTest : public testing::Test {
     }
   }
 
+  void expect_same_basis_vectors(Eigen::MatrixXd const &basis,
+                                 Eigen::MatrixXd const &expected) {
+    EXPECT_EQ(basis.cols(), expected.cols());
+    bool all_basis_vectors_found = true;
+    for (Index c_basis = 0; c_basis < basis.cols(); ++c_basis) {
+      bool found = false;
+      for (Index c_expected = 0; c_expected < expected.cols(); ++c_expected) {
+        if (almost_equal(basis.col(c_basis), expected.col(c_expected))) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        all_basis_vectors_found = false;
+        break;
+      }
+    }
+    EXPECT_TRUE(all_basis_vectors_found) << "basis: \n"
+                                         << basis << "\nexpected: \n"
+                                         << expected << std::endl;
+  }
+
   std::shared_ptr<xtal::BasicStructure const> xtal_prim;
   std::shared_ptr<config::Prim const> prim;
 
@@ -127,7 +149,7 @@ TEST_F(ConfigSpaceAnalysisTest, Test1) {
   expected.col(2) << 0.0, -sqrt(3.) / 2., 0.0, sqrt(3.) / 6., 0.0,
       sqrt(3.) / 6., 0.0, sqrt(3.) / 6.;
   expected.col(3) << 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5;
-  EXPECT_TRUE(almost_equal(basis, expected));
+  expect_same_basis_vectors(basis, expected);
 }
 
 TEST_F(ConfigSpaceAnalysisTest, Test2) {
@@ -165,7 +187,7 @@ TEST_F(ConfigSpaceAnalysisTest, Test2) {
   expected.col(2) << -sqrt(3.) / 2., 0.0, sqrt(3.) / 6., 0.0, sqrt(3.) / 6.,
       0.0, sqrt(3.) / 6., 0.0;
   expected.col(3) << 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0;
-  EXPECT_TRUE(almost_equal(basis, expected));
+  expect_same_basis_vectors(basis, expected);
 }
 
 TEST_F(ConfigSpaceAnalysisTest, Test3) {

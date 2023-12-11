@@ -19,7 +19,7 @@ TEST(PrimSymInfoTest, Test1) {
   EXPECT_EQ(prim_sym_info.occ_symgroup_rep.size(), 48);
   EXPECT_EQ(prim_sym_info.atom_position_symgroup_rep.size(), 48);
   EXPECT_EQ(prim_sym_info.has_aniso_occs, false);
-  EXPECT_EQ(prim_sym_info.local_dof_symgroup_rep.size(), 0);
+  EXPECT_EQ(prim_sym_info.local_dof_symgroup_rep.size(), 1);
   EXPECT_EQ(prim_sym_info.global_dof_symgroup_rep.size(), 0);
 }
 
@@ -32,7 +32,7 @@ TEST(PrimSymInfoTest, Test2) {
   EXPECT_EQ(prim_sym_info.occ_symgroup_rep.size(), 96);
   EXPECT_EQ(prim_sym_info.atom_position_symgroup_rep.size(), 96);
   EXPECT_EQ(prim_sym_info.has_aniso_occs, true);
-  EXPECT_EQ(prim_sym_info.local_dof_symgroup_rep.size(), 0);
+  EXPECT_EQ(prim_sym_info.local_dof_symgroup_rep.size(), 1);
   EXPECT_EQ(prim_sym_info.global_dof_symgroup_rep.size(), 0);
 }
 
@@ -45,7 +45,7 @@ TEST(PrimSymInfoTest, Test3) {
   EXPECT_EQ(prim_sym_info.occ_symgroup_rep.size(), 48);
   EXPECT_EQ(prim_sym_info.atom_position_symgroup_rep.size(), 48);
   EXPECT_EQ(prim_sym_info.has_aniso_occs, false);
-  EXPECT_EQ(prim_sym_info.local_dof_symgroup_rep.size(), 0);
+  EXPECT_EQ(prim_sym_info.local_dof_symgroup_rep.size(), 1);
   EXPECT_EQ(prim_sym_info.global_dof_symgroup_rep.size(), 1);
   EXPECT_EQ(prim_sym_info.global_dof_symgroup_rep.at("GLstrain").size(), 48);
 }
@@ -92,6 +92,6 @@ TEST(PrimSymInfoTest, Test5) {
   }
 
   EXPECT_EQ(prim_sym_info.has_aniso_occs, true);
-  EXPECT_EQ(prim_sym_info.local_dof_symgroup_rep.size(), 0);
+  EXPECT_EQ(prim_sym_info.local_dof_symgroup_rep.size(), 1);
   EXPECT_EQ(prim_sym_info.global_dof_symgroup_rep.size(), 0);
 }

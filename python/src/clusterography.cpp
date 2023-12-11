@@ -18,6 +18,7 @@
 #include "casm/configuration/group/Group.hh"
 #include "casm/configuration/sym_info/unitcellcoord_sym_info.hh"
 #include "casm/crystallography/BasicStructure.hh"
+#include "casm/crystallography/LinearIndexConverter.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "casm/crystallography/UnitCellCoordRep.hh"
 #include "pybind11_json/pybind11_json.hpp"
@@ -127,6 +128,79 @@ PYBIND11_MODULE(_clusterography, m) {
            py::arg("sites"),
            R"pbdoc(
 
+      .. rubric:: Special Methods
+
+      The multiplication operator ``X = lhs * rhs`` can be used to apply
+      :class:`libcasm.xtal.IntegralSiteCoordinateRep` to Cluster:
+
+      - ``X=Cluster``, ``lhs=IntegralSiteCoordinateRep``, ``rhs=Cluster``: Copy and
+        transform all sites in the cluster, returning the cluster of transformed sites,
+        such that `X.site(i) == lhs * rhs.site(i)`, for all valid `i`.
+
+      Translate a Cluster using operators ``+``, ``-``, ``+=``, ``-=``:
+
+      .. code-block:: Python
+
+          import numpy as np
+          from libcasm.clusterography import Cluster
+
+          # construct Cluster
+          cluster = Cluster.from_list(
+              [
+                  [0, 0, 0, 0], # [b, i, j, k]
+                  [0, 1, 0, 0],
+              ]
+          )
+          translation = np.array([0, 0, 1])
+
+          # translate via `+=`:
+          cluster += translation
+
+          # translate via `-=`:
+          cluster -= translation
+
+          # copy & translate via `+`:
+          translated_cluster = cluster + translation
+
+          # copy & translate via `-`:
+          translated_cluster = cluster - translation
+
+
+      Sort Cluster by lexicographical order of their sites using ``<``, ``<=``,
+      ``>``, ``>=``, and compare using ``==``, ``!=``:
+
+      .. code-block:: Python
+
+          import numpy as np
+          from libcasm.clusterography import Cluster
+
+          # construct Cluster
+          A = Cluster.from_list(
+              [
+                  [0, 0, 0, 0], # [b, i, j, k]
+                  [0, 1, 0, 0],
+              ]
+          )
+          B = Cluster.from_list(
+              [
+                  [0, 0, 0, 0], # [b, i, j, k]
+                  [0, 0, 1, 0],
+              ]
+          )
+
+          assert A < B
+          assert A <= B
+          assert A <= A
+          assert B > A
+          assert B >= A
+          assert B >= B
+          assert A == A
+          assert B == B
+          assert A != B
+
+
+      .. rubric:: Constructor
+
       Parameters
       ----------
       sites : List[libcasm.xtal.IntegralSiteCoordinate]
@@ -134,6 +208,7 @@ PYBIND11_MODULE(_clusterography, m) {
       )pbdoc")
       .def_static("from_list", &make_cluster_from_list, py::arg("sites"),
                   R"pbdoc(
+      Construct a Cluster from a list of sites (as `[b, i, j, k]`)
 
       Parameters
       ----------
@@ -157,7 +232,11 @@ PYBIND11_MODULE(_clusterography, m) {
             }
             return list;
           },
-          "Returns the cluster sites as a list of sites (list of [b, i, j, k])")
+          "Returns the cluster sites as a list of sites (as `[b, i, j, k]`)")
+      .def("to_index_list", &clust::to_index_vector,
+           "Convert Cluster to a list of linear site indices in a supercell")
+      .def("to_index_set", &clust::to_index_set,
+           "Convert Cluster to a set of linear site indices in a supercell")
       .def(
           "site",
           [](clust::IntegralCluster const &cluster, Index i) {
@@ -170,6 +249,11 @@ PYBIND11_MODULE(_clusterography, m) {
             return cluster.elements().size();
           },
           "Returns number of sites in the cluster")
+      .def("sort", &clust::IntegralCluster::sort, "Sort cluster sites")
+      .def("sorted", &clust::IntegralCluster::sorted,
+           "Return a copy of the cluster with sites sorted")
+      .def("is_sorted", &clust::IntegralCluster::is_sorted,
+           "Return True if the cluster sites are sorted; False otherwise.")
       .def("__len__", &clust::IntegralCluster::size)
       .def(
           "__getitem__",
@@ -212,6 +296,13 @@ PYBIND11_MODULE(_clusterography, m) {
             return cluster -= translation;
           },
           "Translate a cluster by subtracting unit cell indices")
+      .def(
+          "__rmul__",
+          [](clust::IntegralCluster const &cluster,
+             xtal::UnitCellCoordRep const &site_rep) {
+            return clust::copy_apply(site_rep, cluster);
+          },
+          "Transform a :class:`~libcasm.clusterography.Cluster`")
       .def(py::self < py::self, "Compares via lexicographical order of sites")
       .def(py::self <= py::self, "Compares via lexicographical order of sites")
       .def(py::self > py::self, "Compares via lexicographical order of sites")
@@ -282,6 +373,8 @@ PYBIND11_MODULE(_clusterography, m) {
            py::arg("prototype"), py::arg("include_subclusters") = true,
            R"pbdoc(
 
+      .. rubric:: Constructor
+
       Parameters
       ----------
       prototype: Cluster
@@ -349,7 +442,8 @@ PYBIND11_MODULE(_clusterography, m) {
       )pbdoc")
       .def(py::init(&make_cluster_specs),
            R"pbdoc(
-      Construct ClusterSpecs
+
+      .. rubric:: Constructor
 
       Parameters
       ----------
@@ -575,7 +669,7 @@ PYBIND11_MODULE(_clusterography, m) {
       py::arg("group_elements"), py::arg("xtal_prim"));
 
   m.def(
-      "make_prim_periodic_orbit",
+      "make_periodic_orbit",
       [](clust::IntegralCluster const &orbit_element,
          std::vector<xtal::UnitCellCoordRep> const
              &unitcellcoord_symgroup_rep) {
@@ -607,6 +701,86 @@ PYBIND11_MODULE(_clusterography, m) {
       py::arg("integral_site_coordinate_symgroup_rep"));
 
   m.def(
+      "make_periodic_equivalence_map",
+      [](std::vector<clust::IntegralCluster> const &orbit,
+         std::shared_ptr<clust::SymGroup const> const &symgroup,
+         xtal::Lattice const &lattice,
+         std::vector<xtal::UnitCellCoordRep> const
+             &unitcellcoord_symgroup_rep) {
+        std::set<clust::IntegralCluster> _orbit(orbit.begin(), orbit.end());
+        return clust::make_prim_periodic_equivalence_map(
+            _orbit, symgroup, lattice.lat_column_mat(),
+            unitcellcoord_symgroup_rep);
+      },
+      R"pbdoc(
+      Construct the equivalence map for an orbit of Cluster
+
+      The orbit of Cluster is all distinct Cluster that are equivalent
+      under the provided symmetry group, including one element for all
+      Cluster that are equivalent according to prim translational symmetry.
+
+      The equivalence map specifies the group elements that map the prototype orbit
+      element (the first element) onto the `i`-th orbit element.
+
+      Parameters
+      ----------
+      orbit : list[Cluster]
+          The orbit of Cluster
+      symgroup: libcasm.sym_info.SymGroup
+          The group that generated the orbit. Typically the prim factor group, or it
+          may be a subgroup.
+      lattice: libcasm.xtal.Lattice
+          The lattice, used to find translations.
+      integral_site_coordinate_symgroup_rep: list[libcasm.xtal.IntegralSiteCoordinateRep]
+          Symmetry group representation of `symgroup`.
+
+      Returns
+      -------
+      equivalence_map : list[list[libcasm.xtal.SymOp]]
+          The elements of `equivalence_map[i]` are the SymOp that map the prototype
+          orbit element (the first element) onto the `i`-th orbit element, up to a
+          permutation of cluster sites.
+      )pbdoc",
+      py::arg("orbit"), py::arg("symgroup"), py::arg("lattice"),
+      py::arg("integral_site_coordinate_symgroup_rep"));
+
+  m.def(
+      "make_periodic_equivalence_map_indices",
+      [](std::vector<clust::IntegralCluster> const &orbit,
+         std::vector<xtal::UnitCellCoordRep> const
+             &unitcellcoord_symgroup_rep) {
+        std::set<clust::IntegralCluster> _orbit(orbit.begin(), orbit.end());
+        return clust::make_prim_periodic_equivalence_map_indices(
+            _orbit, unitcellcoord_symgroup_rep);
+      },
+      R"pbdoc(
+      Construct the equivalence map indices for an orbit of Cluster
+
+      The orbit of Cluster is all distinct Cluster that are equivalent
+      under the provided symmetry group, including one element for all
+      Cluster that are equivalent according to prim translational symmetry.
+
+      The equivalence map specifies the group elements that map the prototype orbit
+      element (the first element) onto the `i`-th orbit element.
+
+      Parameters
+      ----------
+      orbit : list[Cluster]
+          The orbit of Cluster
+      integral_site_coordinate_symgroup_rep: list[libcasm.xtal.IntegralSiteCoordinateRep]
+          Representation of the symmetry group used to generate the orbit.
+
+      Returns
+      -------
+      equivalence_map_indices : list[list[int]]
+          The elements of `equivalence_map[i]` are the indices in the symmetry group
+          elements list of the SymOp that map the prototype orbit element (the first
+          element) onto the `i`-th orbit element, up to a translation and a permutation
+          of cluster sites.
+      )pbdoc",
+      py::arg("orbit"), py::arg("integral_site_coordinate_symgroup_rep"));
+
+  m.def(
       "make_cluster_group",
       [](clust::IntegralCluster cluster,
          std::shared_ptr<clust::SymGroup const> const &group,
@@ -625,7 +799,7 @@ PYBIND11_MODULE(_clusterography, m) {
           The Cluster that remains invariant after transformation by
           subgroup elements.
 
-      group: list[libcasm.xtal.SymOp]
+      group: libcasm.sym_info.SymGroup
           The super group.
 
       lattice: xtal.Lattice
@@ -648,16 +822,20 @@ PYBIND11_MODULE(_clusterography, m) {
          std::vector<xtal::UnitCellCoordRep> const
              &unitcellcoord_symgroup_rep) {
         std::set<clust::IntegralCluster> orbit =
-            make_prim_periodic_orbit(orbit_element, unitcellcoord_symgroup_rep);
+            make_local_orbit(orbit_element, unitcellcoord_symgroup_rep);
         return std::vector<clust::IntegralCluster>(orbit.begin(), orbit.end());
       },
       R"pbdoc(
-      Construct an orbit of Cluster
+      Construct an orbit of local Cluster
 
-      The orbit of Cluster is all distinct Cluster that are equivalent
-      under the provided symmetry group, which is expected to be
-      constructed such that the phenomenal cluster is invariant, as
-      by :func:`~libcasm.clusterography.make_cluster_group`.
+      Local clusters are clusters defined relative to another, phenomenal cluster. For
+      example, the phenomenal cluster might be the cluster of sites where occupants
+      exchange during a diffusional hop, and the local clusters are the nearby clusters
+      of sites whose occupation changes the migration barrier for the hopping atoms.
+
+      The orbit of local Cluster is all distinct Cluster that are equivalent
+      under the provided phenomenal symmetry group, which depends on the symmetry of
+      the phenomenal cluster and the property of interest.
 
       Parameters
       ----------
@@ -665,8 +843,7 @@ PYBIND11_MODULE(_clusterography, m) {
           One Cluster in the orbit
 
       integral_site_coordinate_symgroup_rep: list[IntegralSiteCoordinateRep]
-          Symmetry group representation, expected to leave the phenomenal
-          cluster invariant.
+          Representation of the phenomenal symmetry group.
 
       Returns
       -------
@@ -675,6 +852,91 @@ PYBIND11_MODULE(_clusterography, m) {
       )pbdoc",
       py::arg("orbit_element"),
       py::arg("integral_site_coordinate_symgroup_rep"));
+
+  m.def(
+      "make_local_equivalence_map",
+      [](std::vector<clust::IntegralCluster> const &orbit,
+         std::shared_ptr<clust::SymGroup const> const &phenomenal_group,
+         std::vector<xtal::UnitCellCoordRep> const
+             &unitcellcoord_symgroup_rep) {
+        std::set<clust::IntegralCluster> _orbit(orbit.begin(), orbit.end());
+        return clust::make_local_equivalence_map(_orbit, phenomenal_group,
+                                                 unitcellcoord_symgroup_rep);
+      },
+      R"pbdoc(
+      Construct the equivalence map for an orbit of local Cluster
+
+      Local clusters are clusters defined relative to another, phenomenal cluster. For
+      example, the phenomenal cluster might be the cluster of sites where occupants
+      exchange during a diffusional hop, and the local clusters are the nearby clusters
+      of sites whose occupation changes the migration barrier for the hopping atoms.
+
+      The orbit of local Cluster is all distinct Cluster that are equivalent
+      under the provided phenomenal symmetry group, which depends on the symmetry of
+      the phenomenal cluster and the property of interest.
+
+      The equivalence map specifies the phenomenal group elements that map the
+      prototype orbit element (the first element) onto the `i`-th orbit element.
+
+      Parameters
+      ----------
+      orbit : list[Cluster]
+          The orbit of local Cluster
+      phenomenal_group: libcasm.sym_info.SymGroup
+          The symmetry group that generated the orbit of local cluster.
+      integral_site_coordinate_symgroup_rep: list[libcasm.xtal.IntegralSiteCoordinateRep]
+          Symmetry group representation of `phenomenal_group`.
+
+      Returns
+      -------
+      equivalence_map : list[list[libcasm.xtal.SymOp]]
+          The elements of `equivalence_map[i]` are the SymOp that map the prototype
+          orbit element (the first element) onto the `i`-th orbit element, up to a
+          permutation of cluster sites.
+      )pbdoc",
+      py::arg("orbit"), py::arg("phenomenal_group"),
+      py::arg("integral_site_coordinate_symgroup_rep"));
+
+  m.def(
+      "make_local_equivalence_map_indices",
+      [](std::vector<clust::IntegralCluster> const &orbit,
+         std::vector<xtal::UnitCellCoordRep> const
+             &unitcellcoord_symgroup_rep) {
+        std::set<clust::IntegralCluster> _orbit(orbit.begin(), orbit.end());
+        return clust::make_local_equivalence_map_indices(
+            _orbit, unitcellcoord_symgroup_rep);
+      },
+      R"pbdoc(
+      Construct the equivalence map indices for an orbit of local Cluster
+
+      Local clusters are clusters defined relative to another, phenomenal cluster. For
+      example, the phenomenal cluster might be the cluster of sites where occupants
+      exchange during a diffusional hop, and the local clusters are the nearby clusters
+      of sites whose occupation changes the migration barrier for the hopping atoms.
+
+      The orbit of local Cluster is all distinct Cluster that are equivalent
+      under the provided phenomenal symmetry group, which depends on the symmetry of
+      the phenomenal cluster and the property of interest.
+
+      The equivalence map specifies the phenomenal group elements that map the prototype
+      orbit element (the first element) onto the `i`-th orbit element.
+
+      Parameters
+      ----------
+      orbit : list[Cluster]
+          The orbit of local Cluster
+      integral_site_coordinate_symgroup_rep: list[IntegralSiteCoordinateRep]
+          Representation of the phenomenal symmetry group.
+
+      Returns
+      -------
+      equivalence_map_indices : list[list[int]]
+          The elements of `equivalence_map[i]` are the indices in the cluster symmetry
+          group elements list of the SymOp that map the prototype orbit element (the
+          first element) onto the `i`-th orbit element, up to a permutation
+          of cluster sites.
+      )pbdoc",
+      py::arg("orbit"), py::arg("integral_site_coordinate_symgroup_rep"));
 
   m.def(
       "equivalents_info_from_dict",

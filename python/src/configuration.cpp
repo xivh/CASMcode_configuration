@@ -11,6 +11,7 @@
 #include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
 #include "casm/configuration/ConfigCompare.hh"
 #include "casm/configuration/ConfigurationSet.hh"
+#include "casm/configuration/FromStructure.hh"
 #include "casm/configuration/Prim.hh"
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/SupercellSet.hh"
@@ -23,6 +24,8 @@
 #include "casm/configuration/io/json/Configuration_json_io.hh"
 #include "casm/configuration/io/json/Supercell_json_io.hh"
 #include "casm/configuration/irreps/VectorSpaceSymReport.hh"
+#include "casm/configuration/make_simple_structure.hh"
+#include "casm/crystallography/SimpleStructure.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "casm/crystallography/io/BasicStructureIO.hh"
 #include "pybind11_json/pybind11_json.hpp"
@@ -72,6 +75,11 @@ std::shared_ptr<config::Prim> make_prim(
 /// \brief Construct config::Prim from JSON string
 std::shared_ptr<config::Prim> prim_from_json(std::string const &prim_json_str,
                                              double xtal_tol) {
+  PyErr_WarnEx(PyExc_DeprecationWarning,
+               "libcasm.configuration.Prim.from_json() is deprecated. Use "
+               "xtal.Prim.from_dict() instead.",
+               2);
+
   jsonParser json = jsonParser::parse(prim_json_str);
   ParsingDictionary<AnisoValTraits> const *aniso_val_dict = nullptr;
   auto basicstructure = std::make_shared<xtal::BasicStructure>(
@@ -81,6 +89,11 @@ std::shared_ptr<config::Prim> prim_from_json(std::string const &prim_json_str,
 
 /// \brief Format xtal::BasicStructure as JSON string
 std::string prim_to_json(std::shared_ptr<config::Prim const> const &prim) {
+  PyErr_WarnEx(PyExc_DeprecationWarning,
+               "libcasm.configuration.Prim.to_json() is deprecated. Use "
+               "libcasm.configuration.Prim.xtal_prim().to_dict() instead.",
+               2);
+
   jsonParser json;
   write_prim(*prim->basicstructure, json, FRAC);
   std::stringstream ss;
@@ -191,6 +204,23 @@ PYBIND11_MODULE(_configuration, m) {
           },
           "Returns the crystal point group.")
       .def(
+          "has_occupation_dofs",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.has_occupation_dofs;
+          },
+          R"pbdoc(
+          Returns True if >1 occupant allowed on any sublattice, False otherwise.
+          )pbdoc")
+      .def(
+          "has_anisotropic_occupants",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.has_aniso_occs;
+          },
+          R"pbdoc(
+          Returns True if any permutation in :func:`Prim.occ_symgroup_rep` is
+          non-trivial, False otherwise.
+          )pbdoc")
+      .def(
           "global_dof_basis",
           [](std::shared_ptr<config::Prim const> const &prim, std::string key) {
             return prim->global_dof_info.at(key).basis();
@@ -252,18 +282,95 @@ PYBIND11_MODULE(_configuration, m) {
           },
           "Returns the symmetry group representation that describes how atom "
           "position indices transform under symmetry.")
-      .def_static(
-          "from_json", &prim_from_json,
-          "Construct a Prim from a JSON-formatted string. The `Prim reference "
-          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/"
-          "crystallography/BasicStructure/>`_ documents the expected JSON "
-          "format.",
-          py::arg("prim_json_str"), py::arg("xtal_tol") = TOL)
-      .def("to_json", &prim_to_json,
-           "Represent the Prim as a JSON-formatted string. The `Prim reference "
-           "<https://prisms-center.github.io/CASMcode_docs/formats/casm/"
-           "crystallography/BasicStructure/>`_ documents the expected JSON "
-           "format.");
+      .def(
+          "local_dof_matrix_rep",
+          [](std::shared_ptr<config::Prim const> const &prim, std::string key) {
+            return prim->sym_info.local_dof_symgroup_rep.at(key);
+          },
+          R"pbdoc(
+          Returns the symmetry group representation that describes how local "
+          continuous DoF transform under symmetry.
+
+          Notes
+          -----
+
+          - For each factor group element there is one matrix representation per
+            sublattice
+          - Local DoF values transform using these symrep matrices *before*
+            permuting among sites.
+          - If ``has_occupation_dofs() is True``, a matrix rep for transforming
+            occupation indicator variables is included with key "occ".
+
+
+          Parameters
+          ----------
+          key: str
+              Specifies the type of DoF
+
+          Returns
+          -------
+          local_dof_matrix_rep: list[list[numpy.ndarray[numpy.float64[m,m]]]]
+              The array ``local_dof_matrix_rep[factor_group_index][sublattice_index]``
+              is the matrix representation for transforming values of DoF `key`, in the
+              prim basis, on `sublattice_index`-th sublattice, by the
+              `factor_group_index`-th prim factor group operation.
+
+              Note that it is possible for the matrices associated with different
+              sublattices to be different sizes, including size zero, depending on the
+              corresponding :class:`~libcasm.xtal.DoFSetBasis`.
+          )pbdoc",
+          py::arg("key"))
+      .def(
+          "global_dof_matrix_rep",
+          [](std::shared_ptr<config::Prim const> const &prim, std::string key) {
+            return prim->sym_info.global_dof_symgroup_rep.at(key);
+          },
+          R"pbdoc(
+          Returns the symmetry group representation that describes how global "
+          continuous DoF transform under symmetry.
+
+          Notes
+          -----
+
+          - For each factor group element there is one matrix representation
+
+
+          Parameters
+          ----------
+          key: str
+              Specifies the type of DoF
+
+          Returns
+          -------
+          global_dof_matrix_rep: list[numpy.ndarray[numpy.float64[m,m]]]
+              The array ``global_dof_matrix_rep[factor_group_index]``
+              is the matrix representation for transforming values of DoF `key`, in the
+              prim basis, by the `factor_group_index`-th prim factor group operation.
+          )pbdoc",
+          py::arg("key"))
+      .def_static("from_json", &prim_from_json,
+                  R"pbdoc(
+          Construct a Prim from a JSON-formatted string.
+
+          .. deprecated:: 2.0a2
+                Use :func:`libcasm.xtal.Prim.from_dict()` instead, then construct a
+                :class:`libcasm.configuration.Prim` instance.
+
+          The
+          `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_
+          documents the expected JSON format.
+          )pbdoc",
+                  py::arg("prim_json_str"), py::arg("xtal_tol") = TOL)
+      .def("to_json", &prim_to_json, R"pbdoc(
+          Represent the Prim as a JSON-formatted string.
+
+          .. deprecated:: 2.0a2
+                Use ``prim.xtal_prim().to_dict()`` instead.
+
+          The
+          `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_
+          documents the expected JSON format.
+          )pbdoc");
 
   // SupercellSet -- declare class
   py::class_<config::SupercellSet, std::shared_ptr<config::SupercellSet>>
@@ -431,7 +538,7 @@ PYBIND11_MODULE(_configuration, m) {
 
       )pbdoc")
       .def(py::init(&make_supercell), py::arg("prim"),
-           py::arg("transformation_matrix_to_super"),
+           py::arg("transformation_matrix_to_super").noconvert(),
            py::arg("max_n_translation_permutations") = 100,
            R"pbdoc(Constructor
 
@@ -925,7 +1032,7 @@ PYBIND11_MODULE(_configuration, m) {
           record : libcasm.configuration.SupercellRecord
               A :class:`~libcasm.configuration.SupercellRecord`, as a const reference.
           )pbdoc",
-          py::arg("transformation_matrix_to_super"))
+          py::arg("transformation_matrix_to_super").noconvert())
       .def(
           "add",
           [](config::SupercellSet &m,
@@ -938,7 +1045,7 @@ PYBIND11_MODULE(_configuration, m) {
           Add a supercell to the set, by constructing from the transformation \
           matrix (equivalent to :func:`~libcasm.configuration.SupercellSet.add_by_transformation_matrix_to_super`).
           )pbdoc",
-          py::arg("transformation_matrix_to_super"))
+          py::arg("transformation_matrix_to_super").noconvert())
       .def(
           "add_record",
           [](config::SupercellSet &m, config::SupercellRecord const &record)
@@ -1050,7 +1157,7 @@ PYBIND11_MODULE(_configuration, m) {
           R"pbdoc(
           Remove a supercell from the set. Raises if not in the set.
           )pbdoc",
-          py::arg("transformation_matrix_to_super"))
+          py::arg("transformation_matrix_to_super").noconvert())
       .def(
           "remove",
           [](config::SupercellSet &m,
@@ -1065,7 +1172,7 @@ PYBIND11_MODULE(_configuration, m) {
           Remove a supercell from the set. Raises if not in the set. Equivalent to \
           :func:`~libcasm.configuration.SupercellSet.remove_by_transformation_matrix_to_super`.
           )pbdoc",
-          py::arg("transformation_matrix_to_super"))
+          py::arg("transformation_matrix_to_super").noconvert())
       .def(
           "remove_record",
           [](config::SupercellSet &m, config::SupercellRecord const &record) {
@@ -1155,7 +1262,7 @@ PYBIND11_MODULE(_configuration, m) {
           Remove a supercell from the set if present, by checking for the \
           transformation matrix.
           )pbdoc",
-          py::arg("transformation_matrix_to_super"))
+          py::arg("transformation_matrix_to_super").noconvert())
       .def(
           "discard",
           [](config::SupercellSet &m,
@@ -1167,7 +1274,7 @@ PYBIND11_MODULE(_configuration, m) {
           transformation matrix. Equivalent to \
           :func:`~libcasm.configuration.SupercellSet.discard_by_transformation_matrix_to_super`.
           )pbdoc",
-          py::arg("transformation_matrix_to_super"))
+          py::arg("transformation_matrix_to_super").noconvert())
       .def(
           "discard_record",
           [](config::SupercellSet &m, config::SupercellRecord const &record) {
@@ -1228,7 +1335,7 @@ PYBIND11_MODULE(_configuration, m) {
           R"pbdoc(
           Check if a supercell is contained in the set, by transformation matrix.
           )pbdoc",
-          py::arg("transformation_matrix_to_super"))
+          py::arg("transformation_matrix_to_super").noconvert())
       .def(
           "__contains__",
           [](config::SupercellSet &m, config::SupercellRecord const &record) {
@@ -1776,12 +1883,12 @@ PYBIND11_MODULE(_configuration, m) {
           be transformed.
       supercell_factor_group_index : int
           Index into the supercell factor group.
-      translation_index : int, optional
+      translation_index : Optional[int] = None
           Linear index of translation to apply. Equivalent to linear
           unitcell_index.
-      translation_frac : array_like, shape=(3,), dtype=int, optional
+      translation_frac : Optional[numpy.ndarray[numpy.int64[3,]]] = None
           Translation, as multiples of prim lattice vectors.
-      translation_cart : array_like, shape=(3,), dtype=double, optional
+      translation_cart : Optional[numpy.ndarray[numpy.float64[3,]]] = None
           Translation, in Cartesian coordinates.
       )pbdoc")
       .def("supercell", &config::SupercellSymOp::supercell,
@@ -2165,11 +2272,6 @@ PYBIND11_MODULE(_configuration, m) {
             report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
             return std::move(*parser.value);
           },
-          "Construct a Configuration from a Python dict. The `Configuration "
-          "reference "
-          "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
-          "Configuration/>`_ documents the expected format for Configurations "
-          "and Supercells.",
           R"pbdoc(
         Construct a Configuration from a Python dict
 
@@ -2200,7 +2302,62 @@ PYBIND11_MODULE(_configuration, m) {
           "reference "
           "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
           "Configuration/>`_ documents the expected format for Configurations "
-          "and Supercells.");
+          "and Supercells.")
+      .def_static(
+          "from_structure",
+          [](std::shared_ptr<config::Prim const> prim,
+             xtal::SimpleStructure const &structure, std::string converter,
+             std::optional<std::shared_ptr<config::SupercellSet>>
+                 opt_supercells) {
+            std::shared_ptr<config::SupercellSet> supercells;
+            if (opt_supercells.has_value() &&
+                opt_supercells.value() != nullptr) {
+              supercells = opt_supercells.value();
+            }
+
+            if (converter == "isotropic_atomic") {
+              config::FromIsotropicAtomicStructure f(prim, supercells);
+              return f(structure).configuration;
+            } else {
+              std::stringstream ss;
+              ss << "Error in Configuration.from_structure: Unknown converter: "
+                 << "\" " << converter << "\".";
+              throw std::runtime_error(ss.str());
+            }
+          },
+          R"pbdoc(
+          Construct a Configuration from a Structure
+
+          This method is equivalent to
+          :func:`ConfigurationWithProperties.from_structure`, but only the
+          :class:`Configuration` is kept.
+          )pbdoc",
+          py::arg("prim"), py::arg("structure"),
+          py::arg("converter") = std::string("isotropic_atomic"),
+          py::arg("supercells") = std::nullopt)
+      .def(
+          "to_structure",
+          [](config::Configuration const &self, std::string converter) {
+            config::ConfigurationWithProperties configuration(self);
+            if (converter == "atomic") {
+              config::ToAtomicStructure f;
+              return f(configuration);
+            } else {
+              std::stringstream ss;
+              ss << "Error in Configuration.to_structure: Unknown converter: "
+                 << "\" " << converter << "\".";
+              throw std::runtime_error(ss.str());
+            }
+          },
+          R"pbdoc(
+          Construct a Structure from a Configuration
+
+          This method is equivalent to \
+          :func:`ConfigurationWithProperties.to_structure`,
+          but no additional properties are included in the resulting
+          :class:`~libcasm.xtal.Structure`.
+          )pbdoc",
+          py::arg("converter") = std::string("atomic"));
 
   // ConfigurationWithProperties -- define functions
   pyConfigurationWithProperties
@@ -2335,7 +2492,145 @@ PYBIND11_MODULE(_configuration, m) {
             to_json(self, json);
             return static_cast<nlohmann::json>(json);
           },
-          "Represent the ConfigurationWithProperties as a Python dict.");
+          "Represent the ConfigurationWithProperties as a Python dict.")
+      .def_static(
+          "from_structure",
+          [](std::shared_ptr<config::Prim const> prim,
+             xtal::SimpleStructure const &structure, std::string converter,
+             std::optional<std::shared_ptr<config::SupercellSet>>
+                 opt_supercells) {
+            std::shared_ptr<config::SupercellSet> supercells;
+            if (opt_supercells.has_value() &&
+                opt_supercells.value() != nullptr) {
+              supercells = opt_supercells.value();
+            }
+
+            if (converter == "isotropic_atomic") {
+              config::FromIsotropicAtomicStructure f(prim, supercells);
+              return f(structure);
+            } else {
+              std::stringstream ss;
+              ss << "Error in Configuration.from_structure: Unknown converter: "
+                 << "\" " << converter << "\".";
+              throw std::runtime_error(ss.str());
+            }
+          },
+          R"pbdoc(
+          Construct a ConfigurationWithProperties from a Structure
+
+          This method is designed to be used with a mapped structure
+          generated from :func:`~libcasm.mapping.methods.map_structures`
+          and :func:`~libcasm.mapping.methods.make_mapped_structure` or
+          the equivalent, meaning that atoms and atom properties are in
+          the same order as the supercell sites they are mapped to and
+          all properties (including the coordinates, displacements,
+          and lattice vectors) are rotated so that they can be directly
+          copied to configuration DoF or properties.
+
+          If `structure` has a global strain property (i.e. "Ustrain",
+          "Hstrain", "GLstrain", etc.) it must be of a type recognized by
+          CASM and it is interpreted as the strain applied to the ideal
+          lattice vectors to result in the structure's lattice vectors.
+          The strain property is read and converted to :math:`U`, the
+          right stretch tensor (see :class:`~libcasm.xtal.StrainConverter`).
+
+          Then, the ideal supercell lattice vectors, as column vector
+          matrix :math:`S`, are solved for from the lattice vectors
+          of `structure`, column vector matrix :math:`L^{mapped}`,
+          using :math:`L^{mapped} = U S`. For this method, it is
+          required that `S = P T`, where :math:`P` is the prim
+          lattice vectors as a column vector matrix and :math:`T` is
+          an integer transformation matrix. If :math:`T` is not found
+          to be integer, an exception will be thrown.
+
+          When interpreting strain and displacement properties of `structure`,
+          the convention in CASM is that displacements are applied to ideal
+          coordinates before strain deformation is applied to the displaced
+          coordinates. See the CASM `Degrees of Freedom (DoF) and Properties`_
+          documentation for the full list of supported properties and their
+          definitions.
+
+          .. _`Degrees of Freedom (DoF) and Properties`: https://prisms-center.github.io/CASMcode_docs/formats/dof_and_properties/
+
+
+          Parameters
+          ----------
+          prim : :class:`~libcasm.configuration.Prim`
+              The Prim.
+          structure : :class:`~libcasm.xtal.Structure`
+              A :class:`~libcasm.xtal.Structure` which has been mapped to a
+              supercell of `prim`.
+          converter : str = "isotropic_atomic"
+              The converter to use for generating the configuration. Options are
+              currently limited to one:
+
+              - "isotropic_atomic": Conversion is performed using
+                a method which is limited to prim with isotropic atomic occupants.
+
+          supercells : Optional[:class:`~libcasm.configuration.SupercellSet`] = None
+              An optional :class:`~libcasm.configuration.SupercellSet`, in which
+              to hold the shared supercell of the generated configuration in order
+              to avoid duplicates.
+
+          Returns
+          -------
+          configuration_with_properties : :class:`ConfigurationWithProperties`
+              The :class:`ConfigurationWithProperties` constructed from the structure.
+          )pbdoc",
+          py::arg("prim"), py::arg("structure"),
+          py::arg("converter") = std::string("isotropic_atomic"),
+          py::arg("supercells") = std::nullopt)
+      .def(
+          "to_structure",
+          [](config::ConfigurationWithProperties const &self,
+             std::string converter) {
+            if (converter == "atomic") {
+              config::ToAtomicStructure f;
+              return f(self);
+            } else {
+              std::stringstream ss;
+              ss << "Error in Configuration.to_structure: Unknown converter: "
+                 << "\" " << converter << "\".";
+              throw std::runtime_error(ss.str());
+            }
+          },
+          R"pbdoc(
+          Construct a Structure from a ConfigurationWithProperties
+
+          Parameters
+          ----------
+          converter : str = "atomic"
+              The converter to use for generating the structure. Options are
+              currently limited to one:
+
+              - "atomic": Conversion is supported for configurations with prim
+                that only have atomic occupants and generates structure with only
+                atom types and properties. Fixed species properties of occupants are
+                ignored.
+
+                If `"disp"` is a degree of freedom (DoF), it is included in the
+                structure's atomic coordinates, but not included in the structure's
+                atom properties. If strain is a DoF, it is included in the
+                structure's atomic coordinates, and the structure's lattice vectors,
+                and not included in the structure's global properties. Other DoF are
+                copied to the structure's atom or global properties.
+
+                The deformation gradient applied to ideal lattice
+                vectors is obtained from one of the following, in order of preference:
+
+                1) Strain DoF (this is not copied to the structure's global properties)
+                2) "Ustrain" in global_properties (this is copied to the structure's \
+                   global properties)
+                3) The identify matrix, I
+
+
+          Returns
+          -------
+          structure : :class:`~libcasm.xtal.Structure`
+              The :class:`~libcasm.xtal.Structure` constructed from the
+              :class:`~libcasm.configuration.ConfigurationWithProperties`.
+          )pbdoc",
+          py::arg("converter") = std::string("atomic"));
 
   m.def(
       "apply",
@@ -2462,7 +2757,7 @@ PYBIND11_MODULE(_configuration, m) {
       in_canonical_supercell : bool, default=False
           If True, the canonical configuration is found in the
           canonical supercell. Otherwise the supercell is not changed.
-      subgroup : List[libcasm.configuration.SupercellSymOp], optional
+      subgroup : Optional[List[libcasm.configuration.SupercellSymOp]] = None
           If provided, the canonical configuration will be found with
           respect to a subgroup of the supercell factor group instead of
           the complete supercell factor group. These operations are supercell
@@ -2732,7 +3027,7 @@ PYBIND11_MODULE(_configuration, m) {
       -------
       dof_space_rep: list[numpy.ndarray[numpy.float64[subspace_dim, subspace_dim]]]
           Elements, `M`, of `dof_space_rep` transform subspace vectors according to
-          ``x_subspace_after = M @ x_subspace_before`.
+          ``x_subspace_after = M @ x_subspace_before``.
 
       )pbdoc",
         py::arg("group"), py::arg("dof_space"));

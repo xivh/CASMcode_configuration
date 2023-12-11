@@ -5,6 +5,51 @@ import libcasm.configuration as casmconfig
 import libcasm.irreps as casmirreps
 
 
+def conventional_FCC_occ_symmetry_adapted_basis():
+    # fmt: off
+    return np.array([
+        [ 0.,   0.,   0.,   0., ],
+        [-0.5, -0.5, -0.5, -0.5,],
+        [ 0.,   0.,   0.,   0., ],
+        [-0.5, -0.5,  0.5,  0.5,],
+        [ 0.,   0.,   0.,   0., ],
+        [-0.5,  0.5, -0.5,  0.5,],
+        [ 0.,   0.,   0.,   0., ],
+        [-0.5,  0.5,  0.5, -0.5,],
+    ])
+    # fmt: on
+
+
+def conventional_FCC_occ_irrep_1_wedge_axes():
+    # fmt: off
+    return np.array([
+        [ 0., ],
+        [-0.5,],
+        [ 0., ],
+        [-0.5,],
+        [ 0., ],
+        [-0.5,],
+        [ 0., ],
+        [-0.5,],
+    ])
+    # fmt: off
+
+
+def conventional_FCC_occ_irrep_2_wedge_axes():
+    # fmt: off
+    return np.array([
+        [ 0.,         0.,         0.,        ],
+        [-0.8660254, -0.5,       -0.28867513,],
+        [ 0.,         0.,         0.        ,],
+        [ 0.28867513, 0.5,       -0.28867513,],
+        [ 0.,         0.,         0.        ,],
+        [ 0.28867513, 0.5,        0.8660254 ,],
+        [ 0.,         0.,         0.        ,],
+        [ 0.28867513,-0.5,       -0.28867513,],
+    ])
+    # fmt: on
+
+
 def test_dof_space_analysis_1(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
     T_dof_space = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=int)
@@ -39,6 +84,9 @@ def test_dof_space_analysis_1(FCC_binary_prim):
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
 
+    data = sym_report.to_dict()
+    assert isinstance(data, dict)
+
 
 def test_dof_space_analysis_2(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
@@ -67,11 +115,13 @@ def test_dof_space_analysis_2(FCC_binary_prim):
         # include_default_occ_modes=False,
         # sublattice_index_to_default_occ=None,
         # site_index_to_default_occ=None,
-        # calc_wedges=False,
+        calc_wedges=True,
     )
 
     symmetry_adapted_dof_space = results.symmetry_adapted_dof_space
     sym_report = results.symmetry_report
+
+    print(symmetry_adapted_dof_space.basis)
 
     assert len(sym_report.irreps) == 2
     assert sym_report.symmetry_adapted_subspace.shape[0] == 8
@@ -80,6 +130,13 @@ def test_dof_space_analysis_2(FCC_binary_prim):
     assert np.allclose(
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
+
+    assert np.allclose(
+        symmetry_adapted_dof_space.basis, conventional_FCC_occ_symmetry_adapted_basis()
+    )
+
+    data = sym_report.to_dict()
+    assert isinstance(data, dict)
 
 
 def test_dof_space_analysis_2a(FCC_binary_prim):
@@ -169,6 +226,68 @@ def test_dof_space_analysis_2b(FCC_binary_prim):
 
     assert np.allclose(
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
+    )
+
+
+def test_dof_space_analysis_2c(FCC_binary_prim):
+    prim = casmconfig.Prim(FCC_binary_prim)
+    T_dof_space = np.array(
+        [  # conventional FCC cubic cell
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ],
+        dtype=int,
+    )
+
+    # construct occ DoFSpace with default basis
+    dof_space = casmclex.DoFSpace(
+        dof_key="occ",
+        xtal_prim=FCC_binary_prim,
+        transformation_matrix_to_super=T_dof_space,
+    )
+
+    # Perform DoF space analysis
+    results = casmconfig.dof_space_analysis(
+        dof_space=dof_space,
+        prim=prim,
+        # configuration=None,
+        # exclude_homogeneous_modes=None,
+        # include_default_occ_modes=False,
+        # sublattice_index_to_default_occ=None,
+        # site_index_to_default_occ=None,
+        calc_wedges=True,
+    )
+
+    symmetry_adapted_dof_space = results.symmetry_adapted_dof_space
+    sym_report = results.symmetry_report
+
+    assert len(sym_report.irreps) == 2
+    assert sym_report.symmetry_adapted_subspace.shape[0] == 8
+    assert sym_report.symmetry_adapted_subspace.shape[1] == 4
+
+    assert np.allclose(
+        symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
+    )
+
+    assert np.allclose(
+        symmetry_adapted_dof_space.basis, conventional_FCC_occ_symmetry_adapted_basis()
+    )
+
+    assert len(sym_report.irreducible_wedge) == 1
+
+    assert len(sym_report.irrep_names) == 2
+    assert sym_report.irrep_names == ["irrep_1_1", "irrep_2_1"]
+
+    assert len(sym_report.irrep_axes_indices) == 2
+    assert sym_report.irrep_axes_indices == [[0], [1, 2, 3]]
+
+    assert len(sym_report.irrep_wedge_axes) == 2
+    assert np.allclose(
+        sym_report.irrep_wedge_axes[0], conventional_FCC_occ_irrep_1_wedge_axes()
+    )
+    assert np.allclose(
+        sym_report.irrep_wedge_axes[1], conventional_FCC_occ_irrep_2_wedge_axes()
     )
 
 

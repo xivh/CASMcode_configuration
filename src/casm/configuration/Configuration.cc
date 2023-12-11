@@ -34,7 +34,7 @@ bool Configuration::operator<(Configuration const &rhs) const {
 /// - Must have the same Prim
 /// - Checks that all DoF are the same, within tolerance
 bool Configuration::eq_impl(Configuration const &rhs) const {
-  if (supercell != rhs.supercell) {
+  if (*supercell != *rhs.supercell) {
     return false;
   }
   double xtal_tol = supercell->prim->basicstructure->lattice().tol();

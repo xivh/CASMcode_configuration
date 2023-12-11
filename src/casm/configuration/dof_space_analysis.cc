@@ -114,19 +114,14 @@ DoFSpaceAnalysisResults dof_space_analysis(
 
   bool allow_complex = true;
 
-  irreps::VectorSpaceSymReport symmetry_report;
-  try {
-    irreps::IrrepDecomposition irrep_decomposition(
-        matrix_rep, group_indices, dof_space.basis, make_cyclic_subgroups_f,
-        make_all_subgroups_f, allow_complex, log);
+  irreps::IrrepDecomposition irrep_decomposition(
+      matrix_rep, group_indices, dof_space.basis, make_cyclic_subgroups_f,
+      make_all_subgroups_f, allow_complex, log);
 
-    // Generate report, based on constructed inputs
-    symmetry_report = vector_space_sym_report(irrep_decomposition, calc_wedges);
+  // Generate report, based on constructed inputs
+  irreps::VectorSpaceSymReport symmetry_report = vector_space_sym_report(
+      irrep_decomposition, calc_wedges, dof_space.axis_info.glossary);
 
-  } catch (std::exception &e) {
-    CASM::err_log() << "Error in dof_space_analysis: " << e.what() << std::endl;
-    throw e;
-  }
   // check for error occuring for "disp"
   if (symmetry_report.symmetry_adapted_subspace.cols() <
       dof_space.basis.cols()) {

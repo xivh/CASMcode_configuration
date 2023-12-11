@@ -8,6 +8,28 @@
 
 using namespace CASM;
 
+namespace test {
+
+std::string construct_eigen_MatrixXd_str(Eigen::MatrixXd const &M,
+                                         std::string name) {
+  std::stringstream ss;
+  ss << "Eigen::MatrixXd " << name << "(" << M.rows() << "," << M.cols()
+     << ");\n";
+  for (Index c = 0; c < M.cols(); ++c) {
+    ss << name << ".col(" << c << ") << ";
+    for (Index r = 0; r < M.rows(); ++r) {
+      ss << M(r, c);
+      if (r == M.rows() - 1) {
+        ss << ";\n";
+      } else {
+        ss << ", ";
+      }
+    }
+  }
+  return ss.str();
+}
+}  // namespace test
+
 class DoFSpaceAnalysisTest : public testing::Test {
  protected:
   DoFSpaceAnalysisTest() { log = Log(std::cout, Log::standard, true); }
@@ -126,15 +148,27 @@ TEST_F(DoFSpaceAnalysisTest, Test2) {
       symmetry_report.symmetry_adapted_subspace;
 
   EXPECT_EQ(irreps.size(), 2);
+  EXPECT_EQ(irreps[0].irrep_dim, 1);
+  EXPECT_EQ(irreps[1].irrep_dim, 3);
+  EXPECT_EQ(symmetry_report.irrep_names.size(), 2);
+  EXPECT_EQ(symmetry_report.irrep_names[0], "irrep_1_1");
+  EXPECT_EQ(symmetry_report.irrep_names[1], "irrep_2_1");
+  EXPECT_EQ(symmetry_report.irrep_axes_indices.size(), 2);
+  EXPECT_EQ(symmetry_report.irrep_axes_indices[0], std::vector<Index>({0}));
+  EXPECT_EQ(symmetry_report.irrep_axes_indices[1],
+            std::vector<Index>({1, 2, 3}));
   EXPECT_EQ(symmetry_adapted_subspace.rows(), 8);
   EXPECT_EQ(symmetry_adapted_subspace.cols(), 4);
 
   // Check basis
   Eigen::MatrixXd const &basis = results.symmetry_adapted_dof_space.basis;
-  //  std::cout << "basis:" << std::endl;
-  //  std::cout << basis << std::endl;
+  // std::cout << "basis.T:" << std::endl;
+  // std::cout << basis.transpose() << std::endl;
   EXPECT_EQ(basis.rows(), 8);
   EXPECT_EQ(basis.cols(), 4);
+
+  // std::cout << "symmetry_adapted_subspace.T:\n" <<
+  // symmetry_adapted_subspace.transpose() << std::endl;
 }
 
 TEST_F(DoFSpaceAnalysisTest, Test2a) {
@@ -208,6 +242,43 @@ TEST_F(DoFSpaceAnalysisTest, Test2b) {
   //  std::cout << basis << std::endl;
   EXPECT_EQ(basis.rows(), 8);
   EXPECT_EQ(basis.cols(), 4);
+
+  Eigen::MatrixXd expected(8, 4);
+  expected.col(0) << 0.5, 0, 0.5, 0, 0.5, 0, 0.5, 0;
+  expected.col(1) << 0.5, 0, -0.5, 0, -0.5, 0, 0.5, 0;
+  expected.col(2) << 0.5, 0, -0.5, 0, 0.5, 0, -0.5, 0;
+  expected.col(3) << 0.5, 0, 0.5, 0, -0.5, 0, -0.5, 0;
+
+  EXPECT_TRUE(almost_equal(basis, expected));
+}
+
+TEST_F(DoFSpaceAnalysisTest, Test2c) {
+  // conventional FCC binary cell, calculate wedges
+  make_prim(test::FCC_binary_prim());
+
+  Eigen::Matrix3l T;
+  T << -1, 1, 1,  //
+      1, -1, 1,   //
+      1, 1, -1;   //
+  transformation_matrix_to_super = T;
+  make_dof_space("occ");
+
+  // Perform DoF space analysis
+  calc_wedges = true;
+  config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
+      *dof_space, prim, configuration, exclude_homogeneous_modes,
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
+
+  // Check results
+  irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
+  std::vector<irreps::IrrepInfo> const &irreps = symmetry_report.irreps;
+  Eigen::MatrixXd const &symmetry_adapted_subspace =
+      symmetry_report.symmetry_adapted_subspace;
+
+  EXPECT_EQ(irreps.size(), 2);
+  EXPECT_EQ(symmetry_report.irrep_wedge_axes.size(), 2);
+  EXPECT_EQ(symmetry_report.irreducible_wedge.size(), 1);
 }
 
 TEST_F(DoFSpaceAnalysisTest, Test3) {
@@ -242,6 +313,34 @@ TEST_F(DoFSpaceAnalysisTest, Test4) {
   make_dof_space("disp");
 
   // Perform DoF space analysis
+  config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
+      *dof_space, prim, configuration, exclude_homogeneous_modes,
+      include_default_occ_modes, sublattice_index_to_default_occ,
+      site_index_to_default_occ, calc_wedges, log);
+
+  // Check results
+  irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
+  std::vector<irreps::IrrepInfo> const &irreps = symmetry_report.irreps;
+  Eigen::MatrixXd const &symmetry_adapted_subspace =
+      symmetry_report.symmetry_adapted_subspace;
+
+  EXPECT_EQ(irreps.size(), 2);
+  EXPECT_EQ(symmetry_adapted_subspace.rows(), 12);
+  EXPECT_EQ(symmetry_adapted_subspace.cols(), 9);
+}
+
+TEST_F(DoFSpaceAnalysisTest, Test4b) {
+  make_prim(test::FCC_binary_disp_prim());
+
+  Eigen::Matrix3l T;
+  T << -1, 1, 1,  //
+      1, -1, 1,   //
+      1, 1, -1;   //
+  transformation_matrix_to_super = T;
+  make_dof_space("disp");
+
+  // Perform DoF space analysis
+  calc_wedges = true;
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,

@@ -44,17 +44,45 @@ AnisoValTraits FromStructure::get_global_traits_or_throw(
 
 Eigen::VectorXd FromStructure::get_Ustrain_vector(
     xtal::SimpleStructure const &mapped_structure) const {
+  auto validate_f = [this](Eigen::VectorXd const &Xstrain_vector,
+                           std::string property_key) {
+    if (Xstrain_vector.size() != 6) {
+      std::stringstream msg;
+      msg << "global property \"" << property_key << "\" size ("
+          << Xstrain_vector.size() << ") != 6";
+      throw this->error(msg.str());
+    }
+  };
+
   auto Ustrain_it = mapped_structure.properties.find("Ustrain");
   if (Ustrain_it == mapped_structure.properties.end()) {
-    throw this->error("missing required global property 'Ustrain'");
+    // throw this->error("missing required global property 'Ustrain'");
+
+    for (auto const &global_property : mapped_structure.properties) {
+      std::string const &property_key = global_property.first;
+      bool is_strain = (property_key.find("strain") != std::string::npos);
+      if (!is_strain) {
+        continue;
+      }
+
+      // Get mapped_structure strain property and convert to Ustrain
+      xtal::StrainConverter Xstrain_converter(property_key,
+                                              Eigen::MatrixXd::Identity(6, 6));
+      xtal::StrainConverter Ustrain_converter("Ustrain",
+                                              Eigen::MatrixXd::Identity(6, 6));
+      Eigen::VectorXd Xstrain_vector = global_property.second;
+      validate_f(Xstrain_vector, property_key);
+      Eigen::Matrix3d F = Xstrain_converter.to_F(Xstrain_vector);
+      return Ustrain_converter.from_F(F);
+    }
+
+    // No strain found
+    Eigen::VectorXd Ustrain_vector(6);
+    Ustrain_vector << 1., 1., 1., 0., 0., 0.;
+    return Ustrain_vector;
   }
   Eigen::VectorXd Ustrain_vector = Ustrain_it->second;
-  if (Ustrain_vector.size() != 6) {
-    std::stringstream msg;
-    msg << "global property 'Ustrain' size (" << Ustrain_vector.size()
-        << ") != 6";
-    throw this->error(msg.str());
-  }
+  validate_f(Ustrain_vector, "Ustrain");
   return Ustrain_vector;
 }
 
@@ -73,7 +101,6 @@ std::shared_ptr<Supercell const> FromStructure::make_supercell(
   Eigen::Matrix3d U = get_Ustrain_matrix(mapped_structure);
   Eigen::Matrix3d const &L_mapped = mapped_structure.lat_column_mat;
   Eigen::Matrix3d L_ideal = U.inverse() * L_mapped;
-
   double xtal_tol = m_xtal_prim->lattice().tol();
   return std::make_shared<Supercell>(m_prim, xtal::Lattice(L_ideal, xtal_tol));
 }
@@ -262,6 +289,7 @@ Eigen::VectorXi FromIsotropicAtomicStructure::make_occupation(
       if (mol.name() == name) {
         break;
       }
+      ++s;
     }
     if (s == site.occupant_dof().size()) {
       std::stringstream msg;
@@ -293,7 +321,7 @@ FromIsotropicAtomicStructure::make_local_dof_values(
     validate_local_property_or_throw(key, standard_dof_values, n_sites);
 
     // set DoF, converting from standard to prim basis
-    local_dof_values.at(key) = clexulator::local_from_standard_values(
+    local_dof_values[key] = clexulator::local_from_standard_values(
         standard_dof_values, n_sublat, n_unitcells, dof_info);
   }
   return local_dof_values;
@@ -312,7 +340,7 @@ FromIsotropicAtomicStructure::make_local_properties(
 
     // skip DoF
     auto it = m_prim->local_dof_info.find(key);
-    if (it == m_prim->local_dof_info.end()) {
+    if (it != m_prim->local_dof_info.end()) {
       continue;
     }
 
@@ -342,7 +370,7 @@ FromIsotropicAtomicStructure::make_global_dof_values(
           dof_key, m_prim->global_dof_info.at(dof_key).basis());
       Eigen::VectorXd Ustrain_vector = get_Ustrain_vector(mapped_structure);
       Eigen::Matrix3d F = Ustrain_converter.to_F(Ustrain_vector);
-      global_dof_values.at(dof_key) = DoFstrain_converter.from_F(F);
+      global_dof_values[dof_key] = DoFstrain_converter.from_F(F);
     } else {
       std::string property_key = dof_key;
       Eigen::MatrixXd const &standard_dof_values = get_global_property_or_throw(
@@ -350,7 +378,7 @@ FromIsotropicAtomicStructure::make_global_dof_values(
       validate_global_property_or_throw(property_key, standard_dof_values);
 
       // convert from standard to prim basis
-      global_dof_values.at(dof_key) = clexulator::global_from_standard_values(
+      global_dof_values[dof_key] = clexulator::global_from_standard_values(
           standard_dof_values, dof_info);
     }
   }
