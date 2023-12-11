@@ -61,29 +61,22 @@ def test_from_json_deprecated():
     assert len(prim.factor_group().elements()) == 48
 
 
-def test_simple_cubic_binary_to_json(simple_cubic_binary_prim):
+def test_simple_cubic_binary_to_dict(simple_cubic_binary_prim):
     xtal_prim = simple_cubic_binary_prim
     prim = config.Prim(xtal_prim)
-    prim_data = json.dumps(prim.xtal_prim().to_dict())
+    prim_data = prim.to_dict()
     assert "basis" in prim_data
     assert "coordinate_mode" in prim_data
     assert "lattice_vectors" in prim_data
 
 
-def test_from_json():
-    prim_json_str = """{
-        "basis": [{
-            "coordinate": [0.0, 0.0, 0.0],
-            "occupants": ["A", "B"]}
-        ],
+def test_from_dict():
+    prim_data = {
+        "basis": [{"coordinate": [0.0, 0.0, 0.0], "occupants": ["A", "B"]}],
         "coordinate_mode": "Fractional",
-        "lattice_vectors": [
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0]
-        ],
-        "title": "prim"}"""
-    xtal_prim = xtal.Prim.from_dict(json.loads(prim_json_str))
-    prim = config.Prim(xtal_prim)
+        "lattice_vectors": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        "title": "prim",
+    }
+    prim = config.Prim.from_dict(prim_data)
     assert prim.xtal_prim().coordinate_frac().shape == (3, 1)
     assert len(prim.factor_group().elements()) == 48

@@ -77,7 +77,7 @@ std::shared_ptr<config::Prim> prim_from_json(std::string const &prim_json_str,
                                              double xtal_tol) {
   PyErr_WarnEx(PyExc_DeprecationWarning,
                "libcasm.configuration.Prim.from_json() is deprecated. Use "
-               "xtal.Prim.from_dict() instead.",
+               "libcasm.configuration.Prim.from_dict() instead.",
                2);
 
   jsonParser json = jsonParser::parse(prim_json_str);
@@ -91,7 +91,7 @@ std::shared_ptr<config::Prim> prim_from_json(std::string const &prim_json_str,
 std::string prim_to_json(std::shared_ptr<config::Prim const> const &prim) {
   PyErr_WarnEx(PyExc_DeprecationWarning,
                "libcasm.configuration.Prim.to_json() is deprecated. Use "
-               "libcasm.configuration.Prim.xtal_prim().to_dict() instead.",
+               "libcasm.configuration.Prim.to_dict() instead.",
                2);
 
   jsonParser json;
@@ -348,28 +348,73 @@ PYBIND11_MODULE(_configuration, m) {
               prim basis, by the `factor_group_index`-th prim factor group operation.
           )pbdoc",
           py::arg("key"))
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data, double xtal_tol) {
+            jsonParser json{data};
+            ParsingDictionary<AnisoValTraits> const *aniso_val_dict = nullptr;
+            return std::make_shared<config::Prim>(
+                std::make_shared<xtal::BasicStructure>(
+                    read_prim(json, xtal_tol, aniso_val_dict)));
+          },
+          R"pbdoc(
+          Construct a Prim from a Python dict.
+
+          The
+          `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_
+          documents the expected format.
+          )pbdoc",
+          py::arg("data"), py::arg("xtal_tol") = TOL)
+      .def(
+          "to_dict",
+          [](std::shared_ptr<config::Prim const> const &prim, bool frac,
+             bool include_va) {
+            jsonParser json;
+            COORD_TYPE mode = frac ? FRAC : CART;
+            write_prim(*prim->basicstructure, json, mode, include_va);
+            return static_cast<nlohmann::json>(json);
+          },
+          py::arg("frac") = true, py::arg("include_va") = false,
+          R"pbdoc(
+          Represent the Prim as a Python dict
+
+          Parameters
+          ----------
+          frac : boolean, default=True
+              By default, basis site positions are written in fractional
+              coordinates relative to the lattice vectors. If False, write basis site
+              positions in Cartesian coordinates.
+          include_va : boolean, default=False
+              If a basis site only allows vacancies, it is not printed by default.
+              If this is True, basis sites with only vacancies will be included.
+
+          Returns
+          -------
+          data : json
+              The `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_ documents the expected format.
+
+          )pbdoc")
       .def_static("from_json", &prim_from_json,
                   R"pbdoc(
           Construct a Prim from a JSON-formatted string.
 
           .. deprecated:: 2.0a2
-                Use :func:`libcasm.xtal.Prim.from_dict()` instead, then construct a
-                :class:`libcasm.configuration.Prim` instance.
+                Use :func:`libcasm.from_dict()` instead.
 
           The
           `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_
-          documents the expected JSON format.
+          documents the expected format.
           )pbdoc",
                   py::arg("prim_json_str"), py::arg("xtal_tol") = TOL)
       .def("to_json", &prim_to_json, R"pbdoc(
           Represent the Prim as a JSON-formatted string.
 
           .. deprecated:: 2.0a2
-                Use ``prim.xtal_prim().to_dict()`` instead.
+                Use ``prim.to_dict()`` instead.
 
           The
           `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_
-          documents the expected JSON format.
+          documents the expected format.
           )pbdoc");
 
   // SupercellSet -- declare class
