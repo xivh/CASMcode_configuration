@@ -1,5 +1,6 @@
 #include "casm/configuration/config_space_analysis.hh"
 
+#include "casm/configuration/DoFSpace_functions.hh"
 #include "casm/configuration/SupercellSymOp.hh"
 #include "casm/configuration/canonical_form.hh"
 #include "casm/configuration/copy_configuration.hh"
@@ -8,50 +9,19 @@
 namespace CASM {
 namespace config {
 
-namespace {  // (anonymous)
-
-clexulator::DoFSpace exclude_homogeneous_mode_space(
-    clexulator::DoFSpace const &dof_space,
-    std::optional<bool> exclude_homogeneous_modes = std::nullopt) {
-  if (!exclude_homogeneous_modes.has_value()) {
-    if (dof_space.dof_key == "disp") {
-      exclude_homogeneous_modes = true;
-    } else {
-      exclude_homogeneous_modes = false;
-    }
-  }
-
-  if (*exclude_homogeneous_modes) {
-    return clexulator::exclude_homogeneous_mode_space(dof_space);
-  } else {
-    return dof_space;
-  }
-}
-
-clexulator::DoFSpace exclude_default_occ_modes(
-    clexulator::DoFSpace const &dof_space,
-    bool include_default_occ_modes = false) {
-  if (dof_space.dof_key == "occ" && !include_default_occ_modes) {
-    return clexulator::exclude_default_occ_modes(dof_space);
-  }
-  return dof_space;
-}
-
-}  // namespace
-
 ConfigSpaceAnalysisResults::ConfigSpaceAnalysisResults(
     clexulator::DoFSpace const &_standard_dof_space,
     std::map<std::string, std::vector<Eigen::VectorXd>> _equivalent_dof_values,
     std::map<std::string, std::vector<Configuration>>
         _equivalent_configurations,
     Eigen::MatrixXd const &_projector, Eigen::VectorXd const &_eigenvalues,
-    clexulator::DoFSpace const &_symmetry_adapted_config_space)
+    clexulator::DoFSpace const &_symmetry_adapted_dof_space)
     : standard_dof_space(_standard_dof_space),
       equivalent_dof_values(std::move(_equivalent_dof_values)),
       equivalent_configurations(std::move(_equivalent_configurations)),
       projector(_projector),
       eigenvalues(_eigenvalues),
-      symmetry_adapted_config_space(_symmetry_adapted_config_space) {}
+      symmetry_adapted_dof_space(_symmetry_adapted_dof_space) {}
 
 /// \brief Construct symmetry adapted bases in the DoF space spanned by the
 ///    set of configurations symmetrically equivalent to the input
@@ -80,7 +50,15 @@ ConfigSpaceAnalysisResults::ConfigSpaceAnalysisResults(
 /// \param include_default_occ_modes Include the dof component for the
 ///     default occupation value on each site with occupation DoF. The
 ///     default is to exclude these modes because they are not
-///     independent. This parameter is only checked dof==\"occ\".
+///     independent. This parameter is only checked dof==\"occ\". If
+///     false, the default occupation is determined using
+///     `site_index_to_default_occ` if that is provided, else using
+///     `sublattice_index_to_default_occ` if that is provided, else using
+///     occupation index 0.
+/// \param sublattice_index_to_default_occ Optional values of default
+///     occupation index (value), specified by sublattice index (key).
+/// \param site_index_to_default_occ Optional values of default
+///     occupation index (value), specified by supercell site index (key).
 /// \param tol Tolerance used for identifying zero-valued eigenvalues.
 ///
 /// \returns Results, including project, eigenvalues, and symmetry
@@ -89,7 +67,9 @@ std::map<DoFKey, ConfigSpaceAnalysisResults> config_space_analysis(
     std::map<std::string, Configuration> const &configurations,
     std::optional<std::vector<DoFKey>> dofs,
     std::optional<bool> exclude_homogeneous_modes,
-    bool include_default_occ_modes, double tol) {
+    bool include_default_occ_modes,
+    std::optional<std::map<int, int>> sublattice_index_to_default_occ,
+    std::optional<std::map<Index, int>> site_index_to_default_occ, double tol) {
   std::map<DoFKey, ConfigSpaceAnalysisResults> results;
 
   if (configurations.size() == 0) {
@@ -131,8 +111,9 @@ std::map<DoFKey, ConfigSpaceAnalysisResults> config_space_analysis(
     clexulator::DoFSpace dof_space_pre1 = exclude_homogeneous_mode_space(
         dof_space_pre2, exclude_homogeneous_modes);
 
-    clexulator::DoFSpace standard_dof_space =
-        exclude_default_occ_modes(dof_space_pre1, include_default_occ_modes);
+    clexulator::DoFSpace standard_dof_space = exclude_default_occ_modes(
+        dof_space_pre1, include_default_occ_modes,
+        sublattice_index_to_default_occ, site_index_to_default_occ);
 
     // --- Begin projector construction ---
     std::map<std::string, std::vector<Eigen::VectorXd>> equivalent_dof_values;
@@ -220,7 +201,7 @@ std::map<DoFKey, ConfigSpaceAnalysisResults> config_space_analysis(
     // --- Store results ---
     Eigen::VectorXd eigenvalues = D_nonzero.head(i_nonzero);
 
-    clexulator::DoFSpace symmetry_adapted_config_space =
+    clexulator::DoFSpace symmetry_adapted_dof_space =
         clexulator::make_dof_space(
             standard_dof_space.dof_key, standard_dof_space.prim,
             standard_dof_space.transformation_matrix_to_super,
@@ -231,7 +212,7 @@ std::map<DoFKey, ConfigSpaceAnalysisResults> config_space_analysis(
                     std::forward_as_tuple(
                         standard_dof_space, std::move(equivalent_dof_values),
                         std::move(equivalent_configurations), P, eigenvalues,
-                        symmetry_adapted_config_space));
+                        symmetry_adapted_dof_space));
   }
 
   return results;

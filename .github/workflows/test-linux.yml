@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Set up requirements & configuration variables
         run: |
@@ -40,7 +40,15 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: CASMcode_crystallography/dist
-          key: ${{ runner.os }}-libcasm-xtal-v2-0a2
+          key: ${{ runner.os }}-libcasm-xtal-v2-0a8
+
+      ### libcasm-mapping ###
+      - name: restore libcasm-mapping cache
+        id: cache-libcasm-mapping-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: CASMcode_mapping/dist
+          key: ${{ runner.os }}-libcasm-mapping-v2-0a2
 
       ### libcasm-clexulator ###
       - name: restore libcasm-clexulator cache
@@ -48,13 +56,14 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: CASMcode_clexulator/dist
-          key: ${{ runner.os }}-libcasm-clexulator-v2-0a1
+          key: ${{ runner.os }}-libcasm-clexulator-v2-0a3
 
       - name: Install CASM dependencies
         run: |
           pip install CASMcode_global/dist/*.whl
           pip install CASMcode_crystallography/dist/*.whl
           pip install CASMcode_clexulator/dist/*.whl
+          pip install CASMcode_mapping/dist/*.whl
           pip install -r build_requirements.txt
           pip install -r test_requirements.txt
           echo "CASM_PREFIX=$(python -m libcasm.casmglobal --prefix)" >> "$GITHUB_ENV"

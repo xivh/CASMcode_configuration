@@ -30,8 +30,12 @@ from ._clusterography import (
     equivalents_info_from_dict,
     make_cluster_group,
     make_integral_site_coordinate_symgroup_rep,
+    make_local_equivalence_map,
+    make_local_equivalence_map_indices,
     make_local_orbit,
-    make_prim_periodic_orbit,
+    make_periodic_equivalence_map,
+    make_periodic_equivalence_map_indices,
+    make_periodic_orbit,
 )
 from ._methods import (
     make_local_cluster_specs,

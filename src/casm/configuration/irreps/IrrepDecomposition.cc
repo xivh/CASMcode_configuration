@@ -5,9 +5,36 @@
 #include "casm/configuration/irreps/IrrepDecompositionImpl.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
 
+// logging
+#include "casm/casm_io/container/json_io.hh"
+#include "casm/casm_io/json/jsonParser.hh"
+#include "casm/configuration/irreps/io/json/IrrepDecomposition_json_io.hh"
+#include "casm/configuration/irreps/misc.hh"
+
 namespace CASM {
 
 namespace irreps {
+
+namespace {
+
+template <int _required_verbosity = Log::standard>
+void print_irreps(Log &log, std::string what,
+                  std::vector<IrrepInfo> const &irreps) {
+  log.begin_section<_required_verbosity>();
+  if (log.print()) {
+    log.indent() << what << ": " << std::endl;
+
+    jsonParser tmp;
+    to_json(irreps, tmp);
+    std::stringstream ss;
+    ss << tmp << std::endl;
+    log.verbatim(ss.str(), true);
+    log.indent() << std::endl;
+  }
+  log.end_section();
+}
+
+}  // namespace
 
 IrrepInfo::IrrepInfo(Eigen::MatrixXcd _trans_mat, Eigen::VectorXcd _characters)
     : trans_mat(std::move(_trans_mat)),
@@ -82,14 +109,23 @@ IrrepDecomposition::IrrepDecomposition(
     Eigen::MatrixXd const &init_subspace,
     std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
     std::function<GroupIndicesOrbitSet()> make_all_subgroups_f,
-    bool allow_complex)
-    : fullspace_rep(_fullspace_rep), head_group(_head_group) {
+    bool allow_complex, std::optional<Log> _log)
+    : fullspace_rep(_fullspace_rep), head_group(_head_group), log(_log) {
   using namespace IrrepDecompositionImpl;
+
+  if (log.has_value()) {
+    log->begin<Log::verbose>("IrrepDecomposition");
+    log->indent() << std::endl;
+    prettyp<Log::verbose>(*log, "1. Initial vector space", init_subspace);
+  }
 
   Index dim = fullspace_rep[0].rows();
 
   // 1) Expand subspace by application of group, and orthonormalization
   subspace = make_invariant_space(fullspace_rep, head_group, init_subspace);
+  if (log.has_value()) {
+    prettyp<Log::verbose>(*log, "2. Initial invariant vector space", subspace);
+  }
 
   // 2) Perform irrep_decomposition
   // In some cases the `irrep_decomposition` method does not find all irreps.
@@ -97,11 +133,20 @@ IrrepDecomposition::IrrepDecomposition(
   // subspace.
   Eigen::MatrixXd subspace_i = subspace;
   Eigen::MatrixXd finished_subspace = make_kernel(subspace);
+  Index i = 1;
   while (finished_subspace.cols() != dim) {
+    if (log.has_value() && log->print()) {
+      log->indent() << std::endl;
+      log->indent() << "-- Begin step " << i << " --" << std::endl;
+    }
+
     // Irreps are found in a subspace specified via the subspace matrix rep
     MatrixRep subspace_rep_i = make_subspace_rep(fullspace_rep, subspace_i);
     std::vector<IrrepInfo> subspace_irreps_i =
         irrep_decomposition(subspace_rep_i, head_group, allow_complex);
+    if (log.has_value()) {
+      print_irreps<Log::verbose>(*log, "Irreps, as found", subspace_irreps_i);
+    }
 
     // If not irreps found in the subspace, this method has failed
     // If the irreps do not span the whole subspace, we'll try again
@@ -115,25 +160,55 @@ IrrepDecomposition::IrrepDecomposition(
     std::vector<IrrepInfo> symmetrized_subspace_irreps_i =
         symmetrize_irreps(subspace_rep_i, head_group, subspace_irreps_i,
                           make_cyclic_subgroups_f, make_all_subgroups_f);
+    if (log.has_value()) {
+      print_irreps<Log::verbose>(*log, "Irreps, symmetrized",
+                                 subspace_irreps_i);
+    }
+
     // Transform the irreps trans_mat to act on vectors in the fullspace
     std::vector<IrrepInfo> symmetrized_fullspace_irreps_i =
         make_fullspace_irreps(symmetrized_subspace_irreps_i, subspace_i);
+    if (log.has_value()) {
+      print_irreps<Log::verbose>(*log, "Irreps, symmetrized and full dim",
+                                 subspace_irreps_i);
+    }
     // Save the new fullspace irreps
     for (auto const &irrep : symmetrized_fullspace_irreps_i) {
       irreps.push_back(irrep);
+    }
+    if (log.has_value()) {
+      print_irreps<Log::verbose>(*log, "Irreps, all found so far",
+                                 subspace_irreps_i);
     }
 
     // Combine the irrep spaces and add to finished_subspace
     Eigen::MatrixXd finished_subspace_i =
         full_trans_mat(symmetrized_fullspace_irreps_i).adjoint();
+    if (log.has_value()) {
+      prettyp<Log::verbose>(*log, "Combined vector space, this step",
+                            finished_subspace_i);
+    }
+
     finished_subspace = extend(finished_subspace, finished_subspace_i);
+    if (log.has_value()) {
+      prettyp<Log::verbose>(*log, "Combined vector space, so far",
+                            finished_subspace_i);
+    }
 
     // If not all irreps have been found, try again in remaining space
     subspace_i = make_kernel(finished_subspace);
+    if (log.has_value()) {
+      prettyp<Log::verbose>(*log, "Remaining vector space", subspace_i);
+    }
   }
 
   // 3) Combine to form symmetry adapted subspace
   symmetry_adapted_subspace = full_trans_mat(irreps).adjoint();
+  if (log.has_value()) {
+    print_irreps<Log::verbose>(*log, "3. Irreps, symmetry adapted", irreps);
+    prettyp<Log::verbose>(*log, "4. Symmetry adapted vector space",
+                          symmetry_adapted_subspace);
+  }
 }
 
 }  // namespace irreps

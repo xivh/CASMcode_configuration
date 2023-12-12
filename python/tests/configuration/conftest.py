@@ -59,6 +59,128 @@ def simple_cubic_binary_prim():
 
 
 @pytest.fixture
+def FCC_binary_prim():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [0.0, 1.0 / 2.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 0.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 1.0 / 2.0, 0.0],  # a
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occ_dof = [["A", "B"]]
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
+        occupants=occupants,
+    )
+
+
+@pytest.fixture
+def FCC_binary_occ_fix_corner_prim():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [1.0, 0.0, 0.0],  # a
+            [0.0, 1.0, 0.0],  # a
+            [0.0, 0.0, 1.0],  # a
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.5, 0.5, 0.0],
+            [0.0, 0.5, 0.5],
+            [0.5, 0.0, 0.5],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occ_dof = [
+        ["A"],
+        ["A", "B"],
+        ["A", "B"],
+        ["A", "B"],
+    ]
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
+        occupants=occupants,
+    )
+
+
+@pytest.fixture
+def FCC_binary_disp_fix_corner_prim():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [1.0, 0.0, 0.0],  # a
+            [0.0, 1.0, 0.0],  # a
+            [0.0, 0.0, 1.0],  # a
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.5, 0.5, 0.0],
+            [0.0, 0.5, 0.5],
+            [0.5, 0.0, 0.5],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occ_dof = [
+        ["A", "B"],
+        ["A", "B"],
+        ["A", "B"],
+        ["A", "B"],
+    ]
+
+    # Local continuous degrees of freedom (DoF)
+    disp_dof = xtal.DoFSetBasis("disp")  # Atomic displacement
+    local_dof = [
+        [],
+        [disp_dof],
+        [disp_dof],
+        [disp_dof],
+    ]
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
+        local_dof=local_dof,
+        occupants=occupants,
+    )
+
+
+@pytest.fixture
 def FCC_binary_GLstrain_disp_prim():
     # Lattice vectors
     lattice_column_vector_matrix = np.array(
@@ -91,6 +213,50 @@ def FCC_binary_GLstrain_disp_prim():
     # Global continuous degrees of freedom (DoF)
     GLstrain_dof = xtal.DoFSetBasis("GLstrain")  # Green-Lagrange strain metric
     global_dof = [GLstrain_dof]
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
+        local_dof=local_dof,
+        global_dof=global_dof,
+        occupants=occupants,
+    )
+
+
+@pytest.fixture
+def FCC_binary_Hstrain_disp_prim():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [0.0, 1.0 / 2.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 0.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 1.0 / 2.0, 0.0],  # a
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occ_dof = [["A", "B"]]
+
+    # Local continuous degrees of freedom (DoF)
+    disp_dof = xtal.DoFSetBasis("disp")  # Atomic displacement
+    local_dof = [
+        [disp_dof],  # local DoF, basis site b=0
+    ]
+
+    # Global continuous degrees of freedom (DoF)
+    Hstrain_dof = xtal.DoFSetBasis("Hstrain")  # Hencky strain metric
+    global_dof = [Hstrain_dof]
 
     return xtal.Prim(
         lattice=lattice,
@@ -142,6 +308,55 @@ def BCC_binary_GLstrain_disp_prim():
         occ_dof=occ_dof,
         local_dof=local_dof,
         global_dof=global_dof,
+        occupants=occupants,
+    )
+
+
+@pytest.fixture
+def prim_ABC2():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [0.0, 0.0, 3.30],  # a
+            [4.87, 0.0, 0.0],  # a
+            [0.0, 4.87, 0.0],  # a
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.500000000000, 0.500000000000, 0.500000000000],
+            [0.304640000000, 0.000000000000, 0.304640000000],
+            [0.804640000000, 0.500000000000, 0.195360010000],
+            [0.195360010000, 0.500000000000, 0.804640000000],
+            [0.695360000000, 0.000000000000, 0.695360000000],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occ_dof = [["A"], ["B"], ["C"], ["C"], ["C"], ["C"]]
+
+    # Local continuous degrees of freedom (DoF)
+    disp_dof = xtal.DoFSetBasis("disp")  # Atomic displacement
+    local_dof = [
+        [disp_dof],
+        [disp_dof],
+        [disp_dof],
+        [disp_dof],
+        [disp_dof],
+        [disp_dof],
+    ]
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
+        local_dof=local_dof,
         occupants=occupants,
     )
 

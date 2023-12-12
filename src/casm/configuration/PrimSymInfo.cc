@@ -44,6 +44,18 @@ PrimSymInfo::PrimSymInfo(std::shared_ptr<SymGroup const> const &_factor_group,
 
   this->local_dof_symgroup_rep =
       make_local_dof_symgroup_rep(this->factor_group->element, prim);
+
+  if (this->has_occupation_dofs) {
+    local_dof_symgroup_rep["occ"] = sym_info::LocalDoFSymGroupRep();
+    for (sym_info::OccSymOpRep const &occ_symop_rep : this->occ_symgroup_rep) {
+      std::vector<Eigen::MatrixXd> occ_matrix_rep;
+      for (sym_info::Permutation const &perm : occ_symop_rep) {
+        occ_matrix_rep.push_back(sym_info::as_matrix(sym_info::inverse(perm)));
+      }
+      local_dof_symgroup_rep.at("occ").push_back(occ_matrix_rep);
+    }
+  }
+
   this->global_dof_symgroup_rep =
       make_global_dof_symgroup_rep(this->factor_group->element, prim);
 }

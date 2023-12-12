@@ -35,10 +35,13 @@ class SupercellSet;
 ///   all properties (including the coordinates, displacements,
 ///   and lattice vectors) are rotated so that they can be directly
 ///   copied to configuration DoF or properties.
-/// - Requires mapped_structure has global property "Ustrain",
-///   which is interpreted as the strain applied to the ideal
-///   lattice vectors to result in the structure's lattice vectors.
-/// - Solves L_mapped = Ustrain * L_ideal for L_ideal
+/// - If mapped_structure has a global strain property (i.e.
+///   "Ustrain", "Hstrain", "GLstrain", etc.) it must be of a type
+///   recognized by CASM; it is interpreted as the strain applied to
+///   the ideal lattice vectors to result in the structure's lattice
+///   vectors; and it is converted to "Ustrain".
+/// - Solves L_mapped = Ustrain * L_ideal for L_ideal, which must
+///   satisfy L_ideal == L_prim * T, where T is an integer matrix.
 ///
 class FromStructure {
  public:
@@ -100,15 +103,19 @@ class FromStructure {
 ///   all properties (including the coordinates, displacements,
 ///   and lattice vectors) are rotated so that they can be directly
 ///   copied to configuration DoF or properties.
-/// - Requires mapped_structure has global property "Ustrain",
-///   which is interpreted as the strain applied to the ideal
-///   lattice vectors to result in the structure's lattice vectors.
-/// - Solves L_mapped = Ustrain * L_ideal for L_ideal
+/// - If mapped_structure has a global strain property (i.e.
+///   "Ustrain", "Hstrain", "GLstrain", etc.) it must be of a type
+///   recognized by CASM; it is interpreted as the strain applied to
+///   the ideal lattice vectors to result in the structure's lattice
+///   vectors; and it is converted to "Ustrain".
+/// - Solves L_mapped = Ustrain * L_ideal for L_ideal, which must
+///   satisfy L_ideal == L_prim * T, where T is an integer matrix.
 /// - Atomic "disp" properties are the displacements from the ideal
 ///   site coordinates to the structure's atomic coordinates.
-/// - For global properties and DoF there is a complication:
-///   if a strain DoF exists, then Ustrain must be converted to the
-///   DoF strain metric
+/// - If a strain DoF exists, then the strain property of the mapped
+///   structure is converted to the DoF strain metric.
+/// - If a strain property does not exist, then it is assumed that
+///   there is no strain and the mapped_structure's lattice is ideal.
 ///
 class FromIsotropicAtomicStructure : public FromStructure {
  public:

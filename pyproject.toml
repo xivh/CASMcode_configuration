@@ -7,14 +7,14 @@ requires = [
     "ninja",
     "pybind11>=2.6",
     "libcasm-global>=2.0.2",
-    "libcasm-xtal>=2.0a2",
-    "libcasm-clexulator>=2.0a1",
+    "libcasm-xtal>=2.0a8",
+    "libcasm-clexulator>=2.0a3",
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "libcasm-configuration"
-version = "2.0a1"
+version = "2.0a2"
 authors = [
   { name="CASM developers", email="casm-developers@lists.engr.ucsb.edu" },
 ]
@@ -31,8 +31,8 @@ classifiers = [
 ]
 dependencies = [
   "libcasm-global>=2.0.2",
-  "libcasm-xtal>=2.0a2",
-  "libcasm-clexulator>=2.0a1",
+  "libcasm-xtal>=2.0a8",
+  "libcasm-clexulator>=2.0a3",
   "numpy",
 ]
 
@@ -61,7 +61,7 @@ skip =  "pp*"
 before-build = "pip install -r build_requirements.txt"
 
 # Testing
-test-requires = "pytest pytest-datadir sortedcontainers"
+test-requires = "pytest pytest-datadir sortedcontainers libcasm-mapping>=2.0a2"
 test-command = "pytest -rsap {project}/python/tests"
 
 [tool.cibuildwheel.macos]

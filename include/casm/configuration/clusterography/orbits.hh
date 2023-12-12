@@ -27,6 +27,21 @@ std::set<IntegralCluster> make_prim_periodic_orbit(
     IntegralCluster const &orbit_element,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
 
+/// \brief Make equivalence map of factor group indices for an orbit of
+/// clusters,
+///     with periodic symmetry of a prim
+std::vector<std::vector<Index>> make_prim_periodic_equivalence_map_indices(
+    std::set<IntegralCluster> const &orbit,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
+
+/// \brief Make equivalence map for an orbit of clusters, with periodic
+///     symmetry of a prim
+std::vector<std::vector<xtal::SymOp>> make_prim_periodic_equivalence_map(
+    std::set<IntegralCluster> const &orbit,
+    std::shared_ptr<SymGroup const> const &symgroup,
+    Eigen::Matrix3d const &lat_column_mat,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
+
 /// \brief Return xtal::SymOp that leaves phenomenal invariant, and is a
 ///     combination of a factor group operation and a lattice translation
 xtal::SymOp make_cluster_group_element(
@@ -102,6 +117,19 @@ IntegralCluster local_integral_cluster_copy_apply(
 /// \brief Make an orbit of local clusters
 std::set<IntegralCluster> make_local_orbit(
     IntegralCluster const &orbit_element,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
+
+/// \brief Make equivalence map of phenomenal group indices for an orbit of
+/// local
+///     clusters
+std::vector<std::vector<Index>> make_local_equivalence_map_indices(
+    std::set<IntegralCluster> const &orbit,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
+
+/// \brief Make equivalence map for an orbit of local clusters
+std::vector<std::vector<xtal::SymOp>> make_local_equivalence_map(
+    std::set<IntegralCluster> const &orbit,
+    std::shared_ptr<SymGroup const> const &phenomenal_group,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
 
 /// \brief Make groups that leave cluster orbit elements invariant

@@ -2,6 +2,7 @@
 
 #include "casm/clexulator/ConfigDoFValues.hh"
 #include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
+#include "casm/clexulator/DoFSpace.hh"
 #include "casm/configuration/PrimSymInfo.hh"
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/SupercellSymInfo.hh"
@@ -659,26 +660,8 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
   // - Local DoF values transform using these symrep matrices *before*
   //   permuting among sites.
 
-  sym_info::LocalDoFSymGroupRep local_dof_symgroup_rep;
-  if (key == "occ") {
-    // sym_info::Permutation perm =
-    //     occ_symgroup_rep.at(prim_fg_index).at(sublattice_index_before);
-    // convention is: occ_index_after = perm.at(occ_index_before)
-    // -> need to make permutation matrix using inverse(perm), P(perm[i],i)=1.0
-    // -> then, Eigen::VectorXd occ_indicator_after = P * occ_indicator_before;
-
-    sym_info::OccSymGroupRep const &occ_symgroup_rep =
-        prim.sym_info.occ_symgroup_rep;
-    for (sym_info::OccSymOpRep const &occ_symop_rep : occ_symgroup_rep) {
-      std::vector<Eigen::MatrixXd> occ_matrix_rep;
-      for (sym_info::Permutation const &perm : occ_symop_rep) {
-        occ_matrix_rep.push_back(sym_info::as_matrix(sym_info::inverse(perm)));
-      }
-      local_dof_symgroup_rep.push_back(occ_matrix_rep);
-    }
-  } else {
-    local_dof_symgroup_rep = prim.sym_info.local_dof_symgroup_rep.at(key);
-  }
+  sym_info::LocalDoFSymGroupRep local_dof_symgroup_rep =
+      prim.sym_info.local_dof_symgroup_rep.at(key);
   if (local_dof_symgroup_rep.size() == 0) {
     throw std::runtime_error(
         "Error in make_collective_dof_matrix_rep: DoF symgroup rep has "
@@ -738,11 +721,45 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
   }
 
   std::multiplies<SymOp> multiply_f;
-  xtal::SymOpPeriodicCompare_f equal_to_f(prim_lattice, xtal_tol);
+  xtal::SymOpPeriodicCompare_f equal_to_f(supercell.superlattice.superlattice(),
+                                          xtal_tol);
   symgroup = std::make_shared<SymGroup const>(
       group::make_group(element, multiply_f, equal_to_f));
 
   return result;
+}
+
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of values in the basis of the given DoFSpace
+///
+/// \param group The group that is to be represented (this may be larger than a
+///     crystallographic factor group)
+/// \param dof_space The DoFSpace. May be any type.
+///
+/// \returns matrix_rep The matrix representation of `group` which transforms
+///     values in the basis of `dof_space`.
+///
+std::vector<Eigen::MatrixXd> make_dof_space_rep(
+    std::vector<config::SupercellSymOp> const &group,
+    clexulator::DoFSpace const &dof_space) {
+  std::shared_ptr<config::SymGroup const> symgroup;
+  std::vector<Eigen::MatrixXd> fullspace_rep;
+  std::vector<Eigen::MatrixXd> dof_space_rep;
+  if (dof_space.is_global) {
+    fullspace_rep =
+        config::make_global_dof_matrix_rep(group, dof_space.dof_key, symgroup);
+  } else {
+    if (!dof_space.sites.has_value()) {
+      throw std::runtime_error(
+          "Error in make_dof_space_rep with local DoF: no DoFSpace sites");
+    }
+    fullspace_rep = config::make_local_dof_matrix_rep(
+        group, dof_space.dof_key, *dof_space.sites, symgroup);
+  }
+  for (auto const &M : fullspace_rep) {
+    dof_space_rep.push_back(dof_space.basis_inv * M * dof_space.basis);
+  }
+  return dof_space_rep;
 }
 
 }  // namespace config

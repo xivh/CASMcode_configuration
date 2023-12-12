@@ -1,6 +1,7 @@
 #include "casm/configuration/dof_space_analysis.hh"
 
 #include "casm/casm_io/Log.hh"
+#include "casm/configuration/DoFSpace_functions.hh"
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/SupercellSymOp.hh"
 #include "casm/configuration/canonical_form.hh"
@@ -8,40 +9,6 @@
 
 namespace CASM {
 namespace config {
-
-// projector(Eigen::MatrixXd::Zero(standard_dof_space.basis.cols(),
-//                                 standard_dof_space.basis.cols()))
-
-namespace {  // (anonymous)
-
-clexulator::DoFSpace exclude_homogeneous_mode_space(
-    clexulator::DoFSpace const &dof_space,
-    std::optional<bool> exclude_homogeneous_modes = std::nullopt) {
-  if (!exclude_homogeneous_modes.has_value()) {
-    if (dof_space.dof_key == "disp") {
-      exclude_homogeneous_modes = true;
-    } else {
-      exclude_homogeneous_modes = false;
-    }
-  }
-
-  if (*exclude_homogeneous_modes) {
-    return clexulator::exclude_homogeneous_mode_space(dof_space);
-  } else {
-    return dof_space;
-  }
-}
-
-clexulator::DoFSpace exclude_default_occ_modes(
-    clexulator::DoFSpace const &dof_space,
-    bool include_default_occ_modes = false) {
-  if (dof_space.dof_key == "occ" && !include_default_occ_modes) {
-    return clexulator::exclude_default_occ_modes(dof_space);
-  }
-  return dof_space;
-}
-
-}  // namespace
 
 DoFSpaceAnalysisResults::DoFSpaceAnalysisResults(
     clexulator::DoFSpace _symmetry_adapted_dof_space,
@@ -59,14 +26,35 @@ DoFSpaceAnalysisResults::DoFSpaceAnalysisResults(
 /// \param include_default_occ_modes Include the dof component for the
 ///     default occupation value on each site with occupation DoF. The
 ///     default is to exclude these modes because they are not
-///     independent. This parameter is only checked dof==\"occ\".
+///     independent. This parameter is only checked dof==\"occ\". If
+///     false, the default occupation is determined using
+///     `site_index_to_default_occ` if that is provided, else using
+///     `sublattice_index_to_default_occ` if that is provided, else using
+///     occupation index 0.
+/// \param sublattice_index_to_default_occ Optional values of default
+///     occupation index (value), specified by sublattice index (key).
+/// \param site_index_to_default_occ Optional values of default
+///     occupation index (value), specified by supercell site index (key).
 /// \param calc_wedges If true, calculate the irreducible wedges for the vector
 ///     space. This may take a long time.
+/// \param log Optional logger. If has value and `log->verbosity() >=
+/// Log::verbose`,
+///     prints step-by-step results to log.
 DoFSpaceAnalysisResults dof_space_analysis(
     clexulator::DoFSpace const &dof_space_in, std::shared_ptr<Prim const> prim,
     std::optional<Configuration> configuration,
     std::optional<bool> exclude_homogeneous_modes,
-    bool include_default_occ_modes, bool calc_wedges) {
+    bool include_default_occ_modes,
+    std::optional<std::map<int, int>> sublattice_index_to_default_occ,
+    std::optional<std::map<Index, int>> site_index_to_default_occ,
+    bool calc_wedges, std::optional<Log> log) {
+  if (dof_space_in.basis.cols() == 0) {
+    std::stringstream msg;
+    msg << "Error in dof_space_analysis: "
+        << "Initial DoF space: basis.cols() == 0";
+    throw dof_space_analysis_error(msg.str());
+  }
+
   Eigen::Matrix3l T = Eigen::Matrix3l::Identity();
   if (dof_space_in.transformation_matrix_to_super.has_value()) {
     T = *dof_space_in.transformation_matrix_to_super;
@@ -76,9 +64,22 @@ DoFSpaceAnalysisResults dof_space_analysis(
   // --- Construct the standard DoF space ---
   clexulator::DoFSpace dof_space_pre1 =
       exclude_homogeneous_mode_space(dof_space_in, exclude_homogeneous_modes);
+  if (dof_space_pre1.basis.cols() == 0) {
+    std::stringstream msg;
+    msg << "Error in dof_space_analysis: "
+        << "After excluding homogeneous mode space: basis.cols() == 0";
+    throw dof_space_analysis_error(msg.str());
+  }
 
-  clexulator::DoFSpace dof_space =
-      exclude_default_occ_modes(dof_space_pre1, include_default_occ_modes);
+  clexulator::DoFSpace dof_space = exclude_default_occ_modes(
+      dof_space_pre1, include_default_occ_modes,
+      sublattice_index_to_default_occ, site_index_to_default_occ);
+  if (dof_space.basis.cols() == 0) {
+    std::stringstream msg;
+    msg << "Error in dof_space_analysis: "
+        << "After excluding default occ modes: basis.cols() == 0";
+    throw dof_space_analysis_error(msg.str());
+  }
 
   // construct symmetry group based on invariance of dof_space and configuration
   std::vector<SupercellSymOp> group(SupercellSymOp::begin(supercell),
@@ -113,19 +114,14 @@ DoFSpaceAnalysisResults dof_space_analysis(
 
   bool allow_complex = true;
 
-  irreps::VectorSpaceSymReport symmetry_report;
-  try {
-    irreps::IrrepDecomposition irrep_decomposition(
-        matrix_rep, group_indices, dof_space.basis, make_cyclic_subgroups_f,
-        make_all_subgroups_f, allow_complex);
+  irreps::IrrepDecomposition irrep_decomposition(
+      matrix_rep, group_indices, dof_space.basis, make_cyclic_subgroups_f,
+      make_all_subgroups_f, allow_complex, log);
 
-    // Generate report, based on constructed inputs
-    symmetry_report = vector_space_sym_report(irrep_decomposition, calc_wedges);
+  // Generate report, based on constructed inputs
+  irreps::VectorSpaceSymReport symmetry_report = vector_space_sym_report(
+      irrep_decomposition, calc_wedges, dof_space.axis_info.glossary);
 
-  } catch (std::exception &e) {
-    CASM::err_log() << "Error in dof_space_analysis: " << e.what() << std::endl;
-    throw e;
-  }
   // check for error occuring for "disp"
   if (symmetry_report.symmetry_adapted_subspace.cols() <
       dof_space.basis.cols()) {

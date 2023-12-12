@@ -240,6 +240,12 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
     std::set<Index> const &site_indices,
     std::shared_ptr<SymGroup const> &symgroup);
 
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of values in the basis of the given DoFSpace
+std::vector<Eigen::MatrixXd> make_dof_space_rep(
+    std::vector<config::SupercellSymOp> const &group,
+    clexulator::DoFSpace const &dof_space);
+
 }  // namespace config
 }  // namespace CASM
 

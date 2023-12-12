@@ -128,6 +128,65 @@ void report_and_throw_if_invalid(Validator const &validator, Log &log,
   }
 }
 
+std::map<std::string, Eigen::MatrixXd> _empty_local() {
+  return std::map<std::string, Eigen::MatrixXd>();
+}
+
+std::map<std::string, Eigen::VectorXd> _empty_global() {
+  return std::map<std::string, Eigen::VectorXd>();
+}
+
+std::unique_ptr<config::ConfigurationWithProperties>
+_make_unique_with_properties(config::Configuration const &config) {
+  return notstd::make_unique<config::ConfigurationWithProperties>(
+      config, _empty_local(), _empty_global());
+}
+
+/// Parser properties for ConfigurationWithProperties from JSON with error
+/// messages
+///
+/// Requires parser.value != nullptr
+void _parse_properties(
+    InputParser<config::ConfigurationWithProperties> &parser) {
+  if (parser.value == nullptr) {
+    throw std::runtime_error(
+        "Error parsing properties for ConfigurationWithProperties");
+  }
+  config::ConfigurationWithProperties &self = *parser.value;
+
+  // local properties
+  auto json_it = parser.self.find("local_properties");
+  if (json_it != parser.self.end()) {
+    for (auto it = json_it->begin(); it != json_it->end(); ++it) {
+      Eigen::MatrixXd tvalues;
+      fs::path values_path =
+          fs::path{"local_properties"} / it.name() / "values";
+      parser.require(tvalues, values_path);
+      try {
+        self.local_properties.emplace(it.name(), tvalues.transpose());
+      } catch (std::exception const &e) {
+        parser.insert_error(values_path, e.what());
+      }
+    }
+  }
+
+  // global properties
+  json_it = parser.self.find("global_properties");
+  if (json_it != parser.self.end()) {
+    for (auto it = json_it->begin(); it != json_it->end(); ++it) {
+      Eigen::VectorXd tvalues;
+      fs::path values_path =
+          fs::path{"global_properties"} / it.name() / "values";
+      parser.require(tvalues, values_path);
+      try {
+        self.global_properties.emplace(it.name(), tvalues.transpose());
+      } catch (std::exception const &e) {
+        parser.insert_error(values_path, e.what());
+      }
+    }
+  }
+}
+
 }  // namespace
 
 void from_json(config::SupercellSet &supercells,
@@ -250,6 +309,12 @@ config::Configuration jsonConstructor<config::Configuration>::from_json(
       *jsonMake<config::Configuration>::make_from_json(json, prim));
 }
 
+config::Configuration jsonConstructor<config::Configuration>::from_json(
+    jsonParser const &json, config::SupercellSet &supercells) {
+  return std::move(
+      *jsonMake<config::Configuration>::make_from_json(json, supercells));
+}
+
 std::unique_ptr<config::Configuration>
 jsonMake<config::Configuration>::make_from_json(
     jsonParser const &json, std::shared_ptr<config::Prim const> const &prim) {
@@ -257,23 +322,21 @@ jsonMake<config::Configuration>::make_from_json(
   ParentInputParser parser{json};
   std::runtime_error error_if_invalid{
       "Error reading Configuration from JSON input"};
-
-  Eigen::Matrix3l T;
-  parser.require(T, "transformation_matrix_to_supercell");
+  auto result = parser.parse_as<config::Configuration>(prim);
   report_and_throw_if_invalid(parser, log, error_if_invalid);
-  auto supercell = std::make_shared<config::Supercell const>(prim, T);
+  return std::move(result->value);
+}
 
-  clexulator::ConfigDoFValues dof_values;
-  parser.require(dof_values, "dof");
-
-  validate_dof_values(parser, dof_values,
-                      supercell->unitcell_index_converter.total_sites(),
-                      prim->basicstructure->basis().size(),
-                      prim->global_dof_info, prim->local_dof_info);
-
+std::unique_ptr<config::Configuration>
+jsonMake<config::Configuration>::make_from_json(
+    jsonParser const &json, config::SupercellSet &supercells) {
+  auto &log = CASM::log();
+  ParentInputParser parser{json};
+  std::runtime_error error_if_invalid{
+      "Error reading Configuration from JSON input"};
+  auto result = parser.parse_as<config::Configuration>(supercells);
   report_and_throw_if_invalid(parser, log, error_if_invalid);
-
-  return notstd::make_unique<config::Configuration>(supercell, dof_values);
+  return std::move(result->value);
 }
 
 /// Insert Configuration to JSON
@@ -342,6 +405,187 @@ void parse(InputParser<config::Configuration> &parser,
   if (parser.valid()) {
     parser.value =
         notstd::make_unique<config::Configuration>(supercell, dof_values);
+  }
+}
+
+// --- ConfigurationWithProperties
+
+config::ConfigurationWithProperties
+jsonConstructor<config::ConfigurationWithProperties>::from_json(
+    jsonParser const &json, std::shared_ptr<config::Prim const> const &prim) {
+  return std::move(
+      *jsonMake<config::ConfigurationWithProperties>::make_from_json(json,
+                                                                     prim));
+}
+
+config::ConfigurationWithProperties
+jsonConstructor<config::ConfigurationWithProperties>::from_json(
+    jsonParser const &json, config::SupercellSet &supercells) {
+  return std::move(
+      *jsonMake<config::ConfigurationWithProperties>::make_from_json(
+          json, supercells));
+}
+
+std::unique_ptr<config::ConfigurationWithProperties>
+jsonMake<config::ConfigurationWithProperties>::make_from_json(
+    jsonParser const &json, std::shared_ptr<config::Prim const> const &prim) {
+  auto &log = CASM::log();
+  ParentInputParser parser{json};
+  std::runtime_error error_if_invalid{
+      "Error reading ConfigurationWithProperties from JSON input"};
+  auto result = parser.parse_as<config::ConfigurationWithProperties>(prim);
+  report_and_throw_if_invalid(parser, log, error_if_invalid);
+  return std::move(result->value);
+}
+
+std::unique_ptr<config::ConfigurationWithProperties>
+jsonMake<config::ConfigurationWithProperties>::make_from_json(
+    jsonParser const &json, config::SupercellSet &supercells) {
+  auto &log = CASM::log();
+  ParentInputParser parser{json};
+  std::runtime_error error_if_invalid{
+      "Error reading ConfigurationWithProperties from JSON input"};
+  auto result =
+      parser.parse_as<config::ConfigurationWithProperties>(supercells);
+  report_and_throw_if_invalid(parser, log, error_if_invalid);
+  return std::move(result->value);
+}
+
+/// Insert ConfigurationWithProperties to JSON
+///
+/// Format:
+/// \code
+/// {
+///   "configuration": <configuration object>,
+///   "global_properties": {
+///     <property_name>: {
+///       "values": <1d array of numbers, property values as provided>
+///     },
+///     ...
+///   },
+///   "local_properties": {
+///     <property_name>: {
+///       "values": <2d array of numbers, property values as provided>
+///     },
+///     ...
+///   }
+/// }
+/// \endcode
+///
+/// Reminder about standard DoF basis vs prim DoF basis:
+/// - Properties are expected to be in the standard basis
+/// - This function does not convert ConfigDoFValues between bases, it writes
+///   values as they are.
+/// - Conversions, if necessary, must be done before calling `to_json` / after
+///   calling `from_json`.
+///
+/// Note:
+/// - "configuration":
+///       The configuration, as JSON
+///
+/// - "local_properties":
+///       The local property values are represented as a matrix, with each row
+///       representing a site property value and each column representing a
+///       component of the property value:
+///           number of cols = property dimension (i.e. 3 for "disp")
+///           number of rows = (Supercell volume as multiple of the prim) *
+///               (prim basis size).
+///
+///       Example: "disp" values, supercell volume=3, prim basis size=2
+///
+///           "local_properties": {
+///             "disp": {
+///               "values": [
+///                 [dx[1], dy[1], dz[1]], // "disp" values on site: sublattice
+///                 0, unit cell 0 [dx[2], dy[2], dz[2]], // "disp" values on
+///                 site: sublattice 0, unit cell 1 [dx[3], dy[3], dz[3]], //
+///                 "disp" values on site: sublattice 0, unit cell 2 [dx[4],
+///                 dy[4], dz[4]], // "disp" values on site: sublattice 1, unit
+///                 cell 0 [dx[5], dy[5], dz[5]], // "disp" values on site:
+///                 sublattice 1, unit cell 1 [dx[6], dy[6], dz[6]], // "disp"
+///                 values on site: sublattice 1, unit cell 2
+///               ]
+///             }
+///           }
+///
+/// - "global_properties":
+///       The global property values are represented as a vector of size equal
+///       to the dimension of the DoF (i.e. 6 for "GLstrain" in standard basis).
+///
+///       Example: "GLstrain" values (any supercell volume and prim basis size)
+///
+///           "global_properties": {
+///             "GLstrain": {
+///               "values": [Exx, Eyy, Ezz, sqrt(2)Eyz, sqrt(2)Exz, sqrt(2)Exy]
+///             }
+///           }
+///
+jsonParser &to_json(
+    config::ConfigurationWithProperties const &configuration_with_properties,
+    jsonParser &json) {
+  auto const &x = configuration_with_properties;
+  if (!json.is_obj()) {
+    throw std::runtime_error(
+        "Error inserting ConfigurationWithProperties to json: not an object");
+  }
+  json["configuration"] = x.configuration;
+  if (!x.local_properties.empty()) {
+    for (auto const &local_property : x.local_properties) {
+      to_json(local_property.second.transpose(),
+              json["local_properties"][local_property.first]["values"]);
+    }
+  }
+  if (!x.global_properties.empty()) {
+    for (auto const &global_property : x.global_properties) {
+      to_json_array(global_property.second,
+                    json["global_properties"][global_property.first]["values"]);
+    }
+  }
+  return json;
+}
+
+/// Parse ConfigurationWithProperties from JSON with error messages
+///
+/// Notes:
+/// - This version creates a new Supercell for each Configuration.
+///   Comparisons will still work correctly, but if reading many
+///   Configuration, memory usage will be increased and speed will
+///   be decreased.
+void parse(InputParser<config::ConfigurationWithProperties> &parser,
+           std::shared_ptr<config::Prim const> const &prim) {
+  // parse configuration
+  std::unique_ptr<config::Configuration> config =
+      parser.require<config::Configuration>("configuration", prim);
+  if (config == nullptr) {
+    return;
+  }
+
+  // parse local_properties and global_properties
+  parser.value = _make_unique_with_properties(*config);
+  _parse_properties(parser);
+  if (!parser.valid()) {
+    parser.value.reset();
+  }
+}
+
+/// Parser ConfigurationWithProperties from JSON with error messages
+///
+/// Notes:
+/// - This version avoids duplicate Supercells.
+void parse(InputParser<config::ConfigurationWithProperties> &parser,
+           config::SupercellSet &supercells) {
+  // parse configuration
+  std::unique_ptr<config::Configuration> config =
+      parser.require<config::Configuration>("configuration", supercells);
+  if (config == nullptr) {
+    return;
+  }
+
+  // parse local_properties and global_properties
+  parser.value = _make_unique_with_properties(*config);
+  _parse_properties(parser);
+  if (!parser.valid()) {
+    parser.value.reset();
   }
 }
 

@@ -14,6 +14,21 @@ namespace irreps {
 jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
   json["symmetry_representation"] = obj.symgroup_rep;
 
+  json["symmetry_adapted_subspace"] = obj.symmetry_adapted_subspace.transpose();
+
+  json["irrep_names"] = obj.irrep_names;
+
+  json["irrep_axes_indices"] = obj.irrep_axes_indices;
+
+  if (obj.irreducible_wedge.size()) {
+    json["irrep_wedge_axes"].put_obj();
+    for (Index i = 0; i < obj.irrep_names.size(); ++i) {
+      std::string irrep_name = obj.irrep_names[i];
+      json["irrep_wedge_axes"][irrep_name] =
+          obj.irrep_wedge_axes[i].transpose();
+    }
+  }
+
   json["glossary"] = obj.axis_glossary;
 
   std::vector<Index> mults;
@@ -33,7 +48,9 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
                                to_sequential_string(m + 1, mult);
       auto const &irrep = obj.irreps[l];
       if (irrep.pseudo_irrep) {
-        json["irreducible_representations"]["pseudo_irrep"][irrep_name] = irrep;
+        add_pseudo_irrep_characters(
+            irrep,
+            json["irreducible_representations"]["pseudo_irrep"][irrep_name]);
       }
       // json["irreducible_representations"][irrep_name]["multiplicity"] = mult;
       if (obj.irreducible_wedge.size()) {
@@ -56,7 +73,7 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
           json["irreducible_representations"]["symop_matrices"]
               [irrep_name];  //.put_array();
       for (Index o = 0; o < obj.symgroup_rep.size(); ++o) {
-        Eigen::MatrixXd const &op = obj.symgroup_rep[i];
+        Eigen::MatrixXd const &op = obj.symgroup_rep[o];
         std::string op_name =
             "op_" + to_sequential_string(o + 1, obj.symgroup_rep.size());
         irrep_matrices[op_name] =

@@ -41,14 +41,19 @@ struct ConfigSpaceAnalysisResults {
 
   /// \brief Symmetry-adapted config space, with basis formed by
   ///     eigenvectors of P
-  clexulator::DoFSpace const symmetry_adapted_config_space;
+  clexulator::DoFSpace const symmetry_adapted_dof_space;
 };
 
 std::map<DoFKey, ConfigSpaceAnalysisResults> config_space_analysis(
     std::map<std::string, Configuration> const &configurations,
     std::optional<std::vector<DoFKey>> dofs = std::nullopt,
     std::optional<bool> exclude_homogeneous_modes = std::nullopt,
-    bool include_default_occ_modes = false, double tol = TOL);
+    bool include_default_occ_modes = false,
+    std::optional<std::map<int, int>> sublattice_index_to_default_occ =
+        std::nullopt,
+    std::optional<std::map<Index, int>> site_index_to_default_occ =
+        std::nullopt,
+    double tol = TOL);
 
 }  // namespace config
 }  // namespace CASM

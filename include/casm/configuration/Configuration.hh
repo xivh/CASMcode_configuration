@@ -42,10 +42,10 @@ Configuration &apply(SupercellSymOp const &op, Configuration &configuration);
 Configuration copy_apply(SupercellSymOp const &op, Configuration configuration);
 
 struct ConfigurationWithProperties {
-  ConfigurationWithProperties(
+  explicit ConfigurationWithProperties(
       Configuration const &_configuration,
-      std::map<std::string, Eigen::MatrixXd> const &_local_properties,
-      std::map<std::string, Eigen::VectorXd> const &_global_properties);
+      std::map<std::string, Eigen::MatrixXd> const &_local_properties = {},
+      std::map<std::string, Eigen::VectorXd> const &_global_properties = {});
 
   Configuration configuration;
   std::map<std::string, Eigen::MatrixXd> local_properties;

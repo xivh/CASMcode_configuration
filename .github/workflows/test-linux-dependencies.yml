@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Set up requirements & configuration variables
         run: |
@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: CASMcode_crystallography/dist
-          key: ${{ runner.os }}-libcasm-xtal-v2-0a2
+          key: ${{ runner.os }}-libcasm-xtal-v2-0a8
 
       - name: checkout libcasm-xtal
         if: steps.cache-libcasm-xtal-restore.outputs.cache-hit != 'true'
@@ -66,7 +66,7 @@ jobs:
         with:
           repository: prisms-center/CASMcode_crystallography
           path: CASMcode_crystallography
-          ref: v2.0a2
+          ref: v2.0a8
 
       - name: make xtal
         if: steps.cache-libcasm-xtal-restore.outputs.cache-hit != 'true'
@@ -85,13 +85,46 @@ jobs:
           path: CASMcode_crystallography/dist
           key: ${{ steps.cache-libcasm-xtal-restore.outputs.cache-primary-key }}
 
+      ### libcasm-mapping ###
+      - name: restore libcasm-mapping cache
+        id: cache-libcasm-mapping-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: CASMcode_mapping/dist
+          key: ${{ runner.os }}-libcasm-mapping-v2-0a2
+
+      - name: checkout libcasm-mapping
+        if: steps.cache-libcasm-mapping-restore.outputs.cache-hit != 'true'
+        uses: actions/checkout@v3
+        with:
+          repository: prisms-center/CASMcode_mapping
+          path: CASMcode_mapping
+          ref: v2.0a2
+
+      - name: make mapping
+        if: steps.cache-libcasm-mapping-restore.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          cd CASMcode_mapping
+          python -m build
+          pip install dist/*.whl
+          pip install -r test_requirements.txt
+          python -m pytest -rsap python/tests
+
+      - name: save libcasm-mapping cache
+        id: cache-libcasm-mapping-save
+        uses: actions/cache/save@v3
+        with:
+          path: CASMcode_mapping/dist
+          key: ${{ steps.cache-libcasm-mapping-restore.outputs.cache-primary-key }}
+
       ### libcasm-clexulator ###
       - name: restore libcasm-clexulator cache
         id: cache-libcasm-clexulator-restore
         uses: actions/cache/restore@v3
         with:
           path: CASMcode_clexulator/dist
-          key: ${{ runner.os }}-libcasm-clexulator-v2-0a1
+          key: ${{ runner.os }}-libcasm-clexulator-v2-0a3
 
       - name: checkout libcasm-clexulator
         if: steps.cache-libcasm-clexulator-restore.outputs.cache-hit != 'true'
@@ -99,7 +132,7 @@ jobs:
         with:
           repository: prisms-center/CASMcode_clexulator
           path: CASMcode_clexulator
-          ref: v2.0a1
+          ref: v2.0a3
 
       - name: make clexulator
         if: steps.cache-libcasm-clexulator-restore.outputs.cache-hit != 'true'

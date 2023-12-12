@@ -9,25 +9,6 @@ namespace irreps {
 
 namespace IrrepDecompositionImpl {
 
-/// \brief Round entries that are within tol of being integer to that integer
-/// value
-Eigen::MatrixXcd prettyc(const Eigen::MatrixXcd &M);
-
-/// \brief Round entries that are within tol of being integer to that integer
-/// value
-Eigen::MatrixXd pretty(const Eigen::MatrixXd &M);
-
-// these methods are implementation details of IrrepDecomposition, they are
-// included here for easier testing
-
-Eigen::MatrixXd real_I(Index rows, Index cols);
-
-Eigen::MatrixXd real_Zero(Index rows, Index cols);
-
-Eigen::MatrixXcd complex_I(Index rows, Index cols);
-
-Eigen::MatrixXcd complex_Zero(Index rows, Index cols);
-
 /// Counts over pairs of columns (i,j), where j>=i, and phase=[1, i]
 /// - skips i==j when phase==i
 struct CommuterParamsCounter {
@@ -189,9 +170,7 @@ Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
                                      GroupIndices const &head_group,
                                      Eigen::MatrixXd const &subspace);
 
-// Create `subspace_rep`, a transformed copy of `fullspace_rep` that acts
-// on coordinates with `subspace` columns as a basis. Matrices in
-// `subspace_rep` are shape (subspace.cols() x subspace.cols())
+/// \brief Create the subspace rep from the fullspace rep
 MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
                             Eigen::MatrixXd const &subspace);
 

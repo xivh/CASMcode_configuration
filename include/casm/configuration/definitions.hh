@@ -52,7 +52,8 @@ namespace CASM {
 
 namespace clexulator {
 struct ConfigDoFValues;
-}
+struct DoFSpace;
+}  // namespace clexulator
 
 namespace xtal {
 class BasicStructure;
