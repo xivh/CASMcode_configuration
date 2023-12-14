@@ -90,6 +90,7 @@ set(
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/ConfigCompare.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/SupercellSet.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/canonical_form.hh
+  ${PROJECT_SOURCE_DIR}/include/casm/configuration/PrimMagspinInfo.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/ConfigIsEquivalent.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/SupercellSymOp.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/PrimSymInfo.hh
@@ -176,6 +177,7 @@ set(
   libcasm_configuration_SOURCES
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/canonical_form.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/SupercellSet.cc
+  ${PROJECT_SOURCE_DIR}/src/casm/configuration/PrimMagspinInfo.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/FromStructure.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/copy_configuration.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/Prim.cc

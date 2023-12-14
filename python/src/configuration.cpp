@@ -212,6 +212,17 @@ PYBIND11_MODULE(_configuration, m) {
           Returns True if >1 occupant allowed on any sublattice, False otherwise.
           )pbdoc")
       .def(
+          "is_atomic",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.has_aniso_occs;
+          },
+          R"pbdoc(
+          Returns True if the prim allows 1 or more occupants on each site, all
+          occupants have a single atom without coordinate offset, and no
+          occupants have :class:`~libcasm.xtal.Occupant` properties, only
+          :class:`~libcasm.xtal.AtomComponent` properties.
+          )pbdoc")
+      .def(
           "has_anisotropic_occupants",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.has_aniso_occs;
@@ -348,6 +359,58 @@ PYBIND11_MODULE(_configuration, m) {
               prim basis, by the `factor_group_index`-th prim factor group operation.
           )pbdoc",
           py::arg("key"))
+      .def(
+          "continuous_magspin_key",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->magspin_info.continuous_magspin_key;
+          },
+          R"pbdoc(
+          Returns the continuous magspin DoF `key` if present, else None.
+
+          Returns
+          -------
+          key: Optional[str]
+              The continuous magspin DoF `key` if present, else None.
+          )pbdoc")
+      .def(
+          "continuous_magspin_flavor",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->magspin_info.continuous_magspin_flavor;
+          },
+          R"pbdoc(
+          Returns the continuous magspin DoF flavor if present, else None.
+
+          Returns
+          -------
+          key: Optional[str]
+              The continuous magspin DoF flavor if present, else None.
+          )pbdoc")
+      .def(
+          "discrete_atomic_magspin_key",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->magspin_info.discrete_atomic_magspin_key;
+          },
+          R"pbdoc(
+          Returns the discrete atomic magspin `key` if present, else None.
+
+          Returns
+          -------
+          key: Optional[str]
+              The discrete atomic magspin `key` if present, else None.
+          )pbdoc")
+      .def(
+          "discrete_atomic_magspin_flavor",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->magspin_info.discrete_atomic_magspin_flavor;
+          },
+          R"pbdoc(
+          Returns the discrete atomic magspin flavor if present, else None.
+
+          Returns
+          -------
+          key: Optional[str]
+              The discrete atomic magspin flavor if present, else None.
+          )pbdoc")
       .def_static(
           "from_dict",
           [](const nlohmann::json &data, double xtal_tol) {
@@ -2353,7 +2416,8 @@ PYBIND11_MODULE(_configuration, m) {
           [](std::shared_ptr<config::Prim const> prim,
              xtal::SimpleStructure const &structure, std::string converter,
              std::optional<std::shared_ptr<config::SupercellSet>>
-                 opt_supercells) {
+                 opt_supercells,
+             double magspin_tol) {
             std::shared_ptr<config::SupercellSet> supercells;
             if (opt_supercells.has_value() &&
                 opt_supercells.value() != nullptr) {
@@ -2362,6 +2426,10 @@ PYBIND11_MODULE(_configuration, m) {
 
             if (converter == "isotropic_atomic") {
               config::FromIsotropicAtomicStructure f(prim, supercells);
+              return f(structure).configuration;
+            } else if (converter == "discrete_magnetic_atomic") {
+              config::FromDiscreteMagneticAtomicStructure f(prim, supercells,
+                                                            magspin_tol);
               return f(structure).configuration;
             } else {
               std::stringstream ss;
@@ -2379,7 +2447,7 @@ PYBIND11_MODULE(_configuration, m) {
           )pbdoc",
           py::arg("prim"), py::arg("structure"),
           py::arg("converter") = std::string("isotropic_atomic"),
-          py::arg("supercells") = std::nullopt)
+          py::arg("supercells") = std::nullopt, py::arg("magspin_tol") = 1.0)
       .def(
           "to_structure",
           [](config::Configuration const &self, std::string converter) {
@@ -2543,7 +2611,8 @@ PYBIND11_MODULE(_configuration, m) {
           [](std::shared_ptr<config::Prim const> prim,
              xtal::SimpleStructure const &structure, std::string converter,
              std::optional<std::shared_ptr<config::SupercellSet>>
-                 opt_supercells) {
+                 opt_supercells,
+             double magspin_tol) {
             std::shared_ptr<config::SupercellSet> supercells;
             if (opt_supercells.has_value() &&
                 opt_supercells.value() != nullptr) {
@@ -2552,6 +2621,10 @@ PYBIND11_MODULE(_configuration, m) {
 
             if (converter == "isotropic_atomic") {
               config::FromIsotropicAtomicStructure f(prim, supercells);
+              return f(structure);
+            } else if (converter == "discrete_magnetic_atomic") {
+              config::FromDiscreteMagneticAtomicStructure f(prim, supercells,
+                                                            magspin_tol);
               return f(structure);
             } else {
               std::stringstream ss;
@@ -2595,6 +2668,12 @@ PYBIND11_MODULE(_configuration, m) {
           documentation for the full list of supported properties and their
           definitions.
 
+          If the input `structure` has `"selectivedynamics"` in its atom properties,
+          then occupants must have an approximately matching `"selectivedynamics"`
+          AtomComponent property. The default value for occupants without an
+          explicitly specified `"selectivedynamics"` AtomComponent property is
+          `[0.0, 0.0, 0.0]`.
+
           .. _`Degrees of Freedom (DoF) and Properties`: https://prisms-center.github.io/CASMcode_docs/formats/dof_and_properties/
 
 
@@ -2607,15 +2686,43 @@ PYBIND11_MODULE(_configuration, m) {
               supercell of `prim`.
           converter : str = "isotropic_atomic"
               The converter to use for generating the configuration. Options are
-              currently limited to one:
+              currently limited to one of:
 
               - "isotropic_atomic": Conversion is performed using
-                a method which is limited to prim with isotropic atomic occupants.
+                a method which is limited to prim with isotropic atomic occupants
+
+              - "discrete_magnetic_atomic": Conversion is performed using
+                a method which is limited to prim with atomic occupants, allowing
+                discrete magnetic states.
+
+                Requires the following, else raises:
+
+                - Prim is atomic, with discrete occupants with magspin properties
+                - The `structure` has magspin atom properties, with the same key
+                  as in the prim
+
+                Occupants in the resulting configuration are determined by:
+
+                - First, the structure atom_type must match the AtomComponent name of
+                  one or more occupant on the corresponding site, otherwise raises
+                - Second, the magspin value must be within `magspin_tol` of one of the
+                  occupants with matching name, otherwise raises
+                - Third, the occupant with the closest discrete magspin value is chosen,
+                  according to `norm(calculated_magspin - ideal_magspin)`.
+
+                The calculated magspin values are passed through and included as local
+                properties.
 
           supercells : Optional[:class:`~libcasm.configuration.SupercellSet`] = None
               An optional :class:`~libcasm.configuration.SupercellSet`, in which
               to hold the shared supercell of the generated configuration in order
               to avoid duplicates.
+          magspin_tol : float = 1.0
+              When determining site occupants, `magspin_tol` is the maximum allowed
+              norm of the difference between the calculated and ideal magspin values,
+              calculated equivalently to
+              ``np.linalg.norm(calculated_magspin - ideal_magspin)``. Used with
+              ``converter=="discrete_magnetic_atomic"``.
 
           Returns
           -------
@@ -2624,13 +2731,13 @@ PYBIND11_MODULE(_configuration, m) {
           )pbdoc",
           py::arg("prim"), py::arg("structure"),
           py::arg("converter") = std::string("isotropic_atomic"),
-          py::arg("supercells") = std::nullopt)
+          py::arg("supercells") = std::nullopt, py::arg("magspin_tol") = 1.0)
       .def(
           "to_structure",
           [](config::ConfigurationWithProperties const &self,
-             std::string converter) {
+             std::string converter, std::string atom_type_naming_method) {
             if (converter == "atomic") {
-              config::ToAtomicStructure f;
+              config::ToAtomicStructure f(atom_type_naming_method);
               return f(self);
             } else {
               std::stringstream ss;
@@ -2650,7 +2757,8 @@ PYBIND11_MODULE(_configuration, m) {
 
               - "atomic": Conversion is supported for configurations with prim
                 that only have atomic occupants and generates structure with only
-                atom types and properties. Fixed species properties of occupants are
+                atom types and properties. Fixed species properties of occupants
+                other than `"<flavor>magspin"` and `"selectivedynamics"` are
                 ignored.
 
                 If `"disp"` is a degree of freedom (DoF), it is included in the
@@ -2668,6 +2776,29 @@ PYBIND11_MODULE(_configuration, m) {
                    global properties)
                 3) The identify matrix, I
 
+                If the prim has discrete magnetic states, due to occupants that have
+                `"<flavor>magspin"` as an AtomComponent property, then
+                `"<flavor>magspin"` is included in the atom properties. Any occupants
+                that do not have `"<flavor>magspin"` as an AtomComponent property are
+                given a value of `[0]` (for collinear flavors) or `[0, 0, 0]`
+                (for non-collinear flavors).
+
+                If any prim occupant has `"selectivedynamics"` as an AtomComponent
+                property, then the output `structure` will have `"selectivedynamics"`
+                in its atom properties. The default value for occupants without an
+                explicitly specified `"selectivedynamics"` AtomComponent property is
+                `[0.0, 0.0, 0.0]`.
+
+          atom_type_naming_method: str = "chemical_name"
+              Specifies how `Structure.atom_type` values are set. Options are:
+
+              - "chemical_name" (default): use ``occupant.name()``, where
+                `occupant` is the :class:`~libcasm.xtal.Occupant` occupying the site
+              - "orientation_name": uses ``occ_dof[b][s]``, where `occ_dof` are
+                the labels ('orientation names') of occupants obtained from
+                :func:`~libcasm.xtal.Prim.occ_dof`, `b` is the sublattice index of
+                the site, and `s` is the occupation index.
+
 
           Returns
           -------
@@ -2675,7 +2806,8 @@ PYBIND11_MODULE(_configuration, m) {
               The :class:`~libcasm.xtal.Structure` constructed from the
               :class:`~libcasm.configuration.ConfigurationWithProperties`.
           )pbdoc",
-          py::arg("converter") = std::string("atomic"));
+          py::arg("converter") = std::string("atomic"),
+          py::arg("atom_type_naming_method") = std::string("chemical_name"));
 
   m.def(
       "apply",
