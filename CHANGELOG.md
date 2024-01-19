@@ -5,6 +5,24 @@ All notable changes to `libcasm-configuration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- Fixed CASM::config::make_distinct_cluster_sites
+
+### Changed
+
+- Changed libcasm.configuration.Prim.is_atomic, which was returning has_anisotropic_occupants
+- Changed libcasm.configuration.is_canonical_configuration arguments for providing a subgroup
+
+### Added
+
+- Added prototype and include_subclusters attributes to libcasm.clusterography.IntegralClusterOrbitGenerator
+- Added ConfigEnumAllOccupations, ConfigEnumInfo, ScelEnum, make_all_distinct_periodic_perturbations, and make_distinct_cluster_sites to libcasm.enumerate
+- Added make_all_super_configurations_by_subsets and make_distinct_super_configurations to libcasm.configuration
+
+
 ## [v2.0a2] - 2023-12-11
 
 ### Fixed

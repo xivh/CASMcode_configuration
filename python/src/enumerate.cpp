@@ -14,8 +14,11 @@
 #include "casm/configuration/Configuration.hh"
 #include "casm/configuration/clusterography/IntegralCluster.hh"
 #include "casm/configuration/clusterography/orbits.hh"
+#include "casm/configuration/copy_configuration.hh"
+#include "casm/configuration/enumeration/ConfigEnumAllOccupations.hh"
 #include "casm/configuration/enumeration/MakeOccEventStructures.hh"
 #include "casm/configuration/enumeration/OccEventInfo.hh"
+#include "casm/configuration/enumeration/perturbations.hh"
 #include "casm/configuration/occ_events/OccSystem.hh"
 #include "casm/configuration/occ_events/orbits.hh"
 #include "casm/crystallography/SimpleStructure.hh"
@@ -29,6 +32,36 @@ namespace py = pybind11;
 namespace CASMpy {
 
 using namespace CASM;
+
+std::vector<config::Configuration> make_all_distinct_periodic_perturbations(
+    std::shared_ptr<config::Supercell const> const &supercell,
+    config::Configuration const &motif,
+    std::vector<clust::IntegralCluster> const &clusters) {
+  auto const &prim = supercell->prim;
+  std::vector<std::set<clust::IntegralCluster>> orbits;
+  for (auto const &cluster : clusters) {
+    orbits.emplace_back(make_prim_periodic_orbit(
+        cluster, prim->sym_info.unitcellcoord_symgroup_rep));
+  }
+  auto orbits_as_indices = clust::make_orbits_as_indices(
+      orbits, supercell->unitcellcoord_index_converter);
+
+  std::vector<std::vector<config::Configuration>> super_configurations =
+      config::make_all_super_configurations_by_subsets(motif, supercell);
+
+  std::set<config::Configuration> all;
+  for (auto const &equiv_configurations : super_configurations) {
+    auto const &configuration = equiv_configurations[0];
+    auto distinct_cluster_sites =
+        config::make_distinct_cluster_sites(configuration, orbits_as_indices);
+    std::set<config::Configuration> perturbations =
+        config::make_distinct_perturbations(configuration,
+                                            distinct_cluster_sites);
+    all.insert(perturbations.begin(), perturbations.end());
+  }
+
+  return std::vector<config::Configuration>(all.begin(), all.end());
+}
 
 std::vector<config::Configuration> make_all_distinct_local_perturbations(
     std::shared_ptr<config::Supercell const> const &supercell,
@@ -170,6 +203,85 @@ PYBIND11_MODULE(_enumerate, m) {
     )pbdoc";
   py::module::import("libcasm.xtal");
   py::module::import("libcasm.configuration");
+
+  py::class_<config::ConfigEnumAllOccupations>(m,
+                                               "ConfigEnumAllOccupationsBase")
+      .def(py::init<config::Configuration const &, std::set<Index> const &>(),
+           py::arg("background"), py::arg("sites"))
+      .def("value", &config::ConfigEnumAllOccupations::value, R"pbdoc(
+          Get the current Configuration
+
+          Returns
+          -------
+          config: libcasm.configuration.Configuration
+              A const reference to the current Configuration
+          )pbdoc",
+           py::return_value_policy::reference_internal)
+      .def("advance", &config::ConfigEnumAllOccupations::advance, R"pbdoc(
+          Generate the next Configuration
+          )pbdoc")
+      .def("is_valid", &config::ConfigEnumAllOccupations::is_valid, R"pbdoc(
+          Return True if `value` is valid, False if no more valid values
+
+          Returns
+          -------
+          is_valid: bool
+              True if `value` is valid, False if no more valid values
+          )pbdoc");
+
+  m.def("make_all_distinct_periodic_perturbations",
+        &make_all_distinct_periodic_perturbations,
+        "Documented in libcasm.enumerate._methods.py", py::arg("supercell"),
+        py::arg("motif"), py::arg("clusters"));
+
+  m.def(
+      "make_distinct_cluster_sites",
+      [](config::Configuration const &background,
+         std::vector<std::vector<clust::IntegralCluster>> const &_orbits) {
+        // copy vector<vector<IntegralCluster>> -> vector<set<IntegralCluster>>
+        std::vector<std::set<clust::IntegralCluster>> orbits;
+        for (auto const &_orbit : _orbits) {
+          orbits.emplace_back(_orbit.begin(), _orbit.end());
+        }
+
+        // convert orbit of IntegralCluster to orbit of linear site indices
+        auto supercell = background.supercell;
+        xtal::UnitCellCoordIndexConverter const &converter =
+            supercell->unitcellcoord_index_converter;
+        auto orbits_as_indices =
+            clust::make_orbits_as_indices(orbits, converter);
+
+        // find distinct cluster sites in the background configuration
+        std::set<std::set<Index>> _distinct_cluster_sites =
+            config::make_distinct_cluster_sites(background, orbits_as_indices);
+
+        // copy set<set<Index>> -> vector<set<Index>>
+        std::vector<std::set<Index>> distinct_cluster_sites;
+        for (auto const &x : _distinct_cluster_sites) {
+          distinct_cluster_sites.emplace_back(x);
+        }
+        return distinct_cluster_sites;
+      },
+      R"pbdoc(
+      Given orbits of clusters in the infinite crystal, make the distinct clusters of
+      sites in a particular configuration, as linear site indices
+
+      Parameters
+      ----------
+      configuration : libcasm.configuration.Configuration
+          The background configuration in which distinct clusters will be found.
+
+      orbits: list[list[Cluster]]
+          The orbits in the infinite crystal.
+
+      Returns
+      -------
+      distinct_cluster_sites: list[set[int]]
+          The symmetrically distinct clusters in the background configuration,
+          where ``distinct_cluster_sites[i]`` is the `i`-th distinct cluster,
+          represented as a set of linear site indices in the supercell.
+      )pbdoc",
+      py::arg("configuration"), py::arg("orbits"));
 
   m.def("make_all_distinct_local_perturbations",
         &make_all_distinct_local_perturbations,

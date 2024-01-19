@@ -383,6 +383,15 @@ PYBIND11_MODULE(_clusterography, m) {
           If True, include subcluster orbits
       )pbdoc")
       //
+      .def_readwrite("prototype",
+                     &clust::IntegralClusterOrbitGenerator::prototype, R"pbdoc(
+                     Cluster: A prototype cluster.
+                     )pbdoc")
+      .def_readwrite("include_subclusters",
+                     &clust::IntegralClusterOrbitGenerator::include_subclusters,
+                     R"pbdoc(
+                     bool: If True, include subcluster orbits.
+                     )pbdoc")
       .def_static(
           "from_list",
           [](const nlohmann::json &data, xtal::BasicStructure const &prim)

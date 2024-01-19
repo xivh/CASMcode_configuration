@@ -12,6 +12,12 @@ def test_simple_cubic_binary_factor_group(simple_cubic_binary_prim):
     assert prim.xtal_prim().coordinate_frac().shape == (3, 1)
     assert len(prim.factor_group().elements()) == 48
 
+    assert prim.is_atomic()
+    assert prim.continuous_magspin_key() is None
+    assert prim.continuous_magspin_flavor() is None
+    assert prim.discrete_atomic_magspin_key() is None
+    assert prim.discrete_atomic_magspin_flavor() is None
+
     lattice = prim.xtal_prim().lattice()
     for op in prim.factor_group().elements():
         syminfo = xtal.SymInfo(op, lattice)

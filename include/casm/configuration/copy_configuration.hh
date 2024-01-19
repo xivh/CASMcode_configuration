@@ -59,6 +59,13 @@ make_all_super_configurations_by_subsets(
     Configuration const &motif,
     std::shared_ptr<Supercell const> const &supercell);
 
+/// \brief Make configurations that fill a supercell and are equivalent with
+/// respect to the prim factor group, but distinct by supercell factor group
+/// operations
+std::vector<Configuration> make_distinct_super_configurations(
+    Configuration const &motif,
+    std::shared_ptr<Supercell const> const &supercell);
+
 /// \brief Make all equivalent configurations with respect to the prim factor
 /// group that fill a supercell
 std::vector<ConfigurationWithProperties> make_all_super_configurations(
@@ -70,6 +77,13 @@ std::vector<ConfigurationWithProperties> make_all_super_configurations(
 /// SupercellSymOp
 std::vector<std::vector<ConfigurationWithProperties>>
 make_all_super_configurations_by_subsets(
+    ConfigurationWithProperties const &motif_with_properties,
+    std::shared_ptr<Supercell const> const &supercell);
+
+/// \brief Make configurations that fill a supercell and are equivalent with
+/// respect to the prim factor group, but distinct by supercell factor group
+/// operations
+std::vector<ConfigurationWithProperties> make_distinct_super_configurations(
     ConfigurationWithProperties const &motif_with_properties,
     std::shared_ptr<Supercell const> const &supercell);
 
