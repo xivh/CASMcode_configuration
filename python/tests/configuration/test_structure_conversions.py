@@ -165,6 +165,37 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
     assert in_configuration.occupation().tolist() == [1, 1, 1, 0]
 
 
+def test_excluded_species_1():
+    xtal_prim = xtal_prims.BCC(r=1.0, occ_dof=["A", "B", "Va"])
+    prim = casmconfig.Prim(xtal_prim)
+
+    T_conventional = np.array(
+        [  # conventional BCC cubic cell
+            [0, 1, 1],
+            [1, 0, 1],
+            [1, 1, 0],
+        ],
+        dtype=int,
+    )
+    T_supercell = T_conventional * 2
+
+    ### FCC primitive cell ###
+
+    supercell = casmconfig.make_canonical_supercell(
+        casmconfig.Supercell(prim, T_supercell)
+    )
+    default_configuration = casmconfig.Configuration(supercell)
+    default_configuration.set_occ(1, 2)
+
+    # convert Configuration to Structure
+    structure = default_configuration.to_structure()
+    assert len(structure.atom_type()) == 15
+
+    # convert Configuration to Structure
+    structure = default_configuration.to_structure(excluded_species=[])
+    assert len(structure.atom_type()) == 16
+
+
 def test_bcc_hcp_mapping_conversions_1():
     prim = xtal_prims.BCC(r=1.0, occ_dof=["A", "B", "Va"])
     prim_factor_group = xtal.make_factor_group(prim)

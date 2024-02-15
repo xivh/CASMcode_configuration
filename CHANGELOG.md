@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added prototype and include_subclusters attributes to libcasm.clusterography.IntegralClusterOrbitGenerator
 - Added ConfigEnumAllOccupations, ConfigEnumInfo, ScelEnum, make_all_distinct_periodic_perturbations, and make_distinct_cluster_sites to libcasm.enumerate
 - Added make_all_super_configurations_by_subsets and make_distinct_super_configurations to libcasm.configuration
+- Added `excluded_species` option to `Configuration.to_structure` and `ConfigurationWithProperties.to_structure`
 
 
 ## [v2.0a2] - 2023-12-11

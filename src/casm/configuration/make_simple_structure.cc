@@ -28,6 +28,8 @@ namespace config {
 ///     SimpleStructure::properties. If "Ustrain" is included,
 ///     it is included in SimpleStructure::lat_column_mat.
 /// \param atom_type_naming_method Specifies how to set atom_info.names.
+/// \param excluded_species Specifies names that should not be
+///     included in the resulting xtal::SimpleStructure.
 ///
 /// \returns simple_structure A SimpleStructure representation
 ///     of the configuration
@@ -50,7 +52,8 @@ xtal::SimpleStructure make_simple_structure(
     Configuration const &configuration,
     std::map<std::string, Eigen::MatrixXd> const &local_properties,
     std::map<std::string, Eigen::VectorXd> const &global_properties,
-    std::string atom_type_naming_method) {
+    std::string atom_type_naming_method,
+    std::set<std::string> excluded_species) {
   // references
   auto const &supercell = *configuration.supercell;
   auto const &prim = *supercell.prim;
@@ -94,29 +97,35 @@ xtal::SimpleStructure make_simple_structure(
   Eigen::Matrix3d ideal_lat_column_mat =
       supercell.superlattice.superlattice().lat_column_mat();
 
-  // get ideal site coordinates
-  Eigen::MatrixXd coords(3, n_sites);
-  for (Index l = 0; l < n_sites; ++l) {
-    xtal::UnitCellCoord bijk = converter(l);
-    coords.col(l) = bijk.coordinate(*prim.basicstructure).const_cart();
-  }
-
   // get atom type names
   std::vector<std::string> names;
+  std::vector<Index> site_index;
   for (Index l = 0; l < n_sites; ++l) {
     xtal::UnitCellCoord bijk = converter(l);
     Index b = converter(l).sublattice();
     int s = occupation(l);
+    std::string name;
     if (atom_type_naming_method == "orientation_name") {
-      names.push_back(prim.basicstructure->unique_names()[b][s]);
+      name = prim.basicstructure->unique_names()[b][s];
     } else if (atom_type_naming_method == "chemical_name") {
-      names.push_back(basis[b].occupant_dof()[s].name());
+      name = basis[b].occupant_dof()[s].name();
     } else {
       std::stringstream msg;
       msg << "Error in make_simple_structure: invalid atom_type_naming_method='"
           << atom_type_naming_method << "'";
       throw std::runtime_error(msg.str());
     }
+    if (!excluded_species.count(name)) {
+      names.push_back(name);
+      site_index.push_back(l);
+    }
+  }
+
+  // get ideal site coordinates (all sites)
+  Eigen::MatrixXd coords(3, n_sites);
+  for (Index l = 0; l < n_sites; ++l) {
+    xtal::UnitCellCoord bijk = converter(l);
+    coords.col(l) = bijk.coordinate(*prim.basicstructure).const_cart();
   }
 
   // get deformation gradient, F
@@ -137,7 +146,7 @@ xtal::SimpleStructure make_simple_structure(
     F = Eigen::Matrix3d::Identity();
   }
 
-  // get displacements
+  // get displacements (all sites)
   Eigen::MatrixXd disp = Eigen::MatrixXd::Zero(3, n_sites);
   if (local_dof_values.count("disp")) {
     disp = clexulator::local_to_standard_values(local_dof_values.at("disp"),
@@ -153,14 +162,24 @@ xtal::SimpleStructure make_simple_structure(
   structure.lat_column_mat = ideal_lat_column_mat;
   structure.atom_info.resize(names.size());
   structure.atom_info.names = names;
-  for (Index i = 0; i < names.size(); ++i) {
-    structure.atom_info.coords = coords + disp;
+  structure.atom_info.coords = Eigen::MatrixXd::Zero(3, site_index.size());
+  for (Index i = 0; i < site_index.size(); ++i) {
+    Index l = site_index[i];
+    structure.atom_info.coords.col(i) = coords.col(l) + disp.col(l);
   }
 
   // copy local_dof (excluding disp)
   for (auto const &local_dof : local_dof_values) {
+    std::string key = local_dof.first;
+    Eigen::MatrixXd const &value = local_dof.second;
+    Eigen::MatrixXd new_value =
+        Eigen::MatrixXd::Zero(value.rows(), site_index.size());
+    for (Index i = 0; i < site_index.size(); ++i) {
+      Index l = site_index[i];
+      new_value.col(i) = value.col(l);
+    }
     if (local_dof.first != "disp") {
-      structure.atom_info.properties.insert(local_dof);
+      structure.atom_info.properties.emplace(key, new_value);
     }
   }
 
@@ -173,7 +192,15 @@ xtal::SimpleStructure make_simple_structure(
 
   // copy local_properties
   for (auto const &local_property : local_properties) {
-    structure.atom_info.properties.insert(local_property);
+    std::string key = local_property.first;
+    Eigen::MatrixXd const &value = local_property.second;
+    Eigen::MatrixXd new_value =
+        Eigen::MatrixXd::Zero(value.rows(), site_index.size());
+    for (Index i = 0; i < site_index.size(); ++i) {
+      Index l = site_index[i];
+      new_value.col(i) = value.col(l);
+    }
+    structure.atom_info.properties.emplace(key, new_value);
   }
 
   // copy global_properties
@@ -197,7 +224,8 @@ xtal::SimpleStructure make_simple_structure(
     Eigen::VectorXd default_atom_value = Eigen::VectorXd::Zero(traits.dim());
     Eigen::MatrixXd structure_values =
         Eigen::MatrixXd::Zero(traits.dim(), names.size());
-    for (Index l = 0; l < n_sites; ++l) {
+    for (Index i = 0; i < site_index.size(); ++i) {
+      Index l = site_index[i];
       Index b = converter(l).sublattice();
       auto const &site = prim.basicstructure->basis()[b];
       auto const &mol = site.occupant_dof()[occupation(l)];
@@ -207,7 +235,7 @@ xtal::SimpleStructure make_simple_structure(
       if (property_it != properties.end()) {
         atom_value = property_it->second.value();
       }
-      structure_values.col(l) = atom_value;
+      structure_values.col(i) = atom_value;
     }
     structure.atom_info.properties.emplace(key, structure_values);
   }
@@ -224,7 +252,8 @@ xtal::SimpleStructure make_simple_structure(
     Eigen::VectorXd default_atom_value = Eigen::VectorXd::Zero(traits.dim());
     Eigen::MatrixXd structure_values =
         Eigen::MatrixXd::Zero(traits.dim(), names.size());
-    for (Index l = 0; l < n_sites; ++l) {
+    for (Index i = 0; i < site_index.size(); ++i) {
+      Index l = site_index[i];
       Index b = converter(l).sublattice();
       auto const &site = prim.basicstructure->basis()[b];
       auto const &mol = site.occupant_dof()[occupation(l)];
@@ -234,7 +263,7 @@ xtal::SimpleStructure make_simple_structure(
       if (property_it != properties.end()) {
         atom_value = property_it->second.value();
       }
-      structure_values.col(l) = atom_value;
+      structure_values.col(i) = atom_value;
     }
     structure.atom_info.properties.emplace(key, structure_values);
   }
@@ -246,6 +275,8 @@ xtal::SimpleStructure make_simple_structure(
 /// \brief Constructor
 ///
 /// \param atom_type_naming_method Specifies how to set atom_info.names.
+/// \param excluded_species Specifies names that should not be
+///     included in the resulting xtal::SimpleStructure.
 ///
 /// - Options for `atom_type_naming_method` are:
 ///   - "chemical_name" (default): use ``mol.name()``, where `mol`
@@ -254,8 +285,10 @@ xtal::SimpleStructure make_simple_structure(
 ///     the unique occupant names obtained from
 ///     ``xtal::BasicStructure::unique_names``, `b` is the sublattice index of
 ///     the site, and `s` is the occupation index.
-ToAtomicStructure::ToAtomicStructure(std::string atom_type_naming_method)
-    : m_atom_type_naming_method(atom_type_naming_method) {}
+ToAtomicStructure::ToAtomicStructure(std::string atom_type_naming_method,
+                                     std::set<std::string> excluded_species)
+    : m_atom_type_naming_method(atom_type_naming_method),
+      m_excluded_species(excluded_species) {}
 
 /// \brief Convert a ConfigurationWithProperties to a SimpleStructure
 ///
@@ -280,7 +313,8 @@ xtal::SimpleStructure ToAtomicStructure::operator()(
     ConfigurationWithProperties const &configuration_with_properties) {
   auto const &x = configuration_with_properties;
   return make_simple_structure(x.configuration, x.local_properties,
-                               x.global_properties, m_atom_type_naming_method);
+                               x.global_properties, m_atom_type_naming_method,
+                               m_excluded_species);
 }
 
 /// \brief Convert a Configuration to a SimpleStructure
@@ -289,7 +323,8 @@ xtal::SimpleStructure ToAtomicStructure::operator()(
     std::map<std::string, Eigen::MatrixXd> const &local_properties,
     std::map<std::string, Eigen::VectorXd> const &global_properties) {
   return make_simple_structure(configuration, local_properties,
-                               global_properties, m_atom_type_naming_method);
+                               global_properties, m_atom_type_naming_method,
+                               m_excluded_species);
 }
 
 }  // namespace config

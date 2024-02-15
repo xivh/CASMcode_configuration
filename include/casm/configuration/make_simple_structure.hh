@@ -2,6 +2,7 @@
 #define CASM_config_make_simple_structure
 
 #include <map>
+#include <set>
 #include <string>
 
 #include "casm/global/eigen.hh"
@@ -22,7 +23,8 @@ xtal::SimpleStructure make_simple_structure(
     Configuration const &configuration,
     std::map<std::string, Eigen::MatrixXd> const &local_properties = {},
     std::map<std::string, Eigen::VectorXd> const &global_properties = {},
-    std::string atom_type_naming_method = "chemical_name");
+    std::string atom_type_naming_method = "chemical_name",
+    std::set<std::string> excluded_species = {"Va", "VA", "va"});
 
 /// \brief Construct a SimpleStructure from a configuration of a Prim with
 ///     atomic occupants
@@ -63,7 +65,9 @@ xtal::SimpleStructure make_simple_structure(
 class ToAtomicStructure {
  public:
   /// \brief Constructor
-  ToAtomicStructure(std::string atom_type_naming_method = "chemical_name");
+  ToAtomicStructure(std::string atom_type_naming_method = "chemical_name",
+                    std::set<std::string> excluded_species = {"Va", "VA",
+                                                              "va"});
 
   /// \brief Convert a ConfigurationWithProperties to a SimpleStructure
   xtal::SimpleStructure operator()(
@@ -77,6 +81,7 @@ class ToAtomicStructure {
 
  private:
   std::string m_atom_type_naming_method;
+  std::set<std::string> m_excluded_species;
 };
 
 }  // namespace config

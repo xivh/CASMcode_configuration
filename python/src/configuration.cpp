@@ -2450,10 +2450,15 @@ PYBIND11_MODULE(_configuration, m) {
           py::arg("supercells") = std::nullopt, py::arg("magspin_tol") = 1.0)
       .def(
           "to_structure",
-          [](config::Configuration const &self, std::string converter) {
+          [](config::Configuration const &self, std::string converter,
+             std::string atom_type_naming_method,
+             std::vector<std::string> const &excluded_species) {
             config::ConfigurationWithProperties configuration(self);
             if (converter == "atomic") {
-              config::ToAtomicStructure f;
+              std::set<std::string> _excluded_species(excluded_species.begin(),
+                                                      excluded_species.end());
+              config::ToAtomicStructure f(atom_type_naming_method,
+                                          _excluded_species);
               return f(configuration);
             } else {
               std::stringstream ss;
@@ -2470,7 +2475,10 @@ PYBIND11_MODULE(_configuration, m) {
           but no additional properties are included in the resulting
           :class:`~libcasm.xtal.Structure`.
           )pbdoc",
-          py::arg("converter") = std::string("atomic"));
+          py::arg("converter") = std::string("atomic"),
+          py::arg("atom_type_naming_method") = std::string("chemical_name"),
+          py::arg("excluded_species") =
+              std::vector<std::string>({"Va", "VA", "va"}));
 
   // ConfigurationWithProperties -- define functions
   pyConfigurationWithProperties
@@ -2735,9 +2743,13 @@ PYBIND11_MODULE(_configuration, m) {
       .def(
           "to_structure",
           [](config::ConfigurationWithProperties const &self,
-             std::string converter, std::string atom_type_naming_method) {
+             std::string converter, std::string atom_type_naming_method,
+             std::vector<std::string> excluded_species) {
             if (converter == "atomic") {
-              config::ToAtomicStructure f(atom_type_naming_method);
+              std::set<std::string> _excluded_species(excluded_species.begin(),
+                                                      excluded_species.end());
+              config::ToAtomicStructure f(atom_type_naming_method,
+                                          _excluded_species);
               return f(self);
             } else {
               std::stringstream ss;
@@ -2799,6 +2811,10 @@ PYBIND11_MODULE(_configuration, m) {
                 :func:`~libcasm.xtal.Prim.occ_dof`, `b` is the sublattice index of
                 the site, and `s` is the occupation index.
 
+          excluded_species : list[str] = ["Va", "VA", "va"]
+              The names of any molecular or atomic species that should not be included
+              in the output.
+
 
           Returns
           -------
@@ -2807,7 +2823,9 @@ PYBIND11_MODULE(_configuration, m) {
               :class:`~libcasm.configuration.ConfigurationWithProperties`.
           )pbdoc",
           py::arg("converter") = std::string("atomic"),
-          py::arg("atom_type_naming_method") = std::string("chemical_name"));
+          py::arg("atom_type_naming_method") = std::string("chemical_name"),
+          py::arg("excluded_species") =
+              std::vector<std::string>({"Va", "VA", "va"}));
 
   m.def(
       "apply",
