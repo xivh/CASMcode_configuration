@@ -213,7 +213,7 @@ xtal::SimpleStructure make_simple_structure(
   for (auto const &site : basis) {
     for (auto const &mol : site.occupant_dof()) {
       auto const &properties = mol.atom(0).properties();
-      if (properties.find("selectivedynamics") == properties.end()) {
+      if (properties.find("selectivedynamics") != properties.end()) {
         has_selectivedynamics = true;
       }
     }
