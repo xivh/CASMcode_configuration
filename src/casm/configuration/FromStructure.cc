@@ -427,9 +427,10 @@ Eigen::VectorXi FromIsotropicAtomicStructure::make_occupation(
           ++s;
           continue;
         }
-
-        break;
       }
+
+      // name (and selectivedynamics if present ) matches -> break loop
+      break;
     }
 
     if (s == site.occupant_dof().size()) {
