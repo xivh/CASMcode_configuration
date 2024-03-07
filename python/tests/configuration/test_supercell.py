@@ -76,6 +76,26 @@ def test_simple_cubic_binary_supercell_compare(simple_cubic_binary_prim):
     )
     supercell3 = config.Supercell(prim, T3)
 
+    # test left-handed lattice
+    T4 = np.array(
+        [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, -2],
+        ]
+    )
+    supercell4 = config.Supercell(prim, T4)
+
+    # test left-handed permuted vectors
+    T5 = np.array(
+        [
+            [0, -1, 0],
+            [0, 0, 1],
+            [2, 0, 0],
+        ]
+    )
+    supercell5 = config.Supercell(prim, T5)
+
     assert supercell2 > supercell1
     assert supercell3 > supercell1
     assert supercell3 > supercell2
@@ -96,9 +116,22 @@ def test_simple_cubic_binary_supercell_compare(simple_cubic_binary_prim):
     )
     canonical_supercell = config.make_canonical_supercell(supercell1)
     assert canonical_supercell == supercell3
+
     assert config.is_canonical_supercell(supercell1) is False
+    assert config.make_canonical_supercell(supercell1) == supercell3
+
     assert config.is_canonical_supercell(supercell2) is False
+    assert config.make_canonical_supercell(supercell2) == supercell3
+
     assert config.is_canonical_supercell(supercell3) is True
+    assert config.make_canonical_supercell(supercell3) == supercell3
+
+    assert config.is_canonical_supercell(supercell4) is False
+    assert config.make_canonical_supercell(supercell4) == supercell3
+
+    assert config.is_canonical_supercell(supercell5) is False
+    assert config.make_canonical_supercell(supercell5) == supercell3
+
     assert np.allclose(
         canonical_supercell.superlattice().column_vector_matrix(), expected_S_canonical
     )

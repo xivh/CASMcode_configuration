@@ -18,7 +18,6 @@ from ._configuration import (
     copy_transformed_configuration,
     dof_space_analysis,
     from_canonical_configuration,
-    from_canonical_supercell,
     is_canonical_configuration,
     is_canonical_supercell,
     is_primitive_configuration,
@@ -35,5 +34,4 @@ from ._configuration import (
     make_local_dof_matrix_rep,
     make_primitive_configuration,
     to_canonical_configuration,
-    to_canonical_supercell,
 )

@@ -962,35 +962,24 @@ PYBIND11_MODULE(_configuration, m) {
       [](std::shared_ptr<config::Supercell const> const &supercell) {
         return is_canonical(*supercell);
       },
-      py::arg("init_supercell"),
-      "Return true if supercell lattice is in canonical form");
+      py::arg("supercell"),
+      R"pbdoc(
+      Return True if supercell lattice is in canonical form. The canonical form
+      supercell lattice is right-handed and compares greater than all
+      equivalent lattices generated using the crystal point group of the prim.
+      )pbdoc");
 
   m.def(
       "make_canonical_supercell",
       [](std::shared_ptr<config::Supercell const> const &supercell) {
         return make_canonical_form(*supercell);
       },
-      py::arg("init_supercell"),
-      "Return a supercell that compares greater to all equivalent supercells "
-      "generated using the prim crystal point group");
-
-  m.def(
-      "to_canonical_supercell",
-      [](std::shared_ptr<config::Supercell const> const &supercell) {
-        return to_canonical(*supercell);
-      },
       py::arg("supercell"),
-      "Return the :class:`~libcasm.xtal.SymOp` that makes a supercell lattice "
-      "canonical");
-
-  m.def(
-      "from_canonical_supercell",
-      [](std::shared_ptr<config::Supercell const> const &supercell) {
-        return from_canonical(*supercell);
-      },
-      py::arg("supercell"),
-      "Return the :class:`~libcasm.xtal.SymOp` that makes a supercell lattice "
-      "from the canonical supercell lattice");
+      R"pbdoc(
+      Return the supercell with right-handed lattice that compares greater to
+      all equivalent supercell lattices generated using the prim crystal point
+      group.
+      )pbdoc");
 
   m.def(
       "make_equivalent_supercells",
@@ -1932,11 +1921,22 @@ PYBIND11_MODULE(_configuration, m) {
   // SupercellSymOp -- declare class
   py::class_<config::SupercellSymOp> pySupercellSymOp(m, "SupercellSymOp",
                                                       R"pbdoc(
-      Represents and allows iteration over symmetry operations consistent
-      with a given Supercell, combining pure factor group and pure
-      translation operations.
+      Symmetry representation that allows transforming the degrees of freedom
+      (DoF) values of a configuration.
 
-    )pbdoc");
+      SupercellSymOp represents symmetry operations consistent with a given
+      supercell, combining one pure supercell factor group and one pure
+      translation operation. SupercellSymOp can be incremented to allow
+      iteration over all symmetry operations consistent with the supercell.
+
+      Notes
+      -----
+      - When permuting sites, the factor group operation permutation is applied
+        first, then the translation operation permutation
+      - When iterating over all operations the translation operations are
+        iterated in the inner loop and factor group operations iterated in the
+        outer loop
+      )pbdoc");
 
   // Configuration -- declare class
   py::class_<config::Configuration> pyConfiguration(m, "Configuration", R"pbdoc(
@@ -1976,11 +1976,8 @@ PYBIND11_MODULE(_configuration, m) {
            py::arg("translation_index"), py::arg("translation_frac"),
            py::arg("translation_cart"),
            R"pbdoc(
-      Construct a representation that allows applying symmetry to
-      configurations in a particular supercell.
+      .. rubric:: Constructor
 
-      Notes
-      -----
       Only one of `translation_index`, `translation_frac`, or
       `translation_cart` should be provided.
 
@@ -2003,14 +2000,15 @@ PYBIND11_MODULE(_configuration, m) {
            "Return the supercell.")
       .def(
           "next", [](config::SupercellSymOp &op) { ++op; },
-          "Transform this to represent the next operation in the supercell "
-          "factor group.")
+          "Transform this to represent the next combination of factor group "
+          "operation and pure translation consistent with the supercell.")
       .def_static("begin", &config::SupercellSymOp::begin,
-                  "Construct a representation for the first operation in the "
-                  "supercell factor group.")
+                  "Construct a representation for the first operation (a "
+                  "combination of a factor group operation and a pure "
+                  "translation) consistent with the Supercell.")
       .def_static("end", &config::SupercellSymOp::end,
                   "Construct a representation for the past-the-last operation "
-                  "in the supercell factor group.")
+                  "consistent with the Supercell.")
       .def_static("translation_begin",
                   &config::SupercellSymOp::translation_begin,
                   "Construct a representation for the first operation in the "
@@ -2020,18 +2018,17 @@ PYBIND11_MODULE(_configuration, m) {
                   "in the set of supercell translations.")
       .def("supercell_factor_group_index",
            &config::SupercellSymOp::supercell_factor_group_index,
-           "Index into the supercell factor group of the element applied by "
-           "this supercell factor group operation.")
+           "Index into the supercell factor group of the pure factor group "
+           "component of this operation.")
       .def("prim_factor_group_index",
            &config::SupercellSymOp::prim_factor_group_index,
-           "Index into the prim factor group of the element applied by this "
-           "supercell factor group operation.")
+           "Index into the prim factor group of the pure factor group "
+           "component of this operation.")
       .def("translation_index", &config::SupercellSymOp::translation_index,
-           "Index of the translation applied by this supercell factor group "
-           "operation.")
+           "Index of the pure translation component of this operation.")
       .def("translation_frac", &config::SupercellSymOp::translation_frac,
-           "The translation applied by this supercell factor group operation, "
-           "in fractional coordinates relative to the prim lattice vectors.")
+           "The pure translation component of this operation, in fractional "
+           "coordinates relative to the prim lattice vectors.")
       .def("permute_index", &config::SupercellSymOp::permute_index,
            py::arg("i"),
            "Returns the index of the site containing the site DoF values that "
@@ -2042,13 +2039,13 @@ PYBIND11_MODULE(_configuration, m) {
            "Returns the combination of factor group operation permutation and "
            "translation permutation")
       .def("inverse", &config::SupercellSymOp::inverse,
-           "Returns the inverse supercell operation")
+           "Returns the inverse operation")
       .def(
           "__mul__",
           [](config::SupercellSymOp const &self,
              config::SupercellSymOp const &rhs) { return self * rhs; },
           py::arg("rhs"),
-          "Return the supercell operation equivalent to applying first rhs and "
+          "Return the operation equivalent to applying first rhs and "
           "then this.")
       .def(py::self < py::self,
            "Sorts SupercellSymOp. Only SupercellSymOp with the same supercell "
