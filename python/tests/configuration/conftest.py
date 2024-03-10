@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from math import sqrt
 
 import libcasm.configuration as config
 import libcasm.xtal as xtal
@@ -219,6 +220,53 @@ def FCC_binary_GLstrain_disp_prim():
         coordinate_frac=coordinate_frac,
         occ_dof=occ_dof,
         local_dof=local_dof,
+        global_dof=global_dof,
+        occupants=occupants,
+    )
+
+
+@pytest.fixture
+def FCC_binary_Hstrain_noshear_prim():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [0.0, 1.0 / 2.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 0.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 1.0 / 2.0, 0.0],  # a
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occ_dof = [["A", "B"]]
+
+    # Global continuous degrees of freedom (DoF)
+    Hstrain_dof = xtal.DoFSetBasis(
+        dofname="Hstrain",
+        axis_names=["e_{1}", "e_{2}", "e_{3}"],
+        basis=np.array(
+            [
+                [1.0 / sqrt(3), 1.0 / sqrt(3), 1.0 / sqrt(3), 0.0, 0.0, 0.0],
+                [1.0 / sqrt(2), -1.0 / sqrt(2), 0.0, 0.0, 0.0, 0.0],
+                [-1.0 / sqrt(6), -1.0 / sqrt(6), 2.0 / sqrt(6), 0.0, 0.0, 0.0],
+            ]
+        ).transpose(),
+    )
+    global_dof = [Hstrain_dof]
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
         global_dof=global_dof,
         occupants=occupants,
     )

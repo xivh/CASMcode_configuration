@@ -3,6 +3,7 @@ import copy
 import numpy as np
 import pytest
 
+import libcasm.xtal as xtal
 import libcasm.configuration as config
 
 
@@ -78,6 +79,45 @@ def test_ConfigurationSet_add_remove_discard_get_1(simple_cubic_binary_prim):
 
 def test_ConfigurationSet_to_dict_1(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
+    configurations = config.ConfigurationSet()
+
+    T = np.array(
+        [
+            [2, 0, 0],
+            [0, 2, 0],
+            [0, 0, 1],
+        ]
+    )
+    supercell = config.make_canonical_supercell(config.Supercell(prim, T))
+    configuration = config.Configuration(supercell)
+
+    # add configurations
+    for i in range(supercell.n_unitcells()):
+        print(f"{i}:")
+        x = copy.copy(configuration)
+        x.set_occ(i, 1)
+        print(xtal.pretty_json(x.to_dict(write_prim_basis=False)))
+        print(xtal.pretty_json(x.to_dict(write_prim_basis=True)))
+        configurations.add(x)
+        print()
+    assert len(configurations) == 4
+
+    # output to JSON data
+    data = configurations.to_dict()
+    print(xtal.pretty_json(data))
+
+    # clear
+    configurations.clear()
+    assert len(configurations) == 0
+
+    # read back in
+    supercells = config.SupercellSet(prim)
+    configurations_in = config.ConfigurationSet.from_dict(data, supercells)
+    assert len(configurations_in) == 4
+
+
+def test_ConfigurationSet_to_dict_2(FCC_binary_Hstrain_noshear_prim):
+    prim = config.Prim(FCC_binary_Hstrain_noshear_prim)
     configurations = config.ConfigurationSet()
 
     T = np.array(

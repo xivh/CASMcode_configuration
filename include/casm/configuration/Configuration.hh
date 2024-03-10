@@ -17,8 +17,10 @@ struct Configuration : public Comparisons<CRTPBase<Configuration>> {
   Configuration(std::shared_ptr<Supercell const> const &_supercell,
                 clexulator::ConfigDoFValues const &_dof_values);
 
+  /// \brief The supercell
   std::shared_ptr<Supercell const> supercell;
 
+  /// \brief DoF values, in the prim basis
   clexulator::ConfigDoFValues dof_values;
 
   /// \brief Less than comparison of Configuration
@@ -30,6 +32,19 @@ struct Configuration : public Comparisons<CRTPBase<Configuration>> {
   /// \brief Equality comparison of Configuration
   bool eq_impl(Configuration const &rhs) const;
 };
+
+/// \brief Convert DoF values into the standard basis
+clexulator::ConfigDoFValues make_standard_dof_values(
+    Configuration const &config);
+
+/// \brief Set DoF values from other, which is in the standard basis
+void set_standard_dof_values(Configuration &config,
+                             clexulator::ConfigDoFValues const &other);
+
+/// \brief Set DoF values associated with a DoFSpace coordinate
+void set_dof_space_values(config::Configuration &config,
+                          clexulator::DoFSpace const &dof_space,
+                          Eigen::VectorXd const &dof_space_coordinate);
 
 class SupercellSymOp;
 
