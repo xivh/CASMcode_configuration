@@ -5,6 +5,11 @@ from ._ConfigEnumAllOccupations import (
 from ._ConfigEnumInfo import (
     ConfigEnumInfo,
 )
+from ._ConfigEnumMeshGrid import (
+    ConfigEnumMeshGrid,
+    irreducible_wedge_points,
+    meshgrid_points,
+)
 from ._enumerate import (
     get_occevent_coordinate,
     make_distinct_cluster_sites,

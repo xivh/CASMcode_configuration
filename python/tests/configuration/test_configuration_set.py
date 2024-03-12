@@ -3,8 +3,8 @@ import copy
 import numpy as np
 import pytest
 
-import libcasm.xtal as xtal
 import libcasm.configuration as config
+import libcasm.xtal as xtal
 
 
 def test_ConfigurationSet_constructor_1(simple_cubic_binary_prim):

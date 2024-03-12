@@ -1,6 +1,7 @@
+from math import sqrt
+
 import numpy as np
 import pytest
-from math import sqrt
 
 import libcasm.configuration as config
 import libcasm.xtal as xtal

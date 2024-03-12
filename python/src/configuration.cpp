@@ -162,6 +162,7 @@ PYBIND11_MODULE(_configuration, m) {
         for representing configurations, applying symmetry to configurations,
         and comparing configurations.
 
+
     )pbdoc";
   py::module::import("libcasm.xtal");
   py::module::import("libcasm.clexulator");
@@ -2265,10 +2266,11 @@ PYBIND11_MODULE(_configuration, m) {
           dof_space: libcasm.clexulator.DoFSpace
               A DoFSpace with basis defining the order parameters.
           order_parameters: np.ndarray
-              The order parameters, :math:`\vec{eta}`, as described
+              The order parameters, :math:`\vec{\eta}`, as described
               in `Evaluating order parameters`_.
 
-          .. _`Evaluating order parameters`: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
+
+          .. _Evaluating order parameters: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
 
           )pbdoc",
            py::arg("dof_space"), py::arg("order_parameters"))
@@ -2520,7 +2522,7 @@ PYBIND11_MODULE(_configuration, m) {
           Returns
           -------
           order_parameters: np.ndarray
-              Order parameters, :math:`\vec{eta}`, as described in
+              Order parameters, :math:`\vec{\eta}`, as described in
               `Evaluating order parameters`_. For global DoF, this is a direct
               linear transformation of the global DoF values into the DoFSpace
               basis. For local DoF, this is a linear transformation into the
@@ -2528,7 +2530,8 @@ PYBIND11_MODULE(_configuration, m) {
               is taken over tilings of the DoFSpace supercell into a
               commensurate super configuration.
 
-          .. _`Evaluating order parameters`: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
+
+          .. _Evaluating order parameters: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
 
           )pbdoc",
           py::arg("dof_space"))
@@ -2570,7 +2573,8 @@ PYBIND11_MODULE(_configuration, m) {
               The linear transformation to the DoFSpace basis of the DoF values
               in the sub-configuration with `unitcell` as the origin.
 
-          .. _`Evaluating order parameters`: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
+
+          .. _Evaluating order parameters: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
 
           )pbdoc",
           py::arg("dof_space"), py::arg("unitcell").noconvert())
@@ -2606,8 +2610,8 @@ PYBIND11_MODULE(_configuration, m) {
               The average is taken over tilings of the DoFSpace supercell into a
               commensurate super configuration.
 
-          .. _`Evaluating order parameters`: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
 
+          .. _Evaluating order parameters: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
           )pbdoc",
           py::arg("dof_space"))
       .def(
@@ -2650,8 +2654,8 @@ PYBIND11_MODULE(_configuration, m) {
               one of the vectors that goes into the average DoF values vector,
               :math:`\vec{x}`, as described in `Evaluating order parameters`_.
 
-          .. _`Evaluating order parameters`: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
 
+          .. _Evaluating order parameters: https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/order_parameters.html#evaluating-order-parameters
           )pbdoc",
           py::arg("dof_space"), py::arg("unitcell").noconvert())
       .def(py::self < py::self,
@@ -3024,7 +3028,7 @@ PYBIND11_MODULE(_configuration, m) {
           explicitly specified `"selectivedynamics"` AtomComponent property is
           `[0.0, 0.0, 0.0]`.
 
-          .. _`Degrees of Freedom (DoF) and Properties`: https://prisms-center.github.io/CASMcode_docs/formats/dof_and_properties/
+          .. _Degrees of Freedom (DoF) and Properties: https://prisms-center.github.io/CASMcode_docs/formats/dof_and_properties/
 
 
           Parameters

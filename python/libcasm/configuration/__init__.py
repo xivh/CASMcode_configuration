@@ -35,3 +35,8 @@ from ._configuration import (
     make_primitive_configuration,
     to_canonical_configuration,
 )
+from ._misc import (
+    equivalent_order_parameters_index,
+    is_canonical_order_parameters,
+    make_canonical_order_parameters,
+)

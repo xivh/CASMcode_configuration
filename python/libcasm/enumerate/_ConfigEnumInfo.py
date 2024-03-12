@@ -161,7 +161,14 @@ class ConfigEnumInfo:
             xtal.pretty_json(self.config_enum.background.to_dict()),
             end="",
         )
-        print("Sites:", self.config_enum.sites)
+        if hasattr(self.config_enum, "dof_space"):
+            print(
+                "DoFSpace:",
+                xtal.pretty_json(self.config_enum.dof_space.to_dict()),
+                end="",
+            )
+        elif hasattr(self.config_enum, "sites"):
+            print("Sites:", self.config_enum.sites)
         sys.stdout.flush()
 
     def _finish_background(self):
