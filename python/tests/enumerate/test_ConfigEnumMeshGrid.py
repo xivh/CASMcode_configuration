@@ -372,6 +372,81 @@ def test_ConfigEnumMeshGrid_by_irreducible_wedge_FCC_1():
     assert len(canonical_configs) == 4963
 
 
+def test_ConfigEnumMeshGrid_by_irreducible_wedge_FCC_2():
+    """Test ConfigEnumMeshGrid.by_irreducible_wedge
+
+    Using:
+    - FCC,
+    - conventional unit cell, A2B2 background,
+    - full basis,
+    - stop=0.1, num=5, skip_equivalents=default (False)
+    """
+    xtal_prim = xtal_prims.FCC(
+        r=0.5,
+        occ_dof=["A", "B"],
+        local_dof=[xtal.DoFSetBasis("disp")],
+        global_dof=[xtal.DoFSetBasis("Hstrain")],
+    )
+    prim = casmconfig.Prim(xtal_prim)
+    supercell_set = casmconfig.SupercellSet(prim=prim)
+    configs_as_enumerated = casmconfig.ConfigurationSet()
+    canonical_configs = casmconfig.ConfigurationSet()
+
+    # conventional FCC, A2B2
+    supercell = supercell_set.add(
+        np.array(
+            [
+                [-1, 1, 1],
+                [1, -1, 1],
+                [1, 1, -1],
+            ]
+        )
+    ).supercell
+    background = casmconfig.Configuration(supercell)
+    background.set_occ(0, 1)
+    background.set_occ(1, 1)
+
+    # fmt: off
+    dof_space, symmetry_report = background.make_dof_space(
+        dof_key="Hstrain",
+        calc_wedges=True,
+    )
+    # fmt: on
+
+    config_enum = casmenum.ConfigEnumMeshGrid(
+        prim=prim,
+        supercell_set=supercell_set,
+    )
+
+    total = 0
+    for i, configuration in enumerate(
+        config_enum.by_irreducible_wedge(
+            background=background,
+            dof_space=dof_space,
+            irreducible_wedge=symmetry_report.irreducible_wedge,
+            stop=0.1,
+            num=5,
+            skip_equivalents=False,
+            trim_corners=False,
+        )
+    ):
+        assert isinstance(configuration, casmconfig.Configuration)
+        total += 1
+        configs_as_enumerated.add(configuration)
+        canonical_configs.add(casmconfig.make_canonical_configuration(configuration))
+
+    # for i, record in enumerate(canonical_configs):
+    #     print(xtal.pretty_json(record.configuration.to_dict()))
+
+    # print("total:", total)
+    # print("len(configs_as_enumerated):", len(configs_as_enumerated))
+    # print("len(canonical_configs):", len(canonical_configs))
+
+    assert total == 202500
+    assert len(configs_as_enumerated) == 164025
+    assert len(canonical_configs) == 136161
+
+
 def test_ConfigEnumMeshGrid_by_range_FCC_disp_1():
     """Test ConfigEnumMeshGrid.by_range
 

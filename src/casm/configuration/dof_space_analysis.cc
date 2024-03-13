@@ -55,11 +55,16 @@ DoFSpaceAnalysisResults dof_space_analysis(
     throw dof_space_analysis_error(msg.str());
   }
 
-  Eigen::Matrix3l T = Eigen::Matrix3l::Identity();
-  if (dof_space_in.transformation_matrix_to_super.has_value()) {
-    T = *dof_space_in.transformation_matrix_to_super;
+  std::shared_ptr<Supercell const> supercell;
+  if (configuration.has_value()) {
+    supercell = configuration->supercell;
+  } else if (dof_space_in.transformation_matrix_to_super.has_value()) {
+    supercell = std::make_shared<Supercell const>(
+        prim, *dof_space_in.transformation_matrix_to_super);
+  } else {
+    supercell =
+        std::make_shared<Supercell const>(prim, Eigen::Matrix3l::Identity());
   }
-  auto supercell = std::make_shared<Supercell const>(prim, T);
 
   // --- Construct the standard DoF space ---
   clexulator::DoFSpace dof_space_pre1 =
@@ -87,10 +92,19 @@ DoFSpaceAnalysisResults dof_space_analysis(
 
   if (configuration.has_value()) {
     group = make_invariant_subgroup(*configuration, group.begin(), group.end());
+    if (group.size() == 0) {
+      throw std::runtime_error(
+          "Error in dof_space_analysis: config factor group has size==0.");
+    }
   }
   if (dof_space.sites.has_value()) {
     group =
         make_invariant_subgroup(*dof_space.sites, group.begin(), group.end());
+    if (group.size() == 0) {
+      throw std::runtime_error(
+          "Error in dof_space_analysis: due to DoFSpace sites, group has "
+          "size==0.");
+    }
   }
 
   // get matrix rep and associated SymGroup
@@ -101,7 +115,7 @@ DoFSpaceAnalysisResults dof_space_analysis(
 
   // use the entire group for irrep decomposition
   std::set<Index> group_indices;
-  for (Index i = 0; i < group.size(); ++i) {
+  for (Index i = 0; i < matrix_rep.size(); ++i) {
     group_indices.insert(i);
   }
 

@@ -2496,6 +2496,107 @@ PYBIND11_MODULE(_configuration, m) {
           "Set the local DoF values of type `key`, in the standard basis, on "
           "site `l`, using a copy.")
       .def(
+          "make_dof_space",
+          [](config::Configuration &self, std::string const &dof_key,
+             std::optional<std::set<Index>> sites,
+             std::optional<Eigen::MatrixXd> basis, bool symmetry_adapted,
+             std::optional<bool> exclude_homogeneous_modes,
+             bool include_default_occ_modes,
+             std::optional<std::map<int, int>> sublattice_index_to_default_occ,
+             std::optional<std::map<Index, int>> site_index_to_default_occ,
+             bool calc_wedges) -> py::tuple {
+            auto dof_space = std::make_shared<clexulator::DoFSpace>(
+                dof_key, self.supercell->prim->basicstructure,
+                self.supercell->superlattice.transformation_matrix_to_super(),
+                sites, basis);
+            if (!symmetry_adapted) {
+              return py::make_tuple(dof_space, py::none());
+            }
+            std::optional<Log> log = std::nullopt;
+            // std::optional<Log> log = Log(std::cout, Log::debug, true);
+            config::DoFSpaceAnalysisResults results =
+                config::dof_space_analysis(
+                    *dof_space, self.supercell->prim, self,
+                    exclude_homogeneous_modes, include_default_occ_modes,
+                    sublattice_index_to_default_occ, site_index_to_default_occ,
+                    calc_wedges, log);
+            return py::make_tuple(
+                std::make_shared<clexulator::DoFSpace>(
+                    std::move(results.symmetry_adapted_dof_space)),
+                results.symmetry_report);
+          },
+          R"pbdoc(
+          Construct a :class:`~libcasm.clexulator.DoFSpace` for this \
+          configuration
+
+          Parameters
+          ----------
+          dof_key: str
+              A string indicating which DoF type (e.g., "disp", "Hstrain",
+              "occ")
+          site_indices : Optional[list[int]] = None
+              A set of linear index of sites in the supercell to be included in
+              a local DoF space. Ignored for global DoF. If dof_key specifies
+              a local DoF and this does not have a value, all sites in the
+              supercell are included.
+          basis : Optional[array_like] = None
+              The DoF space basis, :math:`Q`, with column basis vectors
+              :math:`q_i`, spanning the space or a subspace provides a
+              definition for order parameters, according to :math:`Q \eta = x`,
+              where :math:`x` are DoF values in the prim basis. May be a
+              subspace (cols <= rows). The rows of `basis` correspond to prim
+              DoF basis axes (i.e. for local DoF a site and DoF component, or
+              for global DoF just a DoF component). If this does not have a
+              value, an identify matrix of appropriate dimension is used.
+          symmetry_adapted: bool = True
+              If True, construct a DoFSpace with symmetry-adapted basis
+              using the factor group of this configuration and output the
+              `symmetry_report`. If False, an identify matrix of appropriate
+              dimension is used.
+          exclude_homogeneous_modes : Optional[bool] = None
+              Exclude homogeneous modes if this is true, or include if this is
+              false. If this is None (default), exclude homogeneous modes for
+              dof==\"disp\" only.
+          include_default_occ_modes : bool = False
+              Include the dof component for the default occupation value on each
+              site with occupation DoF. The default is to exclude these modes
+              because they are not independent. This parameter is only checked
+              dof==\"occ\". If false, the default occupation is determined using
+              `site_index_to_default_occ` if that is provided, else using
+              `sublattice_index_to_default_occ` if that is provided, else using
+              occupation index 0.
+          sublattice_index_to_default_occ: Optional[dict[int,int]]
+              Optional values of default occupation index (the value), specified
+              by sublattice index (the key).
+          site_index_to_default_occ: Optional[dict[int,int]]
+              Optional values of default occupation index (the value), specified
+              by supercell site index (the key).
+          calc_wedges : bool = False
+              If True, calculate the irreducible wedges for the vector space.
+              This may take a long time, but provides the symmetrically unique
+              portions of the vector space, which is useful for enumeration.
+
+          Returns
+          -------
+          (dof_space, symmetry_report):
+
+              dof_space: libcasm.clexulator.DoFSpace
+                  A DoFSpace for the specified DoF type. For local DoF, the
+                  `transformation_matrix_to_super` of the configuration is used.
+
+              symmetry_report: Optional[libcasm.irreps.VectorSpaceSymReport]
+                  Holds the vector space symmetry report, if `symmetry_adapted`
+                  is True, including irreducible wedge if `calc_wedges` is True.
+
+          )pbdoc",
+          py::arg("dof_key"), py::arg("site_indices") = std::nullopt,
+          py::arg("basis") = std::nullopt, py::arg("symmetry_adapted") = true,
+          py::arg("exclude_homogeneous_modes") = std::nullopt,
+          py::arg("include_default_occ_modes") = false,
+          py::arg("sublattice_index_to_default_occ") = std::nullopt,
+          py::arg("site_index_to_default_occ") = std::nullopt,
+          py::arg("calc_wedges") = false)
+      .def(
           "order_parameters",
           [](config::Configuration &self,
              clexulator::DoFSpace const &dof_space) -> Eigen::VectorXd {
