@@ -18,11 +18,11 @@ from libcasm.irreps import (
 
 
 def _is_corner_point(
-    eta: np.ndarray,
+    x: np.ndarray,
     shape_factor: np.ndarray,
     abs_tol: float = libcasm.casmglobal.TOL,
 ) -> bool:
-    if eta.transpose() @ shape_factor @ eta > 1.0 + abs_tol:
+    if x.transpose() @ shape_factor @ x > 1.0 + abs_tol:
         return True
     return False
 
@@ -190,7 +190,8 @@ def irreducible_wedge_points(
             The index of the current SubWedge in the irreducible wedge.
 
         eta: np.ndarray
-            A point in the irreducible wedge.
+            A point in the irreducible wedge, as coordinates with respect to
+            `dof_space.basis`.
     """
 
     if skip_equivalents:
@@ -207,14 +208,14 @@ def irreducible_wedge_points(
         xi, counter = _subwedge_counter(subwedge, stop, num)
 
         for indices in counter:
-            x_subwedge = np.array([x[i] for x, i in zip(xi, indices)])
-            eta = subwedge.trans_mat @ x_subwedge
-
+            eta_subwedge = np.array([x[i] for x, i in zip(xi, indices)])
             if trim_corners:
                 if _is_corner_point(
-                    eta=eta, shape_factor=shape_factor, abs_tol=abs_tol
+                    x=eta_subwedge, shape_factor=shape_factor, abs_tol=abs_tol
                 ):
                     continue
+            eta = dof_space.basis_inv @ subwedge.trans_mat @ eta_subwedge
+
             if skip_equivalents:
                 if (
                     equivalent_order_parameters_index(
