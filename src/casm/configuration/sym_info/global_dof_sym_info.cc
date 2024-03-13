@@ -37,17 +37,27 @@ std::map<DoFKey, GlobalDoFSymGroupRep> make_global_dof_symgroup_rep(
                "by symmetry.";
         throw std::runtime_error(msg.str());
       }
-      Eigen::MatrixXd basis_change_representation;
+
+      // B * x_after = op * B * x_before
+      // x_after = M * x_before
+      // ->
+      // B * M * x_before = op * B * x_before
+      // M = B.solve(op * B)
+
+      Eigen::MatrixXd M;
       try {
-        basis_change_representation = xtal::dofset_transformation_matrix(
-            dof.basis(), transformed_dof.basis(), xtal_tol);
+        M = dof.basis().colPivHouseholderQr().solve(transformed_dof.basis());
+        if (!(M.transpose() * M).eval().isIdentity(xtal_tol)) {
+          throw std::runtime_error(
+              "Cannot find orthogonal symmetry representation!");
+        }
       } catch (std::runtime_error &e) {
         std::stringstream msg;
         msg << "Error in CASM::config::Prim constructor: Global DoF \""
             << dof_key << "\" basis change representation construction failed.";
         throw std::runtime_error(msg.str());
       }
-      group_rep.push_back(basis_change_representation);
+      group_rep.push_back(M);
     }
 
     global_dof_symgroup_rep.emplace(dof_key, group_rep);

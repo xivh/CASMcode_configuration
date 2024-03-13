@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed CASM::config::make_distinct_cluster_sites
+- Fixed CASM::config::dof_space_analysis for global DoF with non-primitive unit cell configuration
+- Fixed bug in `Configuration.from_structure` that caused error in resulting occupation
 
 ### Changed
 
@@ -19,9 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added prototype and include_subclusters attributes to libcasm.clusterography.IntegralClusterOrbitGenerator
-- Added ConfigEnumAllOccupations, ConfigEnumInfo, ScelEnum, make_all_distinct_periodic_perturbations, and make_distinct_cluster_sites to libcasm.enumerate
+- Added ConfigEnumAllOccupations, ConfigEnumInfo, ConfigEnumMeshGrid, ScelEnum, make_all_distinct_periodic_perturbations, and make_distinct_cluster_sites to libcasm.enumerate
 - Added make_all_super_configurations_by_subsets and make_distinct_super_configurations to libcasm.configuration
 - Added `excluded_species` option to `Configuration.to_structure` and `ConfigurationWithProperties.to_structure`
+- Added `with_prim_basis` option to `Configuration.to_dict` and `ConfigurationSet.to_dict` to allow output of DoF values in the prim basis, along with "basis" tag which is respected on reading from JSON/dict.
+- Added set_order_parameters, make_dof_space, order_parameters, order_parameters_contribution, dof_values_vector, and dof_values_vector_contribution methods to libcasm.configuration.Configuration
+- Added CASM::config::cluster_from_index_vector and CASM::config::cluster_from_index_set
+
+
+### Removed
+
+- Removed `to_canonical_supercell` and `from_canonical_supercell` which can be too easily misinterpreted.
 
 
 ## [v2.0a2] - 2023-12-11
