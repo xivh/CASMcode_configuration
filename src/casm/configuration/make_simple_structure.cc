@@ -1,5 +1,7 @@
 #include "casm/configuration/make_simple_structure.hh"
 
+#include <vector>  // see https://github.com/prisms-center/CASMcode_clexulator/issues/19
+
 #include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
 #include "casm/configuration/Configuration.hh"
 #include "casm/crystallography/SimpleStructure.hh"
