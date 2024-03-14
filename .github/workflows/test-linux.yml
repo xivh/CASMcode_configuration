@@ -90,7 +90,7 @@ jobs:
 
       - name: upload docs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: libcasm-configuration-docs
           path: python/doc/_build/html
