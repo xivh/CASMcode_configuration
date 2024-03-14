@@ -37,7 +37,7 @@ jobs:
 
       - name: upload libcasm-configuration-macos-latest-x86_64-dist
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: libcasm-configuration-macos-latest-x86_64-dist
           path: dist
