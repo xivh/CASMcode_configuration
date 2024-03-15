@@ -136,7 +136,7 @@ def test_ConfigEnumAllOccupations_by_sites_FCC_1():
         prim=prim,
         transformation_matrix_to_super=np.eye(3, dtype=int) * 2,
     )
-    converter = supercell.site_index_converter()
+    converter = supercell.site_index_converter
     background = casmconfig.Configuration(supercell)
     config_enum = casmenum.ConfigEnumAllOccupations(
         prim=prim,
@@ -145,7 +145,7 @@ def test_ConfigEnumAllOccupations_by_sites_FCC_1():
 
     # Test by_integral_site_coordinates:
     n_configs = []
-    for i in range(supercell.n_sites()):
+    for i in range(supercell.n_sites):
         sites = []
         for j in range(i):
             sites.append(converter.integral_site_coordinate(j))
@@ -160,7 +160,7 @@ def test_ConfigEnumAllOccupations_by_sites_FCC_1():
 
     # Test by_linear_site_indices:
     n_configs = []
-    for i in range(supercell.n_sites()):
+    for i in range(supercell.n_sites):
         sites = set(range(i))
         generator = config_enum.by_linear_site_indices(
             background=background, sites=sites
@@ -206,7 +206,7 @@ def test_ConfigEnumAllOccupations_by_cluster_FCC_1():
         "max": 27,
         "diagonal_only": True,
         "fixed_shape": True,
-        "unit_cell": supercell.transformation_matrix_to_super().tolist(),
+        "unit_cell": supercell.transformation_matrix_to_super.tolist(),
     }
 
     # point clusters, 1NN & 2NN pair clusters

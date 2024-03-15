@@ -30,13 +30,13 @@ def test_configuration_dof_values(simple_cubic_binary_prim):
     )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
-    dof_values = configuration.dof_values()
+    dof_values = configuration.dof_values
     assert type(dof_values) == casmclex.ConfigDoFValues
+    assert dof_values is configuration.dof_values
 
-    # Configuration.dof_values() returns a *copy*
     assert configuration.occ(0) == 0
-    configuration.dof_values().set_occupation([1])
-    assert configuration.occ(0) == 0
+    configuration.dof_values.set_occupation([1])
+    assert configuration.occ(0) == 1
 
 
 def test_configuration_occupation(simple_cubic_binary_prim):
@@ -51,13 +51,13 @@ def test_configuration_occupation(simple_cubic_binary_prim):
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
 
-    occupation = configuration.occupation()
+    occupation = configuration.occupation
     assert occupation.shape == (64,)
     assert configuration.occ(0) == 0
     assert (occupation == np.array([0] * 64)).all()
 
     configuration.set_occ(0, 1)
-    occupation = configuration.occupation()
+    occupation = configuration.occupation
     assert configuration.occ(0) == 1
     assert (occupation == np.array([1] + [0] * 63)).all()
 
@@ -66,8 +66,8 @@ def test_configuration_occupation(simple_cubic_binary_prim):
 
     occupation = np.array([1] * 3 + [0] * 61, dtype=int)
     configuration.set_occupation(occupation)
-    assert (configuration.occupation() == np.array([1] * 3 + [0] * 61)).all()
-    assert configuration.occupation().shape == (64,)
+    assert (configuration.occupation == np.array([1] * 3 + [0] * 61)).all()
+    assert configuration.occupation.shape == (64,)
 
 
 def test_canonical_configuration_occupation(simple_cubic_binary_prim):
@@ -89,7 +89,7 @@ def test_canonical_configuration_occupation(simple_cubic_binary_prim):
     configuration.set_occ(10, 1)
     canon_config = config.make_canonical_configuration(configuration)
     assert config.is_canonical_configuration(canon_config) is True
-    assert (canon_config.occupation() == np.array([1] + [0] * 63)).all()
+    assert (canon_config.occupation == np.array([1] + [0] * 63)).all()
 
 
 def test_configuration_invariant_subgroup(simple_cubic_binary_prim):

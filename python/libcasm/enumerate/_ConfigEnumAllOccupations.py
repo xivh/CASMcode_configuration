@@ -14,9 +14,9 @@ from ._ScelEnum import ScelEnum
 
 
 def _make_sublat_sites(supercell: casmconfig.Supercell, sublats: set[int]):
-    converter = supercell.site_index_converter()
+    converter = supercell.site_index_converter
     sites = set()
-    for i in range(supercell.n_sites()):
+    for i in range(supercell.n_sites):
         integral_site_coordinate = converter.integral_site_coordinate(i)
         if integral_site_coordinate.sublattice() in sublats:
             sites.add(i)
@@ -111,8 +111,8 @@ class ConfigEnumAllOccupations:
         """Make supercell list from `supercells` or just background supercell"""
         if supercells is None:
             if self.supercell_set is not None:
-                self.supercell_set.add_supercell(background.supercell())
-            supercell_list = [background.supercell()]
+                self.supercell_set.add_supercell(background.supercell)
+            supercell_list = [background.supercell]
         else:
             scel_enum = ScelEnum(
                 prim=self.prim,
@@ -226,7 +226,7 @@ class ConfigEnumAllOccupations:
             supercell_set=self.supercell_set,
         )
         for supercell in scel_enum.by_volume(**supercells):
-            sites = set(range(supercell.n_sites()))
+            sites = set(range(supercell.n_sites))
             super_configurations = casmconfig.make_distinct_super_configurations(
                 motif=motif, supercell=supercell
             )
@@ -275,7 +275,7 @@ class ConfigEnumAllOccupations:
         self._begin()
         motif = self._set_motif(motif)
         for supercell in supercells:
-            sites = set(range(supercell.n_sites()))
+            sites = set(range(supercell.n_sites))
             super_configurations = casmconfig.make_distinct_super_configurations(
                 motif=motif, supercell=supercell
             )
@@ -358,7 +358,7 @@ class ConfigEnumAllOccupations:
             A :class:`~casmconfig.Configuration`.
         """
         self._begin()
-        converter = background.supercell().site_index_converter()
+        converter = background.supercell.site_index_converter
         site_indices = set([converter.linear_site_index(site) for site in sites])
         for config in self._by_site(
             background=background,
@@ -476,9 +476,9 @@ class ConfigEnumAllOccupations:
 
         cspecs = casmclust.ClusterSpecs.from_dict(
             data=cluster_specs,
-            xtal_prim=self.prim.xtal_prim(),
-            prim_factor_group=self.prim.factor_group(),
-            integral_site_coordinate_symgroup_rep=self.prim.integral_site_coordinate_symgroup_rep(),
+            xtal_prim=self.prim.xtal_prim,
+            prim_factor_group=self.prim.factor_group,
+            integral_site_coordinate_symgroup_rep=self.prim.integral_site_coordinate_symgroup_rep,
         )
         orbits = cspecs.make_orbits()
 
@@ -550,7 +550,7 @@ class ConfigEnumAllOccupations:
         for cluster in clusters:
             orbit = casmclust.make_periodic_orbit(
                 orbit_element=cluster,
-                integral_site_coordinate_symgroup_rep=self.prim.integral_site_coordinate_symgroup_rep(),
+                integral_site_coordinate_symgroup_rep=self.prim.integral_site_coordinate_symgroup_rep,
             )
             if orbit[0] not in orbit_prototypes:
                 orbit_prototypes.append(orbit[0])

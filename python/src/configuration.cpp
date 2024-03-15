@@ -133,6 +133,16 @@ config::SupercellSymOp make_supercell_symop(
   }
 }
 
+config::Configuration make_configuration(
+    std::shared_ptr<config::Supercell> const &supercell,
+    std::optional<clexulator::ConfigDoFValues> const &dof_values) {
+  if (dof_values.has_value()) {
+    return config::Configuration(supercell, *dof_values);
+  } else {
+    return config::Configuration(supercell);
+  }
+}
+
 config::ConfigSpaceAnalysisResults make_ConfigSpaceAnalysisResults(
     clexulator::DoFSpace const &_standard_dof_space,
     std::map<std::string, std::vector<Eigen::VectorXd>> _equivalent_dof_values,
@@ -186,44 +196,44 @@ PYBIND11_MODULE(_configuration, m) {
       xtal_prim : libcasm.xtal.Prim
           A :class:`~libcasm.xtal.Prim`
       )pbdoc")
-      .def(
+      .def_property_readonly(
           "xtal_prim",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->basicstructure;
           },
-          "Returns the internal shared :class:`~libcasm.xtal.Prim`")
-      .def(
+          "The internal shared :class:`~libcasm.xtal.Prim`")
+      .def_property_readonly(
           "factor_group",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.factor_group;
           },
-          "Returns the factor group.")
-      .def(
+          "The factor group.")
+      .def_property_readonly(
           "crystal_point_group",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.point_group;
           },
-          "Returns the crystal point group.")
-      .def(
+          "The crystal point group.")
+      .def_property_readonly(
           "has_occupation_dofs",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.has_occupation_dofs;
           },
           R"pbdoc(
-          Returns True if >1 occupant allowed on any sublattice, False otherwise.
+          True if >1 occupant allowed on any sublattice, False otherwise.
           )pbdoc")
-      .def(
+      .def_property_readonly(
           "is_atomic",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->is_atomic;
           },
           R"pbdoc(
-          Returns True if the prim allows 1 or more occupants on each site, all
+          True if the prim allows 1 or more occupants on each site, all
           occupants have a single atom without coordinate offset, and no
           occupants have :class:`~libcasm.xtal.Occupant` properties, only
           :class:`~libcasm.xtal.AtomComponent` properties.
           )pbdoc")
-      .def(
+      .def_property_readonly(
           "has_anisotropic_occupants",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.has_aniso_occs;
@@ -284,21 +294,21 @@ PYBIND11_MODULE(_configuration, m) {
           ``x_prim = B_inv @ x_standard``.
           )pbdoc",
           py::arg("key"), py::arg("sublattice_index"))
-      .def(
+      .def_property_readonly(
           "integral_site_coordinate_symgroup_rep",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.unitcellcoord_symgroup_rep;
           },
           "Returns the symmetry group representation that describes how "
           "IntegralSiteCoordinate transform under symmetry.")
-      .def(
+      .def_property_readonly(
           "occ_symgroup_rep",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.occ_symgroup_rep;
           },
           "Returns the symmetry group representation that describes how "
           "occupant indices transform under symmetry.")
-      .def(
+      .def_property_readonly(
           "atom_position_symgroup_rep",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.atom_position_symgroup_rep;
@@ -371,7 +381,7 @@ PYBIND11_MODULE(_configuration, m) {
               prim basis, by the `factor_group_index`-th prim factor group operation.
           )pbdoc",
           py::arg("key"))
-      .def(
+      .def_property_readonly(
           "continuous_magspin_key",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->magspin_info.continuous_magspin_key;
@@ -384,7 +394,7 @@ PYBIND11_MODULE(_configuration, m) {
           key: Optional[str]
               The continuous magspin DoF `key` if present, else None.
           )pbdoc")
-      .def(
+      .def_property_readonly(
           "continuous_magspin_flavor",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->magspin_info.continuous_magspin_flavor;
@@ -397,7 +407,7 @@ PYBIND11_MODULE(_configuration, m) {
           key: Optional[str]
               The continuous magspin DoF flavor if present, else None.
           )pbdoc")
-      .def(
+      .def_property_readonly(
           "discrete_atomic_magspin_key",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->magspin_info.discrete_atomic_magspin_key;
@@ -410,7 +420,7 @@ PYBIND11_MODULE(_configuration, m) {
           key: Optional[str]
               The discrete atomic magspin `key` if present, else None.
           )pbdoc")
-      .def(
+      .def_property_readonly(
           "discrete_atomic_magspin_flavor",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->magspin_info.discrete_atomic_magspin_flavor;
@@ -675,37 +685,36 @@ PYBIND11_MODULE(_configuration, m) {
           The complete set of translation permutations is not generated for
           large supercells with `n_unitcells` > `max_n_translation_permutations`.
       )pbdoc")
-      .def(
-          "prim",
-          [](std::shared_ptr<config::Supercell const> const &supercell) {
-            return supercell->prim;
-          },
-          "Returns the internal shared :class:`~libcasm.configuration.Prim`")
-      .def(
+      .def_readonly("prim", &config::Supercell::prim,
+                    "The internal shared :class:`~libcasm.configuration.Prim`")
+      .def_property_readonly(
           "xtal_prim",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->prim->basicstructure;
           },
-          "Returns the internal shared :class:`~libcasm.xtal.Prim`")
-      .def(
+          "The internal shared :class:`~libcasm.xtal.Prim`")
+      .def_property_readonly(
           "transformation_matrix_to_super",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->superlattice.transformation_matrix_to_super();
           },
-          "Returns the supercell transformation matrix.")
-      .def(
+          py::return_value_policy::reference_internal,
+          "The supercell transformation matrix, as a const reference.")
+      .def_property_readonly(
           "superlattice",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->superlattice.superlattice();
           },
-          "Returns the supercell lattice.")
-      .def(
+          py::return_value_policy::reference_internal,
+          "The supercell lattice, as a const reference.")
+      .def_property_readonly(
           "prim_lattice",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->superlattice.prim_lattice();
           },
-          "Returns the prim lattice.")
-      .def(
+          py::return_value_policy::reference_internal,
+          "The prim lattice, as a const reference.")
+      .def_property_readonly(
           "site_index_converter",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->unitcellcoord_index_converter;
@@ -713,7 +722,7 @@ PYBIND11_MODULE(_configuration, m) {
           py::return_value_policy::reference_internal,
           "A const reference to the"
           ":class:`~libcasm.xtal.SiteIndexConverter` for the supercell.")
-      .def(
+      .def_property_readonly(
           "unitcell_index_converter",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->unitcell_index_converter;
@@ -817,20 +826,20 @@ PYBIND11_MODULE(_configuration, m) {
             its commensurate superlattice with this supercell's lattice.
         )pbdoc",
           py::arg("transformation_matrix_to_super"))
-      .def(
+      .def_property_readonly(
           "factor_group",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->sym_info.factor_group;
           },
-          "Returns the supercell factor group, which is the subgroup of the "
+          "The supercell factor group, which is the subgroup of the "
           "prim factor group that leaves the supercell lattice vectors "
           "invariant.")
-      .def(
+      .def_property_readonly(
           "factor_group_permutations",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->sym_info.factor_group_permutations;
           },
-          "Returns the factor group permutations, where "
+          "The factor group permutations, where "
           "`factor_group_permutations()[i]` describes how "
           "`factor_group().element(i)` permutes supercell site DoF values. "
           "When permuting site occupants, the following convention is used, "
@@ -838,7 +847,7 @@ PYBIND11_MODULE(_configuration, m) {
           "anisotropic DoF values, the convention used by CASM, (for example, "
           "by `apply_supercell_sym_op`), is that the DoF values are "
           "transformed first, then permuted.")
-      .def(
+      .def_property_readonly(
           "translation_permutations",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->sym_info.translation_permutations;
@@ -850,18 +859,18 @@ PYBIND11_MODULE(_configuration, m) {
           "values. When permuting site occupants, the following convention is "
           "used, `after[l] = before[permutation[l]]`. Returns None for large "
           "supercells (n_unitcells > max_n_translation_permutations).")
-      .def(
+      .def_property_readonly(
           "n_sites",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->unitcellcoord_index_converter.total_sites();
           },
-          "Returns the number of sites in the supercell.")
-      .def(
+          "The number of sites in the supercell.")
+      .def_property_readonly(
           "n_unitcells",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->unitcell_index_converter.total_sites();
           },
-          "Returns the unit cells in the supercell.")
+          "The number of unit cells in the supercell.")
       .def(
           "n_occupants",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
@@ -1185,7 +1194,7 @@ PYBIND11_MODULE(_configuration, m) {
               -> config::SupercellRecord const & {
             return *(m.insert(supercell).first);
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a supercell to the set
 
@@ -1207,7 +1216,7 @@ PYBIND11_MODULE(_configuration, m) {
               -> config::SupercellRecord const & {
             return *(m.insert(supercell).first);
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a supercell to the set (equivalent to \
           :func:`~libcasm.configuration.SupercellSet.add_supercell`).
@@ -1220,7 +1229,7 @@ PYBIND11_MODULE(_configuration, m) {
               -> config::SupercellRecord const & {
             return *(m.insert(transformation_matrix_to_super).first);
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a supercell to the set, by constructing from the transformation matrix.
 
@@ -1245,7 +1254,7 @@ PYBIND11_MODULE(_configuration, m) {
               -> config::SupercellRecord const & {
             return *(m.insert(transformation_matrix_to_super).first);
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a supercell to the set, by constructing from the transformation \
           matrix (equivalent to :func:`~libcasm.configuration.SupercellSet.add_by_transformation_matrix_to_super`).
@@ -1257,7 +1266,7 @@ PYBIND11_MODULE(_configuration, m) {
               -> config::SupercellRecord const & {
             return *(m.insert(record).first);
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a supercell record to the set.
 
@@ -1278,7 +1287,7 @@ PYBIND11_MODULE(_configuration, m) {
               -> config::SupercellRecord const & {
             return *(m.insert(record).first);
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a supercell record to the set (equivalent to \
           :func:`~libcasm.configuration.SupercellSet.add_record`).
@@ -1290,7 +1299,7 @@ PYBIND11_MODULE(_configuration, m) {
              std::string supercell_name) -> config::SupercellRecord const & {
             return *(m.insert_canonical(supercell_name).first);
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Construct the canonical supercell from a supercell name and add to the set.
 
@@ -1312,7 +1321,7 @@ PYBIND11_MODULE(_configuration, m) {
              std::string supercell_name) -> config::SupercellRecord const & {
             return *(m.insert_canonical(supercell_name).first);
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Construct the canonical supercell from a supercell name and add to \
           the set (equivalent to \
@@ -1670,7 +1679,7 @@ PYBIND11_MODULE(_configuration, m) {
               return *(m.insert(configuration).first);
             }
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a configuration to the set
 
@@ -1705,7 +1714,7 @@ PYBIND11_MODULE(_configuration, m) {
               return *(m.insert(configuration).first);
             }
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a configuration to the set (equivalent to \
           :func:`~libcasm.configuration.ConfigurationSet.add_configuration`)
@@ -1718,7 +1727,7 @@ PYBIND11_MODULE(_configuration, m) {
               -> config::ConfigurationRecord const & {
             return *m.insert(record).first;
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a configuration record to the set, allowing custom configuration_id
 
@@ -1742,7 +1751,7 @@ PYBIND11_MODULE(_configuration, m) {
               -> config::ConfigurationRecord const & {
             return *m.insert(record).first;
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Add a configuration to the set (equivalent to \
           :func:`~libcasm.configuration.ConfigurationSet.add_record`)
@@ -1760,7 +1769,7 @@ PYBIND11_MODULE(_configuration, m) {
             return py::object(
                 py::cast<config::ConfigurationRecord const &>(*it));
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Find a ConfigurationRecord by configuration degrees of freedom (DoF) \
           and return a const reference, else return None.
@@ -1777,7 +1786,7 @@ PYBIND11_MODULE(_configuration, m) {
             return py::object(
                 py::cast<config::ConfigurationRecord const &>(*it));
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Find a ConfigurationRecord by configuration degrees of freedom (DoF) \
           and return a const reference, else return None (equivalent to \
@@ -1795,7 +1804,7 @@ PYBIND11_MODULE(_configuration, m) {
             return py::object(
                 py::cast<config::ConfigurationRecord const &>(*it));
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Find a ConfigurationRecord by configuration name and return a const \
           reference, else return None.
@@ -1812,7 +1821,7 @@ PYBIND11_MODULE(_configuration, m) {
             return py::object(
                 py::cast<config::ConfigurationRecord const &>(*it));
           },
-          py::return_value_policy::reference,
+          py::return_value_policy::reference_internal,
           R"pbdoc(
           Find a ConfigurationRecord by configuration name and return a const \
           reference, else return None (equivalent to \
@@ -2217,30 +2226,24 @@ PYBIND11_MODULE(_configuration, m) {
 
   // Configuration -- define functions
   pyConfiguration
-      .def(py::init<std::shared_ptr<config::Supercell const> const &>(),
-           py::arg("supercell"),
+      .def(py::init<>(&make_configuration), py::arg("supercell"),
+           py::arg("dof_values") = std::nullopt,
            R"pbdoc(
-      Construct a default-valued Configuration
+      Construct a Configuration
 
       Parameters
       ----------
       supercell : libcasm.configuration.Supercell
           The supercell defining the periodicity of the configuration.
+      dof_values : Optional[libcasm.clexulator.ConfigDoFValues] = None
+          The configuration's degree of freedom (DoF) values. If None, the
+          configuration is constructed with default values (0 for occupation
+          indices, 0.0 for all global and local DoF).
       )pbdoc")
-      .def(
-          "supercell",
-          [](config::Configuration const &configuration) {
-            return configuration.supercell;
-          },
-          "Returns the internal shared "
-          ":class:`~libcasm.configuration.Supercell`")
-      .def(
-          "set_dof_values",
-          [](config::Configuration &self,
-             clexulator::ConfigDoFValues const &other) {
-            self.dof_values = other;
-          },
-          "Assign all values from other, using copy", py::arg("other"))
+      .def_readwrite("supercell", &config::Configuration::supercell,
+                     "The shared :class:`~libcasm.configuration.Supercell`")
+      .def_readwrite("dof_values", &config::Configuration::dof_values,
+                     "The ConfigDoFValues")
       .def("set_order_parameters", &config::set_dof_space_values,
            R"pbdoc(
           Assign DoF values from order parameter values
@@ -2279,17 +2282,9 @@ PYBIND11_MODULE(_configuration, m) {
           "Assign all values from other, which is in the standard basis, using "
           "copy",
           py::arg("other"))
-      .def(
-          "dof_values",
-          [](config::Configuration const &self) { return self.dof_values; },
-          "Return a copy of ConfigDoFValues")
       .def("standard_dof_values", &config::make_standard_dof_values,
            "Return a copy of ConfigDoFValues, in the standard basis.")
-      .def(
-          "dof_values_ptr",
-          [](config::Configuration &self) { return &self.dof_values; },
-          "Return a pointer to the ConfigDoFValues")
-      .def(
+      .def_property_readonly(
           "occupation",
           [](config::Configuration const &configuration)
               -> Eigen::VectorXi const & {

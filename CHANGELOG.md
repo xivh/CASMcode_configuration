@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed libcasm.configuration.Prim.is_atomic, which was returning has_anisotropic_occupants
 - Changed libcasm.configuration.is_canonical_configuration arguments for providing a subgroup
+- Changed most methods with no arguments that return a value without doing additional work to readonly attributes
 
 ### Added
 

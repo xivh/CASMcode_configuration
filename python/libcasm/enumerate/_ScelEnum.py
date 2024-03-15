@@ -62,9 +62,9 @@ class ScelEnum:
         for i, supercell in enumerate(scel_enum.by_volume(max=4)):
             print(f"Supercell {i}:")
             print("Transformation matrix to supercell:")
-            print(supercell.transformation_matrix_to_super())
+            print(supercell.transformation_matrix_to_super)
             print("Superlattice (column_vector_matrix):")
-            print(supercell.superlattice().column_vector_matrix())
+            print(supercell.superlattice.column_vector_matrix())
             print()
 
     ::
@@ -195,10 +195,10 @@ class ScelEnum:
             A :class:`~casmconfig.Supercell`, guaranteed to be in canonical
             form.
         """
-        prim_lattice = self.prim.xtal_prim().lattice()
+        prim_lattice = self.prim.xtal_prim.lattice()
         for superlattice in xtal.enumerate_superlattices(
             unit_lattice=prim_lattice,
-            point_group=self.prim.crystal_point_group().elements(),
+            point_group=self.prim.crystal_point_group.elements,
             max_volume=max,
             min_volume=min,
             dirs=dirs,

@@ -485,7 +485,7 @@ def test_ConfigEnumMeshGrid_by_range_FCC_disp_1():
     dof_space = casmclex.DoFSpace(
         dof_key="disp",
         xtal_prim=xtal_prim,
-        transformation_matrix_to_super=supercell.transformation_matrix_to_super(),
+        transformation_matrix_to_super=supercell.transformation_matrix_to_super,
         basis=np.array([
             [ 0.0, 0.0, 0.853553390593274, 0.0, 0.0, -0.35355339059327395, 0.0, 0.0, -0.3535533905932739, 0.0, 0.0, -0.14644660940672624,],  # noqa: E501
             [ 0.0, 0.8535533905932741, 0.0, 0.0, -0.1464466094067265, 0.0, 0.0, -0.353553390593274, 0.0, 0.0, -0.3535533905932735, 0.0,],  # noqa: E501
@@ -561,7 +561,7 @@ def test_ConfigEnumMeshGrid_by_range_FCC_disp_2():
     dof_space = casmclex.DoFSpace(
         dof_key="disp",
         xtal_prim=xtal_prim,
-        transformation_matrix_to_super=supercell.transformation_matrix_to_super(),
+        transformation_matrix_to_super=supercell.transformation_matrix_to_super,
         basis=np.array([
             [ 0.0, 0.0, 0.853553390593274, 0.0, 0.0, -0.35355339059327395, 0.0, 0.0, -0.3535533905932739, 0.0, 0.0, -0.14644660940672624,],  # noqa: E501
             [ 0.0, 0.8535533905932741, 0.0, 0.0, -0.1464466094067265, 0.0, 0.0, -0.353553390593274, 0.0, 0.0, -0.3535533905932735, 0.0,],  # noqa: E501
@@ -637,7 +637,7 @@ def test_ConfigEnumMeshGrid_by_irreducible_wedge_FCC_disp_1():
     dof_space = casmclex.DoFSpace(
         dof_key="disp",
         xtal_prim=xtal_prim,
-        transformation_matrix_to_super=supercell.transformation_matrix_to_super(),
+        transformation_matrix_to_super=supercell.transformation_matrix_to_super,
         basis=np.array([
             [ 0.0, 0.0, 0.853553390593274, 0.0, 0.0, -0.35355339059327395, 0.0, 0.0, -0.3535533905932739, 0.0, 0.0, -0.14644660940672624,],  # noqa: E501
             [ 0.0, 0.8535533905932741, 0.0, 0.0, -0.1464466094067265, 0.0, 0.0, -0.353553390593274, 0.0, 0.0, -0.3535533905932735, 0.0,],  # noqa: E501
@@ -778,7 +778,7 @@ def test_ConfigEnumMeshGrid_by_irreducible_wedge_FCC_disp_2():
     dof_space = casmclex.DoFSpace(
         dof_key="disp",
         xtal_prim=xtal_prim,
-        transformation_matrix_to_super=supercell.transformation_matrix_to_super(),
+        transformation_matrix_to_super=supercell.transformation_matrix_to_super,
         basis=np.array( [
             [ 0.0, 0.0, 0.853553390593274, 0.0, 0.0, -0.35355339059327395, 0.0, 0.0, -0.3535533905932739, 0.0, 0.0, -0.14644660940672624,],  # noqa: E501
             [ 0.0, 0.8535533905932741, 0.0, 0.0, -0.1464466094067265, 0.0, 0.0, -0.353553390593274, 0.0, 0.0, -0.3535533905932735, 0.0,],  # noqa: E501

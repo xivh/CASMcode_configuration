@@ -40,7 +40,7 @@ def test_cluster_specs():
 
     integral_site_coordinate_symgroup_rep = (
         clust.make_integral_site_coordinate_symgroup_rep(
-            group_elements=prim_factor_group.elements(),
+            group_elements=prim_factor_group.elements,
             xtal_prim=xtal_prim,
         )
     )
@@ -50,7 +50,7 @@ def test_cluster_specs():
         prim_factor_group=prim_factor_group,
         integral_site_coordinate_symgroup_rep=integral_site_coordinate_symgroup_rep,
     )
-    assert cluster_specs_in.generating_group().head_group_index() == list(range(48))
+    assert cluster_specs_in.generating_group().head_group_index == list(range(48))
     assert cluster_specs_in.max_length() == cluster_specs.max_length()
     assert cluster_specs_in.cutoff_radius() == cluster_specs.cutoff_radius()
 
@@ -60,7 +60,7 @@ def test_cluster_specs_from_dict_1():
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     integral_site_coordinate_symgroup_rep = (
         clust.make_integral_site_coordinate_symgroup_rep(
-            group_elements=prim_factor_group.elements(),
+            group_elements=prim_factor_group.elements,
             xtal_prim=xtal_prim,
         )
     )
@@ -85,7 +85,7 @@ def test_cluster_specs_from_dict_2():
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     integral_site_coordinate_symgroup_rep = (
         clust.make_integral_site_coordinate_symgroup_rep(
-            group_elements=prim_factor_group.elements(),
+            group_elements=prim_factor_group.elements,
             xtal_prim=xtal_prim,
         )
     )
@@ -141,7 +141,7 @@ def test_local_cluster_specs():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     symgroup_rep = clust.make_integral_site_coordinate_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim
+        prim_factor_group.elements, xtal_prim
     )
     phenomenal = clust.Cluster(
         [

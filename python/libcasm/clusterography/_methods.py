@@ -76,7 +76,7 @@ def make_local_cluster_specs(
     """
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     symgroup_rep = _clust.make_integral_site_coordinate_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim
+        prim_factor_group.elements, xtal_prim
     )
     occevent_group = _clust.make_cluster_group(
         cluster=phenomenal_cluster,

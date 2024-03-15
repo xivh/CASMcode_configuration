@@ -89,10 +89,10 @@ def make_occevent_suborbits(
         The sub-orbits, where `suborbits[i][j]` is the j-th
         :class:`~libcasm.occ_events.OccEvent` in the i-th sub-orbit.
     """
-    prim = supercell.prim()
-    prim_factor_group = prim.factor_group()
+    prim = supercell.prim
+    prim_factor_group = prim.factor_group
     prim_rep = libcasm.occ_events.make_occevent_symgroup_rep(
-        prim_factor_group.elements(), prim.xtal_prim()
+        prim_factor_group.elements, prim.xtal_prim
     )
     orbit = libcasm.occ_events.make_prim_periodic_orbit(occ_event, prim_rep)
 
@@ -103,9 +103,9 @@ def make_occevent_suborbits(
         return False
 
     suborbits = []
-    scel_factor_group = supercell.factor_group()
+    scel_factor_group = supercell.factor_group
     scel_rep = libcasm.occ_events.make_occevent_symgroup_rep(
-        scel_factor_group.elements(), prim.xtal_prim()
+        scel_factor_group.elements, prim.xtal_prim
     )
     for x in orbit:
         if in_any_suborbit(x, suborbits):

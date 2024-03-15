@@ -350,7 +350,7 @@ class ConfigEnumMeshGrid:
             self._enum_index += 1
 
         if self.supercell_set is not None:
-            self.supercell_set.add_supercell(self.background.supercell())
+            self.supercell_set.add_supercell(self.background.supercell)
 
         if dof_space.dof_key == "occ":
             raise Exception(
@@ -367,7 +367,7 @@ class ConfigEnumMeshGrid:
 
         if skip_equivalents:
             is_canonical_background_supercell = casmconfig.is_canonical_supercell(
-                background.supercell()
+                background.supercell
             )
             if is_canonical_background_supercell:
                 canonical_configs = casmconfig.ConfigurationSet()
@@ -610,7 +610,7 @@ class ConfigEnumMeshGrid:
         self._enum_index = 0
 
         if self.supercell_set is not None:
-            self.supercell_set.add_supercell(self.background.supercell())
+            self.supercell_set.add_supercell(self.background.supercell)
 
         if dof_space.dof_key == "occ":
             raise Exception(
@@ -627,7 +627,7 @@ class ConfigEnumMeshGrid:
 
         if skip_equivalents:
             is_canonical_background_supercell = casmconfig.is_canonical_supercell(
-                background.supercell()
+                background.supercell
             )
             if is_canonical_background_supercell:
                 canonical_configs = casmconfig.ConfigurationSet()

@@ -64,7 +64,7 @@ PYBIND11_MODULE(_sym_info, m) {
            py::arg("multiplication_table"))
       .def("make_subgroup", &make_symgroup_subgroup,
            py::arg("head_group_index"), py::arg("element") = std::nullopt)
-      .def(
+      .def_property_readonly(
           "elements",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->element;
@@ -75,12 +75,12 @@ PYBIND11_MODULE(_sym_info, m) {
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
              Index i) { return symgroup->element[i]; },
           py::arg("i"), "Returns an element from group.")
-      .def(
+      .def_property_readonly(
           "multiplication_table",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->multiplication_table;
           },
-          "Returns the multiplication table.")
+          "The multiplication table.")
       .def(
           "conjugacy_classes",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
@@ -94,13 +94,13 @@ PYBIND11_MODULE(_sym_info, m) {
              Index j) { return symgroup->mult(i, j); },
           py::arg("i"), py::arg("j"),
           "Returns the index `k == multiplication_table[i][j]`.")
-      .def(
+      .def_property_readonly(
           "is_subgroup",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->head_group != nullptr;
           },
-          "Returns True if this is a subgroup.")
-      .def(
+          "True if this is a subgroup.")
+      .def_property_readonly(
           "head_group",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             std::optional<std::shared_ptr<sym_info::SymGroup const>> head_group;
@@ -110,13 +110,13 @@ PYBIND11_MODULE(_sym_info, m) {
             return head_group;
           },
           "If this is a subgroup, return the head group, else return None.")
-      .def(
+      .def_property_readonly(
           "head_group_index",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->head_group_index;
           },
           "Return the list of head group indices")
-      .def(
+      .def_property_readonly(
           "inverse_index",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->inverse_index;

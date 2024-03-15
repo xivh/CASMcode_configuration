@@ -92,7 +92,7 @@ def test_ConfigurationSet_to_dict_1(simple_cubic_binary_prim):
     configuration = config.Configuration(supercell)
 
     # add configurations
-    for i in range(supercell.n_unitcells()):
+    for i in range(supercell.n_unitcells):
         print(f"{i}:")
         x = copy.copy(configuration)
         x.set_occ(i, 1)
@@ -130,7 +130,7 @@ def test_ConfigurationSet_to_dict_2(FCC_binary_Hstrain_noshear_prim):
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
     configuration = config.Configuration(supercell)
 
-    for i in range(supercell.n_unitcells()):
+    for i in range(supercell.n_unitcells):
         x = copy.copy(configuration)
         x.set_occ(i, 1)
         configurations.add(x)
@@ -139,7 +139,7 @@ def test_ConfigurationSet_to_dict_2(FCC_binary_Hstrain_noshear_prim):
     configurations.clear()
     assert len(configurations) == 0
 
-    for i in range(supercell.n_unitcells()):
+    for i in range(supercell.n_unitcells):
         x = copy.copy(configuration)
         x.set_occ(i, 1)
         configurations.add(config.make_canonical_configuration(x))

@@ -91,16 +91,16 @@ def test_FCC_binary_discrete_Cmagspin_prim_1():
     factor_group = xtal.make_factor_group(xtal_prim)
     assert len(factor_group) == 96
     prim = config.Prim(xtal_prim)
-    assert prim.xtal_prim().coordinate_frac().shape == (3, 1)
-    assert len(prim.factor_group().elements()) == 96
+    assert prim.xtal_prim.coordinate_frac().shape == (3, 1)
+    assert len(prim.factor_group.elements) == 96
 
-    assert prim.is_atomic()
-    assert prim.continuous_magspin_key() is None
-    assert prim.continuous_magspin_flavor() is None
-    assert prim.discrete_atomic_magspin_key() == "Cmagspin"
-    assert prim.discrete_atomic_magspin_flavor() == "C"
+    assert prim.is_atomic
+    assert prim.continuous_magspin_key is None
+    assert prim.continuous_magspin_flavor is None
+    assert prim.discrete_atomic_magspin_key == "Cmagspin"
+    assert prim.discrete_atomic_magspin_flavor == "C"
 
-    lattice = prim.xtal_prim().lattice()
-    for op in prim.factor_group().elements():
+    lattice = prim.xtal_prim.lattice()
+    for op in prim.factor_group.elements:
         syminfo = xtal.SymInfo(op, lattice)
         print(xtal.pretty_json(syminfo.to_dict()))

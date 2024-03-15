@@ -13,9 +13,9 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
     occ_events.OccSystem(xtal_prim)
 
     def make_occevent_orbit(prim, occ_event):
-        prim_factor_group = prim.factor_group()
+        prim_factor_group = prim.factor_group
         prim_rep = occ_events.make_occevent_symgroup_rep(
-            prim_factor_group.elements(), prim.xtal_prim()
+            prim_factor_group.elements, prim.xtal_prim
         )
         return occ_events.make_prim_periodic_orbit(occ_event, prim_rep)
 
@@ -35,7 +35,7 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
 
     # supercell to fill: 3x3x3 of the conventional FCC
     supercell_1 = config.Supercell(prim, T_motif * 3)
-    assert len(supercell_1.factor_group().elements()) == 48
+    assert len(supercell_1.factor_group.elements) == 48
 
     suborbits_1 = enum.make_occevent_suborbits(supercell_1, occ_event)
     assert len(suborbits_1) == 1
@@ -50,7 +50,7 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
         ]
     )
     supercell_2 = config.Supercell(prim, T_motif @ S)
-    assert len(supercell_2.factor_group().elements()) == 16
+    assert len(supercell_2.factor_group.elements) == 16
 
     suborbits_2 = enum.make_occevent_suborbits(supercell_2, occ_event)
     assert len(suborbits_2) == 2
@@ -104,7 +104,7 @@ def test_make_all_distinct_local_perturbations(fcc_1NN_A_Va_event):
 
         # show occupation count
         ssum = {0: 0, 1: 0, 2: 0}
-        for s in c.occupation().tolist():
+        for s in c.occupation.tolist():
             ssum[s] += 1
         print("ssum:", ssum)
 

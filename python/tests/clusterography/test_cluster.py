@@ -100,7 +100,7 @@ def test_cluster_rmul():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     site_factor_group_rep = clust.make_integral_site_coordinate_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim
+        prim_factor_group.elements, xtal_prim
     )
 
     # construct Cluster

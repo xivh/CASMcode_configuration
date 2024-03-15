@@ -7,7 +7,7 @@ def test_local_cluster_specs(fcc_1NN_A_Va_event):
     xtal_prim, phenomenal_occ_event = fcc_1NN_A_Va_event
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     symgroup_rep = occ_events.make_occevent_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim
+        prim_factor_group.elements, xtal_prim
     )
     occevent_group = occ_events.make_occevent_group(
         occ_event=phenomenal_occ_event,
