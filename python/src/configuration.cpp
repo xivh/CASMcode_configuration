@@ -180,28 +180,28 @@ PYBIND11_MODULE(_configuration, m) {
   py::module::import("libcasm.sym_info");
 
   py::class_<config::Prim, std::shared_ptr<config::Prim>>(m, "Prim", R"pbdoc(
-      A data structure that includes a shared `libcasm.xtal.Prim` specifying the
-      parent crystal structure and allowed degrees of freedom (DoF),
-      along with the symmetry representations needed for applying symmetry to
-      `libcasm.configuration.Configuration`.
+      A data structure that includes a shared :class:`libcasm.xtal.Prim`
+      specifying the parent crystal structure and allowed degrees of freedom
+      (DoF), along with the symmetry representations needed for applying
+      symmetry to :class:`~libcasm.configuration.Configuration`.
 
       )pbdoc")
       .def(py::init(&make_prim), py::arg("xtal_prim"),
            R"pbdoc(
 
-      .. _prim-init:
+      .. rubric:: Constructor
 
       Parameters
       ----------
       xtal_prim : libcasm.xtal.Prim
-          A :class:`~libcasm.xtal.Prim`
+          A :class:`libcasm.xtal.Prim`
       )pbdoc")
       .def_property_readonly(
           "xtal_prim",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->basicstructure;
           },
-          "The internal shared :class:`~libcasm.xtal.Prim`")
+          "The internal shared :class:`libcasm.xtal.Prim`")
       .def_property_readonly(
           "factor_group",
           [](std::shared_ptr<config::Prim const> const &prim) {
@@ -670,12 +670,14 @@ PYBIND11_MODULE(_configuration, m) {
       .def(py::init(&make_supercell), py::arg("prim"),
            py::arg("transformation_matrix_to_super").noconvert(),
            py::arg("max_n_translation_permutations") = 100,
-           R"pbdoc(Constructor
+           R"pbdoc(
+
+      .. rubric:: Constructor
 
       Parameters
       ----------
       prim : libcasm.configuration.Prim
-          A :class:`~libcasm.configuration.Prim`
+          A :class:`libcasm.configuration.Prim`
       transformation_matrix_to_super : array_like, shape=(3,3), dtype=int
           The transformation matrix, T, relating the superstructure lattice
           vectors, S, to the unit structure lattice vectors, L, according to
@@ -686,13 +688,13 @@ PYBIND11_MODULE(_configuration, m) {
           large supercells with `n_unitcells` > `max_n_translation_permutations`.
       )pbdoc")
       .def_readonly("prim", &config::Supercell::prim,
-                    "The internal shared :class:`~libcasm.configuration.Prim`")
+                    "The internal shared :class:`libcasm.configuration.Prim`")
       .def_property_readonly(
           "xtal_prim",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->prim->basicstructure;
           },
-          "The internal shared :class:`~libcasm.xtal.Prim`")
+          "The internal shared :class:`libcasm.xtal.Prim`")
       .def_property_readonly(
           "transformation_matrix_to_super",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
@@ -754,7 +756,7 @@ PYBIND11_MODULE(_configuration, m) {
                 superlattice.transformation_matrix_to_super()};
           },
           R"pbdoc(
-        Construct a :class:`libcasm.xtal.UnitCellIndexConverter` that allows
+        Construct a :class:`~libcasm.xtal.UnitCellIndexConverter` that allows
         iterating over sub-supercells
 
         This method finds the commensurate superlattice of this supercell and
@@ -1110,7 +1112,11 @@ PYBIND11_MODULE(_configuration, m) {
   // SupercellRecord -- define functions
   pySupercellRecord
       .def(py::init<std::shared_ptr<config::Supercell const> const &>(),
-           py::arg("supercell"), "Construct a SupercellRecord.")
+           py::arg("supercell"), R"pbdoc(
+
+           .. rubric:: Constructor
+
+           )pbdoc")
       .def_readonly("supercell", &config::SupercellRecord::supercell,
                     "The shared :class:`~libcasm.configuration.Supercell`")
       .def_readonly("supercell_name", &config::SupercellRecord::supercell_name,
@@ -1171,15 +1177,16 @@ PYBIND11_MODULE(_configuration, m) {
       .def(py::init<std::shared_ptr<config::Prim const> const &>(),
            py::arg("prim"),
            R"pbdoc(
-          Construct an empty SupercellSet
+
+          .. rubric:: Constructor
 
           Parameters
           ----------
           prim : libcasm.configuration.Prim
-              A :class:`~libcasm.configuration.Prim`
+              A :class:`libcasm.configuration.Prim`
           )pbdoc")
       .def("prim", &config::SupercellSet::prim,
-           "Returns the internal shared :class:`~libcasm.configuration.Prim`")
+           "Returns the internal shared :class:`libcasm.configuration.Prim`")
       .def("empty", &config::SupercellSet::empty,
            "Returns True if the SupercellSet is empty")
       // len(set)
@@ -1614,7 +1621,7 @@ PYBIND11_MODULE(_configuration, m) {
                           "transformation_matrix_to_supercell": <transformation_matrix_to_super>
 
           prim : libcasm.configuration.Prim
-              A :class:`~libcasm.configuration.Prim`
+              A :class:`libcasm.configuration.Prim`
 
           Returns
           -------
@@ -1658,7 +1665,9 @@ PYBIND11_MODULE(_configuration, m) {
   pyConfigurationSet
       .def(py::init<>(),
            R"pbdoc(
-          Construct an empty ConfigurationSet
+
+          .. rubric:: Constructor
+
           )pbdoc")
       .def("empty", &config::ConfigurationSet::empty,
            "Returns True if the ConfigurationSet is empty")
@@ -2229,7 +2238,8 @@ PYBIND11_MODULE(_configuration, m) {
       .def(py::init<>(&make_configuration), py::arg("supercell"),
            py::arg("dof_values") = std::nullopt,
            R"pbdoc(
-      Construct a Configuration
+
+      .. rubric:: Constructor
 
       Parameters
       ----------
@@ -2243,7 +2253,7 @@ PYBIND11_MODULE(_configuration, m) {
       .def_readwrite("supercell", &config::Configuration::supercell,
                      "The shared :class:`~libcasm.configuration.Supercell`")
       .def_readwrite("dof_values", &config::Configuration::dof_values,
-                     "The ConfigDoFValues")
+                     "The degree of freedom (DoF) values")
       .def("set_order_parameters", &config::set_dof_space_values,
            R"pbdoc(
           Assign DoF values from order parameter values
@@ -2916,7 +2926,8 @@ PYBIND11_MODULE(_configuration, m) {
            py::arg("global_properties") =
                std::map<std::string, Eigen::VectorXd>(),
            R"pbdoc(
-      Construct a ConfigurationWithProperties
+
+      .. rubric:: Constructor
 
       Parameters
       ----------
@@ -3130,7 +3141,7 @@ PYBIND11_MODULE(_configuration, m) {
           Parameters
           ----------
           prim : :class:`~libcasm.configuration.Prim`
-              The Prim.
+              The :class:`libcasm.configuration.Prim`.
           structure : :class:`~libcasm.xtal.Structure`
               A :class:`~libcasm.xtal.Structure` which has been mapped to a
               supercell of `prim`.
@@ -3735,7 +3746,11 @@ PYBIND11_MODULE(_configuration, m) {
 
     )pbdoc")
       .def(py::init(&make_ConfigSpaceAnalysisResults),
-           "Construct ConfigSpaceAnalysisResults.",
+           R"pbdoc(
+
+           .. rubric:: Constructor
+
+           )pbdoc",
            py::arg("standard_dof_space"), py::arg("equivalent_dof_values"),
            py::arg("equivalent_configurations"), py::arg("projector"),
            py::arg("eigenvalues"), py::arg("symmetry_adapted_dof_space"))
@@ -3838,7 +3853,9 @@ PYBIND11_MODULE(_configuration, m) {
 
       )pbdoc")
       .def(py::init<clexulator::DoFSpace, irreps::VectorSpaceSymReport>(),
-           "Construct DoFSpaceAnalysisResults.",
+           R"pbdoc(
+           .. rubric:: Constructor
+           )pbdoc",
            py::arg("symmetry_adapted_dof_space"), py::arg("symmetry_report"))
       .def_readonly(
           "symmetry_adapted_dof_space",
@@ -3889,7 +3906,7 @@ PYBIND11_MODULE(_configuration, m) {
           The :class:`~libcasm.clexulator.DoFSpace` for which a symmetry
           adapted basis is constructed.
       prim : :class:`~libcasm.configuration.Prim`
-          A :class:`~libcasm.configuration.Prim`, for symmetry representation
+          A :class:`libcasm.configuration.Prim`, for symmetry representation
           information.
       configuration : Optional[:class:`~libcasm.configuration.Configuration`] = None
           If None, use the full symmetry of the DoFSpace. If has value, use the
