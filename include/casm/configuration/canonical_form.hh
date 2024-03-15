@@ -15,20 +15,14 @@ class SupercellSymOp;
 
 // --- Supercell ---
 
-/// \brief Return true if supercell lattice is in canonical form
+/// \brief Return true if supercell lattice is right-handed lattice in
+///    canonical form
 bool is_canonical(Supercell const &supercell);
 
-/// \brief Return a shared supercell that compares greater to all equivalents
-///     with respect to prim point group symmetry
+/// \brief Return a shared supercell with right-handed lattice that compares
+///     greater to all equivalents with respect to prim point group symmetry
 std::shared_ptr<Supercell const> make_canonical_form(
     Supercell const &supercell);
-
-/// \brief Return SymOp that makes a supercell lattice canonical
-SymOp to_canonical(Supercell const &supercell);
-
-/// \brief Return SymOp that makes a supercell lattice from the canonical
-///     supercell lattice
-SymOp from_canonical(Supercell const &supercell);
 
 /// \brief Return the supercell with distinct symmetrically equivalent lattices
 std::vector<std::shared_ptr<Supercell const>> make_equivalents(

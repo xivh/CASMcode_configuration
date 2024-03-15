@@ -1,67 +1,39 @@
 #include "casm/configuration/canonical_form.hh"
 
 #include "casm/crystallography/CanonicalForm.hh"
+#include "casm/crystallography/Niggli.hh"
 
 namespace CASM {
 namespace config {
 
-/// \brief Return true if supercell lattice is in canonical form
+/// \brief Return true if supercell lattice is right-handed lattice in
+///     canonical form
 bool is_canonical(Supercell const &supercell) {
+  if (!supercell.superlattice.superlattice().is_right_handed()) {
+    return false;
+  }
   return xtal::canonical::check(supercell.superlattice.superlattice(),
                                 supercell.prim->sym_info.point_group->element);
 }
 
-/// \brief Return a shared supercell that compares greater to all equivalents
-///     with respect to prim point group symmetry
+/// \brief Return a shared supercell with right-handed lattice that compares
+///     greater to all equivalents with respect to prim point group symmetry
 ///
 /// The result, `canonical_supercell` satisfies for all `op` in
 /// `supercell.prim->sym_info.point_group->element`:
 ///     canonical_supercell->superlattice.superlattice() >=
-///         sym::copy_apply(op, supercell.superlattice.superlattice())
+///         sym::copy_apply(op,
+///         supercell.superlattice.superlattice()).make_right_handed()
 std::shared_ptr<Supercell const> make_canonical_form(
     Supercell const &supercell) {
-  Lattice canonical_lattice =
-      xtal::canonical::equivalent(supercell.superlattice.superlattice(),
-                                  supercell.prim->sym_info.point_group->element,
-                                  supercell.superlattice.superlattice().tol());
+  Lattice superlattice = supercell.superlattice.superlattice();
+  superlattice.make_right_handed();
+  Lattice canonical_superlattice = xtal::canonical::equivalent(
+      superlattice, supercell.prim->sym_info.point_group->element,
+      superlattice.tol());
   return std::make_shared<Supercell const>(
       supercell.prim, xtal::Superlattice(supercell.superlattice.prim_lattice(),
-                                         canonical_lattice));
-}
-
-/// \brief Return SymOp that makes a supercell lattice canonical
-///
-/// The result, `op`, is the first in
-/// `supercell.prim->sym_info.point_group->element` that satisfies:
-///     canonical_supercell->superlattice.superlattice() ==
-///         copy_apply(op, supercell.superlattice.superlattice())
-SymOp to_canonical(Supercell const &supercell) {
-  auto to_canonical_ix = xtal::canonical::operation_index(
-      supercell.superlattice.superlattice(),
-      supercell.prim->sym_info.point_group->element);
-  return supercell.prim->sym_info.point_group->element[to_canonical_ix];
-}
-
-/// \brief Return op that makes a supercell lattice from the canonical
-///     supercell lattice
-///
-/// The result, `op`, is the first in
-/// `supercell.prim->sym_info.point_group->element` that satisfies:
-///     supercell.superlattice.superlattice() ==
-///         copy_apply(op, canonical_supercell->superlattice.superlattice())
-SymOp from_canonical(Supercell const &supercell) {
-  Lattice const &lhs = supercell.superlattice.superlattice();
-  Lattice canonical =
-      xtal::canonical::equivalent(supercell.superlattice.superlattice(),
-                                  supercell.prim->sym_info.point_group->element,
-                                  supercell.superlattice.superlattice().tol());
-  for (auto const &op : supercell.prim->sym_info.point_group->element) {
-    if (lhs == sym::copy_apply(op, canonical)) {
-      return op;
-    }
-  }
-  throw std::runtime_error(
-      "Error in CASM::config::from_canonical(Supercell const &): Not found");
+                                         canonical_superlattice));
 }
 
 /// \brief Return the supercell with distinct symmetrically equivalent lattices

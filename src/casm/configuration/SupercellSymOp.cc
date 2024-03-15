@@ -546,6 +546,9 @@ std::vector<Eigen::MatrixXd> make_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::optional<std::set<Index>> site_indices,
     std::shared_ptr<SymGroup const> &symgroup) {
+  if (group.size() == 0) {
+    throw std::runtime_error("Error in make_matrix_rep: group has size==0.");
+  }
   if (AnisoValTraits(key).global()) {
     return make_global_dof_matrix_rep(group, key, symgroup);
   } else {
@@ -574,6 +577,10 @@ std::vector<Eigen::MatrixXd> make_matrix_rep(
 std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::shared_ptr<SymGroup const> &symgroup) {
+  if (group.size() == 0) {
+    throw std::runtime_error(
+        "Error in make_global_dof_matrix_rep: group has size==0.");
+  }
   Supercell const &supercell = *group.begin()->supercell();
   Prim const &prim = *supercell.prim;
   auto const &factor_group_element = prim.sym_info.factor_group->element;
@@ -643,6 +650,10 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::set<Index> const &site_indices,
     std::shared_ptr<SymGroup const> &symgroup) {
+  if (group.size() == 0) {
+    throw std::runtime_error(
+        "Error in make_local_dof_matrix_rep: group has size==0.");
+  }
   Supercell const &supercell = *group.begin()->supercell();
   Prim const &prim = *supercell.prim;
   xtal::Lattice const &prim_lattice = prim.basicstructure->lattice();

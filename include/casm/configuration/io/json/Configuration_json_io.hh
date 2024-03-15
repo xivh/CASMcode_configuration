@@ -23,7 +23,7 @@ void from_json(config::SupercellSet &supercells,
                std::shared_ptr<config::Prim const> const &prim);
 
 jsonParser &to_json(config::ConfigurationSet const &configurations,
-                    jsonParser &json);
+                    jsonParser &json, bool write_prim_basis = false);
 
 template <typename T>
 struct jsonConstructor;
@@ -55,7 +55,7 @@ struct jsonMake<config::Configuration> {
 
 /// Insert Configuration to JSON
 jsonParser &to_json(config::Configuration const &configuration,
-                    jsonParser &json);
+                    jsonParser &json, bool write_prim_basis = false);
 
 /// Parser Configuration from JSON with error messages
 void parse(InputParser<config::Configuration> &parser,
@@ -92,7 +92,7 @@ struct jsonMake<config::ConfigurationWithProperties> {
 /// Insert ConfigurationWithProperties to JSON
 jsonParser &to_json(
     config::ConfigurationWithProperties const &configuration_with_properties,
-    jsonParser &json);
+    jsonParser &json, bool write_prim_basis = false);
 
 /// Parser ConfigurationWithProperties from JSON with error messages
 void parse(InputParser<config::ConfigurationWithProperties> &parser,

@@ -43,7 +43,8 @@ TEST_F(MakeSimpleStructureTest, Test1) {
   occupation(0) = 1;
   occupation(1) = 1;
 
-  xtal::SimpleStructure structure = make_simple_structure(configuration);
+  config::ToAtomicStructure f;
+  xtal::SimpleStructure structure = f(configuration);
 
   jsonParser json;
   to_json(structure, json);
@@ -82,8 +83,9 @@ TEST_F(MakeSimpleStructureTest, Test2) {
   global_properties.emplace(strain_key, Ustrain);
 
   // make SimpleStructure
+  config::ToAtomicStructure f;
   xtal::SimpleStructure structure =
-      make_simple_structure(configuration, local_properties, global_properties);
+      f(configuration, local_properties, global_properties);
 
   jsonParser json;
   to_json(structure, json);

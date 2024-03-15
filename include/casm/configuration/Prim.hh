@@ -1,6 +1,7 @@
 #ifndef CASM_config_Prim
 #define CASM_config_Prim
 
+#include "casm/configuration/PrimMagspinInfo.hh"
 #include "casm/configuration/PrimSymInfo.hh"
 #include "casm/configuration/definitions.hh"
 #include "casm/crystallography/BasicStructure.hh"
@@ -30,9 +31,18 @@ struct Prim {
   ///     local DoF
   std::map<DoFKey, std::vector<xtal::SiteDoFSet>> const local_dof_info;
 
+  /// \brief Checks that the prim allows 1 or more occupants on each site,
+  ///     all occupants have a single atom, and there are no Molecule
+  ///     properties, only AtomPosition properties
+  bool is_atomic;
+
   /// \brief Holds symmetry representations used for all configurations with
   /// the same prim structure
   PrimSymInfo const sym_info;
+
+  /// \brief Holds information about allowed occupants with discrete magspin or
+  ///     continuous magspin DoF
+  PrimMagspinInfo const magspin_info;
 };
 
 inline std::shared_ptr<Prim const> make_shared_prim(

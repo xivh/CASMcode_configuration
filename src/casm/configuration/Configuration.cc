@@ -1,9 +1,11 @@
 #include "casm/configuration/Configuration.hh"
 
 #include "casm/clexulator/ConfigDoFValuesTools.hh"
+#include "casm/clexulator/DoFSpace.hh"
 #include "casm/configuration/ConfigCompare.hh"
 #include "casm/configuration/ConfigIsEquivalent.hh"
 #include "casm/configuration/SupercellSymOp.hh"
+#include "casm/configuration/copy_configuration.hh"
 
 namespace CASM {
 namespace config {
@@ -40,6 +42,106 @@ bool Configuration::eq_impl(Configuration const &rhs) const {
   double xtal_tol = supercell->prim->basicstructure->lattice().tol();
   ConfigIsEquivalent equal_to(*this, xtal_tol);
   return equal_to(rhs);
+}
+
+/// \brief Convert DoF values into the standard basis
+clexulator::ConfigDoFValues make_standard_dof_values(
+    Configuration const &config) {
+  auto &supercell = config.supercell;
+  auto &prim = *supercell->prim;
+  return clexulator::to_standard_values(
+      config.dof_values, prim.basicstructure->basis().size(),
+      supercell->unitcell_index_converter.total_sites(), prim.global_dof_info,
+      prim.local_dof_info);
+}
+
+/// \brief Set DoF values from other, which is in the standard basis
+void set_standard_dof_values(Configuration &config,
+                             clexulator::ConfigDoFValues const &other) {
+  auto &supercell = config.supercell;
+  auto &prim = *supercell->prim;
+  config.dof_values = clexulator::from_standard_values(
+      other, prim.basicstructure->basis().size(),
+      supercell->unitcell_index_converter.total_sites(), prim.global_dof_info,
+      prim.local_dof_info);
+}
+
+/// \brief Set DoF values associated with a DoFSpace coordinate
+///
+/// Notes:
+/// - All DoF values in the DoFSpace are set to match the given coordinate.
+/// - DoF values of other types are not changed.
+/// - If the DoFSpace is for a local DoF, only sites included in the
+///   DoFSpace are set.
+/// - This method does not support occupation DoFSpace.
+///
+/// \param config The configuration being assigned to
+/// \param dof_space The DoFSpace. For local DoF spaces, the dof_space must
+///     tile into the config supercell.
+/// \param dof_space_coordinate The normal coordinate specifying the DoF
+///     values in the DoFSpace basis.
+void set_dof_space_values(config::Configuration &config,
+                          clexulator::DoFSpace const &dof_space,
+                          Eigen::VectorXd const &dof_space_coordinate) {
+  if (dof_space.dof_key == "occ") {
+    std::stringstream msg;
+    msg << "Error: CASM::config::set_dof_space_values is not "
+           "supported for occupation."
+        << std::endl;
+    throw std::runtime_error(msg.str());
+  }
+
+  // For global DoF, or local DoF if the supercells are identical,
+  // can simply directly assign DoF values
+  if (dof_space.is_global ||
+      (config.supercell->superlattice.transformation_matrix_to_super() ==
+       dof_space.transformation_matrix_to_super.value())) {
+    clexulator::set_dof_value(
+        config.dof_values,
+        config.supercell->superlattice.transformation_matrix_to_super(),
+        dof_space, dof_space_coordinate);
+    return;
+  }
+
+  // Otherwise, need to:
+  // 1) assign DoF values to the DoF space supercell,
+  // 2) make a super configuration in the config supercell,
+  // 3) copy DoF space values (will be local DoF only)
+
+  // make dof_space supercell
+  auto dof_space_supercell = std::make_shared<Supercell const>(
+      config.supercell->prim, dof_space.transformation_matrix_to_super.value());
+
+  // if dof_space supercell does not tile `config.supercell`, throw
+  if (config.supercell != dof_space_supercell) {
+    auto const &superlattice = config.supercell->superlattice.superlattice();
+    auto const &unit_lattice = dof_space_supercell->superlattice.superlattice();
+    double tol = std::max(superlattice.tol(), unit_lattice.tol());
+    if (!xtal::is_superlattice(superlattice, unit_lattice, tol).first) {
+      throw std::runtime_error(
+          "Error in Configuration.set_dof_space_values: "
+          "configuration is not tiled by the dof_space supercell");
+    }
+  }
+
+  // assign DoF values to the DoF space supercell
+  config::Configuration dof_space_config(dof_space_supercell);
+  clexulator::set_dof_value(
+      dof_space_config.dof_values,
+      dof_space_config.supercell->superlattice.transformation_matrix_to_super(),
+      dof_space, dof_space_coordinate);
+
+  // make a super configuration in the config supercell
+  config::Configuration dof_space_superconfig =
+      copy_configuration(dof_space_config, config.supercell);
+
+  // copy DoF space values (will be local DoF only)
+  Eigen::MatrixXd const &x =
+      dof_space_superconfig.dof_values.local_dof_values.at(dof_space.dof_key);
+  Eigen::MatrixXd &y = config.dof_values.local_dof_values.at(dof_space.dof_key);
+  for (Index l : *dof_space.sites) {
+    y.col(l) = x.col(l);
+  }
 }
 
 /// \brief Apply a symmetry operation specified by a SupercellSymOp to

@@ -15,10 +15,10 @@ def test_conventional_fcc_matrix_rep(FCC_binary_GLstrain_disp_prim):
         ]
     )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
-    assert supercell.n_sites() == 4
+    assert supercell.n_sites == 4
     configuration = config.Configuration(supercell)
     invariant_subgroup = config.make_invariant_subgroup(configuration)
-    site_indices = set(range(0, supercell.n_sites()))
+    site_indices = set(range(0, supercell.n_sites))
 
     occ_rep = config.make_local_dof_matrix_rep(invariant_subgroup, "occ", site_indices)
     assert len(occ_rep) == 4 * 48
@@ -45,10 +45,10 @@ def test_conventional_bcc_matrix_rep(BCC_binary_GLstrain_disp_prim):
         ]
     )
     supercell = config.make_canonical_supercell(config.Supercell(prim, T))
-    assert supercell.n_sites() == 2
+    assert supercell.n_sites == 2
     configuration = config.Configuration(supercell)
     invariant_subgroup = config.make_invariant_subgroup(configuration)
-    site_indices = set(range(0, supercell.n_sites()))
+    site_indices = set(range(0, supercell.n_sites))
 
     occ_rep = config.make_local_dof_matrix_rep(invariant_subgroup, "occ", site_indices)
     # print(occ_rep)
@@ -98,10 +98,10 @@ def test_Hstrain_dof_space_rep_1(FCC_binary_Hstrain_disp_prim):
     order_parameter = casmclex.OrderParameter(
         dof_space=dof_space,
     )
-    dof_values = configuration.dof_values()
+    dof_values = configuration.dof_values
     order_parameter.update(
-        transformation_matrix_to_super=supercell.transformation_matrix_to_super(),
-        site_index_converter=supercell.site_index_converter(),
+        transformation_matrix_to_super=supercell.transformation_matrix_to_super,
+        site_index_converter=supercell.site_index_converter,
         config_dof_values=dof_values,
     )
 
@@ -172,10 +172,10 @@ def test_disp_dof_space_rep_1(FCC_binary_Hstrain_disp_prim):
     order_parameter = casmclex.OrderParameter(
         dof_space=dof_space,
     )
-    dof_values = configuration.dof_values()
+    dof_values = configuration.dof_values
     order_parameter.update(
-        transformation_matrix_to_super=supercell.transformation_matrix_to_super(),
-        site_index_converter=supercell.site_index_converter(),
+        transformation_matrix_to_super=supercell.transformation_matrix_to_super,
+        site_index_converter=supercell.site_index_converter,
         config_dof_values=dof_values,
     )
 

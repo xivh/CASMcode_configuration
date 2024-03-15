@@ -91,10 +91,22 @@ std::vector<Index> to_index_vector(
     IntegralCluster const &cluster,
     xtal::UnitCellCoordIndexConverter const &converter);
 
+/// \brief Convert a set of linear site indices in a supercell
+///     to an IntegralCluster
+IntegralCluster cluster_from_index_vector(
+    std::vector<Index> const &cluster_as_indices,
+    xtal::UnitCellCoordIndexConverter const &converter);
+
 /// \brief Convert IntegralCluster to set of linear site
 ///     indices in a supercell
 std::set<Index> to_index_set(
     IntegralCluster const &cluster,
+    xtal::UnitCellCoordIndexConverter const &converter);
+
+/// \brief Convert a set of linear site indices in a supercell
+///     to an IntegralCluster
+IntegralCluster cluster_from_index_set(
+    std::set<Index> const &cluster_as_indices,
     xtal::UnitCellCoordIndexConverter const &converter);
 
 template <typename Iterator>

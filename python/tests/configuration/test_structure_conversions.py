@@ -69,7 +69,7 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
 
     # convert Configuration to Structure
     structure = default_configuration.to_structure()
-    assert structure.lattice() == supercell.superlattice()
+    assert structure.lattice() == supercell.superlattice
     assert np.allclose(
         structure.atom_coordinate_cart(),
         supercell.coordinate_cart(),
@@ -80,7 +80,7 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
         prim=prim,
         structure=structure,
     )
-    assert default_configuration.supercell() == in_configuration.supercell()
+    assert default_configuration.supercell == in_configuration.supercell
     assert default_configuration == in_configuration
 
     ### A ###
@@ -94,8 +94,8 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
         prim=prim,
         structure=structure,
     )
-    assert in_configuration.supercell() == supercell
-    assert in_configuration.occupation().tolist() == [0]
+    assert in_configuration.supercell == supercell
+    assert in_configuration.occupation.tolist() == [0]
 
     ### B ###
     # set occupation and convert to Structure
@@ -108,8 +108,8 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
         prim=prim,
         structure=structure,
     )
-    assert in_configuration.supercell() == supercell
-    assert in_configuration.occupation().tolist() == [1]
+    assert in_configuration.supercell == supercell
+    assert in_configuration.occupation.tolist() == [1]
 
     ### Conventional FCC unit cell ###
     supercell = casmconfig.make_canonical_supercell(
@@ -122,7 +122,7 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
 
     # convert Configuration to Structure
     structure = default_configuration.to_structure()
-    assert structure.lattice() == supercell.superlattice()
+    assert structure.lattice() == supercell.superlattice
     assert np.allclose(
         structure.atom_coordinate_cart(),
         supercell.coordinate_cart(),
@@ -133,7 +133,7 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
         prim=prim,
         structure=structure,
     )
-    assert default_configuration.supercell() == in_configuration.supercell()
+    assert default_configuration.supercell == in_configuration.supercell
     assert default_configuration == in_configuration
 
     ### A3B1 ###
@@ -147,8 +147,8 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
         prim=prim,
         structure=structure,
     )
-    assert in_configuration.supercell() == supercell
-    assert in_configuration.occupation().tolist() == [1, 0, 0, 0]
+    assert in_configuration.supercell == supercell
+    assert in_configuration.occupation.tolist() == [1, 0, 0, 0]
 
     ### A1B3 ###
     # set occupation and convert to Structure
@@ -161,8 +161,39 @@ def test_FCC_binary_prim_1(FCC_binary_prim):
         prim=prim,
         structure=structure,
     )
-    assert in_configuration.supercell() == supercell
-    assert in_configuration.occupation().tolist() == [1, 1, 1, 0]
+    assert in_configuration.supercell == supercell
+    assert in_configuration.occupation.tolist() == [1, 1, 1, 0]
+
+
+def test_excluded_species_1():
+    xtal_prim = xtal_prims.BCC(r=1.0, occ_dof=["A", "B", "Va"])
+    prim = casmconfig.Prim(xtal_prim)
+
+    T_conventional = np.array(
+        [  # conventional BCC cubic cell
+            [0, 1, 1],
+            [1, 0, 1],
+            [1, 1, 0],
+        ],
+        dtype=int,
+    )
+    T_supercell = T_conventional * 2
+
+    ### FCC primitive cell ###
+
+    supercell = casmconfig.make_canonical_supercell(
+        casmconfig.Supercell(prim, T_supercell)
+    )
+    default_configuration = casmconfig.Configuration(supercell)
+    default_configuration.set_occ(1, 2)
+
+    # convert Configuration to Structure
+    structure = default_configuration.to_structure()
+    assert len(structure.atom_type()) == 15
+
+    # convert Configuration to Structure
+    structure = default_configuration.to_structure(excluded_species=[])
+    assert len(structure.atom_type()) == 16
 
 
 def test_bcc_hcp_mapping_conversions_1():
@@ -230,13 +261,13 @@ def test_bcc_hcp_mapping_conversions_1():
 
     ### Make the fully commensurate superdupercell
     superduperlattice = xtal.make_superduperlattice(
-        lattices=[mapped_configuration.supercell().superlattice()],
+        lattices=[mapped_configuration.supercell.superlattice],
         mode="fully_commensurate",
-        point_group=BCC_strain_disp_prim.crystal_point_group().elements(),
+        point_group=BCC_strain_disp_prim.crystal_point_group.elements,
     )
     T = xtal.make_transformation_matrix_to_super(
         superlattice=superduperlattice,
-        unit_lattice=BCC_strain_disp_prim.xtal_prim().lattice(),
+        unit_lattice=BCC_strain_disp_prim.xtal_prim.lattice(),
     )
     superdupercell = casmconfig.make_canonical_supercell(
         casmconfig.Supercell(

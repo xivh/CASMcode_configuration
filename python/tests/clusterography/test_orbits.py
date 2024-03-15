@@ -8,7 +8,7 @@ def test_make_periodic_orbit():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     factor_group_site_rep = clust.make_integral_site_coordinate_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim
+        prim_factor_group.elements, xtal_prim
     )
     cluster = clust.Cluster.from_list(
         [
@@ -71,7 +71,7 @@ def test_make_local_orbit():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     factor_group_site_rep = clust.make_integral_site_coordinate_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim
+        prim_factor_group.elements, xtal_prim
     )
     phenomenal_cluster = clust.Cluster.from_list(
         [
@@ -85,9 +85,9 @@ def test_make_local_orbit():
         lattice=xtal_prim.lattice(),
         integral_site_coordinate_symgroup_rep=factor_group_site_rep,
     )
-    assert len(phenomenal_group.elements()) == 8
+    assert len(phenomenal_group.elements) == 8
     phenomenal_group_site_rep = clust.make_integral_site_coordinate_symgroup_rep(
-        phenomenal_group.elements(), xtal_prim
+        phenomenal_group.elements, xtal_prim
     )
     assert len(phenomenal_group_site_rep) == 8
 

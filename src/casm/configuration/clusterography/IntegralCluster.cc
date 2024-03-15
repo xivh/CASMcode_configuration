@@ -65,6 +65,18 @@ std::vector<Index> to_index_vector(
   return index_vector;
 }
 
+/// \brief Convert a set of linear site indices in a supercell
+///     to an IntegralCluster
+IntegralCluster cluster_from_index_vector(
+    std::vector<Index> const &cluster_as_indices,
+    xtal::UnitCellCoordIndexConverter const &converter) {
+  IntegralCluster cluster;
+  for (auto linear_site_index : cluster_as_indices) {
+    cluster.elements().push_back(converter(linear_site_index));
+  }
+  return cluster;
+}
+
 /// \brief Convert IntegralCluster to set of linear site
 ///     indices in a supercell
 std::set<Index> to_index_set(
@@ -75,6 +87,18 @@ std::set<Index> to_index_set(
     index_set.insert(converter(site));
   }
   return index_set;
+}
+
+/// \brief Convert a set of linear site indices in a supercell
+///     to an IntegralCluster
+IntegralCluster cluster_from_index_set(
+    std::set<Index> const &cluster_as_indices,
+    xtal::UnitCellCoordIndexConverter const &converter) {
+  IntegralCluster cluster;
+  for (auto linear_site_index : cluster_as_indices) {
+    cluster.elements().push_back(converter(linear_site_index));
+  }
+  return cluster;
 }
 
 }  // namespace clust

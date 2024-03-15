@@ -32,7 +32,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: CASMcode_global/dist
-          key: ${{ runner.os }}-libcasm-global-v2-0-3
+          key: ${{ runner.os }}-libcasm-global-v2-0-4
 
       ### libcasm-xtal ###
       - name: restore libcasm-xtal cache
@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: CASMcode_crystallography/dist
-          key: ${{ runner.os }}-libcasm-xtal-v2-0a8
+          key: ${{ runner.os }}-libcasm-xtal-v2-0a9
 
       ### libcasm-mapping ###
       - name: restore libcasm-mapping cache
@@ -48,7 +48,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: CASMcode_mapping/dist
-          key: ${{ runner.os }}-libcasm-mapping-v2-0a2
+          key: ${{ runner.os }}-libcasm-mapping-v2-0a3
 
       ### libcasm-clexulator ###
       - name: restore libcasm-clexulator cache
@@ -56,7 +56,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: CASMcode_clexulator/dist
-          key: ${{ runner.os }}-libcasm-clexulator-v2-0a3
+          key: ${{ runner.os }}-libcasm-clexulator-v2-0a4
 
       - name: Install CASM dependencies
         run: |

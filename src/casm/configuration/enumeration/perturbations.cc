@@ -21,24 +21,12 @@ namespace config {
 ///
 /// \param background, The background
 /// \param orbits_as_indices, The orbits in the infinite crystal,
-///     converted to linear supercell site indcies
+///     converted to linear supercell site indices.
 std::set<std::set<Index>> make_distinct_cluster_sites(
     Configuration const &background,
     std::vector<std::set<std::set<Index>>> const &orbits_as_indices) {
   /// Inverse permutations can be used to transform
   /// linear site indices.
-  /// Keep only event group operations that also keep
-  /// background configuration invariant.
-  std::vector<sym_info::Permutation> indices_group_rep;
-  ConfigIsEquivalent is_background_invariant(background);
-  auto it = SupercellSymOp::begin(background.supercell);
-  auto end = SupercellSymOp::end(background.supercell);
-  while (it != end) {
-    if (is_background_invariant(*it)) {
-      indices_group_rep.push_back(sym_info::inverse(it->combined_permute()));
-    }
-    ++it;
-  }
   auto copy_apply_f = [](sym_info::Permutation const &perm,
                          std::set<Index> const &site_indices) {
     std::set<Index> new_site_indices;
@@ -48,20 +36,62 @@ std::set<std::set<Index>> make_distinct_cluster_sites(
     return new_site_indices;
   };
 
-  /// Generate new orbit generators.
-  /// A generator is the canonical element from an orbit.
-  /// These will take into account background configuration and
-  /// supercell periodic boundary conditions
-  std::set<std::set<Index>> distinct_cluster_sites;
-  for (auto const &orbit : orbits_as_indices) {
-    std::set<std::set<Index>> tmp = group::make_orbit_generators(
-        orbit, indices_group_rep.begin(), indices_group_rep.end(),
-        std::less<std::set<Index>>(), copy_apply_f);
-    for (auto const &cluster_sites : tmp) {
-      distinct_cluster_sites.insert(cluster_sites);
+  /// Find the background factor group, and store the inverse permutations
+  /// because they are the rep that transforms site indices.
+  std::vector<SupercellSymOp> background_fg_op;
+  std::vector<sym_info::Permutation> indices_group_rep;
+  ConfigIsEquivalent is_background_invariant(background);
+  auto begin = SupercellSymOp::begin(background.supercell);
+  auto end = SupercellSymOp::end(background.supercell);
+  for (auto it = begin; it != end; ++it) {
+    if (is_background_invariant(*it)) {
+      background_fg_op.push_back(it);
+      indices_group_rep.push_back(sym_info::inverse(it->combined_permute()));
     }
   }
 
+  /// Find supercell factor group operations that might create distinct
+  /// sub-orbits by finding canonical operations with respect to the background
+  /// configuration factor group.
+  /// (An element of each coset of the background factor group).
+  auto is_possible_suborbit_generating_op = [&](SupercellSymOp const &it) {
+    for (auto background_fg_it : background_fg_op) {
+      if (background_fg_it * it > it) {
+        return false;
+      }
+    }
+    return true;
+  };
+  std::vector<sym_info::Permutation> possible_suborbit_generating_indices_rep;
+  for (auto it = begin; it != end; ++it) {
+    if (is_possible_suborbit_generating_op(it)) {
+      possible_suborbit_generating_indices_rep.push_back(
+          sym_info::inverse(it->combined_permute()));
+    }
+  }
+
+  /// Get the actual sub-orbit generators.
+  /// 1) Apply a possible sub-orbit generating op to each infinite crystal orbit
+  /// element
+  /// 2) Apply the background configuration factor group to find the
+  /// canonical form in the supercell with background configuration
+  /// 3) Keep distinct sub-orbit generators
+  ///
+  /// The resulting clusters are the distinct clusters, taking into account
+  /// background configuration and supercell periodic boundary conditions
+
+  std::set<std::set<Index>> distinct_cluster_sites;
+  for (auto const &orbit : orbits_as_indices) {
+    for (auto const &cluster : orbit) {
+      for (auto const &rep : possible_suborbit_generating_indices_rep) {
+        auto suborbit_element = copy_apply_f(rep, cluster);
+        distinct_cluster_sites.emplace(group::make_canonical_element(
+            suborbit_element, indices_group_rep.begin(),
+            indices_group_rep.end(), std::less<std::set<Index>>(),
+            copy_apply_f));
+      }
+    }
+  }
   return distinct_cluster_sites;
 }
 
@@ -95,7 +125,7 @@ std::set<Configuration> make_distinct_perturbations(
 ///     the supercell of the background configuration that leave the
 ///     event invariant
 /// \param local_orbits_as_indices, The local orbits in the infinite crystal,
-///     converted to linear supercell site indcies
+///     converted to linear supercell site indices
 std::set<std::set<Index>> make_distinct_local_cluster_sites(
     Configuration const &background, std::vector<Index> const &event_sites,
     std::vector<int> const &occ_init, std::vector<int> const &occ_final,

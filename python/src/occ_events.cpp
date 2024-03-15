@@ -145,12 +145,13 @@ PYBIND11_MODULE(_occ_events, m) {
            py::arg("chemical_name_list") = std::nullopt,
            py::arg("vacancy_name_list") = std::nullopt,
            R"pbdoc(
-      Construct an OccSystem
+
+      .. rubric:: Constructor
 
       Parameters
       ----------
       xtal_prim: libcasm.xtal.Prim
-          A :class:`~libcasm.xtal.Prim`
+          A :class:`libcasm.xtal.Prim`
       chemical_name_list: Optional[List[str]]=None
           Order of chemical name indices (i.e. :func:`~libcasm.xtal.Occupant.name`)
           to use in specifying OccEvents, performing Monte Carlo calculations, etc.
@@ -204,7 +205,7 @@ PYBIND11_MODULE(_occ_events, m) {
               The serialized OccSystem
 
           prim : libcasm.xtal.Prim
-              A :class:`~libcasm.xtal.Prim`
+              A :class:`libcasm.xtal.Prim`
 
           Returns
           -------
@@ -267,6 +268,9 @@ PYBIND11_MODULE(_occ_events, m) {
       )pbdoc")
       .def(py::init(&make_default_occ_position),
            R"pbdoc(
+
+      .. rubric:: Constructor
+
       Construct a default OccPosition, equal to indicating the first occupant in the
       first basis site in the origin unit cell.
 
@@ -429,7 +433,8 @@ PYBIND11_MODULE(_occ_events, m) {
   pyOccEventRep
       .def(py::init(&make_occ_event_rep),
            R"pbdoc(
-          Construct an OccEventRep
+
+          .. rubric:: Constructor
 
           Parameters
           ----------
@@ -523,7 +528,8 @@ PYBIND11_MODULE(_occ_events, m) {
   pyOccEvent
       .def(py::init(&make_occ_event),
            R"pbdoc(
-      Construct an OccEvent
+
+      .. rubric:: Constructor
 
       Parameters
       ----------

@@ -90,7 +90,7 @@ def make_canonical_occevent(xtal_prim: xtal.Prim, occ_event: _occ_events.OccEven
     """
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     occevent_symgroup_rep = _occ_events.make_occevent_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim
+        prim_factor_group.elements, xtal_prim
     )
     occevent_orbit = _occ_events.make_prim_periodic_orbit(
         occ_event, occevent_symgroup_rep
@@ -136,7 +136,7 @@ def make_occevent_cluster_specs(
     """
     prim_factor_group = sym_info.make_factor_group(xtal_prim)
     symgroup_rep = _occ_events.make_occevent_symgroup_rep(
-        prim_factor_group.elements(), xtal_prim
+        prim_factor_group.elements, xtal_prim
     )
     occevent_group = _occ_events.make_occevent_group(
         occ_event=phenomenal_occ_event,

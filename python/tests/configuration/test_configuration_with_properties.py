@@ -162,7 +162,7 @@ def test_configuration_with_properties_2(FCC_binary_prim):
 
     # print("~~~ config w/ props initial ~~~")
     # print(xtal.pretty_json(config_w_props.to_dict()))
-    assert (config_w_props.configuration.occupation() == occupation_init).all()
+    assert (config_w_props.configuration.occupation == occupation_init).all()
     # print()
 
     i = 0
@@ -171,7 +171,7 @@ def test_configuration_with_properties_2(FCC_binary_prim):
 
         # print(f"~~~ config w/ props transformed {i} ~~~")
         # print(xtal.pretty_json(transformed.to_dict()))
-        assert (transformed.configuration.occupation() == occupation_init).all()
+        assert (transformed.configuration.occupation == occupation_init).all()
         i += 1
 
         ### Test consistency with applying xtal.SymOp ###

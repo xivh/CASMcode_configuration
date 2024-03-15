@@ -153,29 +153,36 @@ void parse(
   std::vector<double> max_length;
   std::vector<double> cutoff_radius;
   if (parser.self.contains("orbit_branch_specs")) {
-    int i = 0;
-    std::string branch = std::to_string(i);
-    max_length.push_back(0.0);
-    cutoff_radius.push_back(0.0);
-
     bool has_cutoff_radius = false;
-    while (parser.self["orbit_branch_specs"].contains(branch)) {
-      // check if any branch includes "cutoff_radius"
-      jsonParser const &j = parser.self["orbit_branch_specs"][branch];
-      if (j.contains("cutoff_radius")) {
-        has_cutoff_radius = true;
+    jsonParser const &j = parser.self["orbit_branch_specs"];
+    std::size_t pos{};
+    for (auto it = j.begin(); it != j.end(); ++it) {
+      try {
+        const int i{std::stoi(it.name(), &pos)};
+        while (max_length.size() < i + 1) {
+          max_length.push_back(0.0);
+          cutoff_radius.push_back(0.0);
+        }
+
+        if (!it->is_obj()) {
+          continue;
+        }
+        if (it->contains("cutoff_radius")) {
+          has_cutoff_radius = true;
+        }
+
+        // read "max_length" & "cutoff_radius" (defaults = 0.0)
+        fs::path option = fs::path("orbit_branch_specs") / it.name();
+        double _max_length = 0.0;
+        parser.optional(_max_length, option / "max_length");
+        max_length[i] = _max_length;
+
+        double _cutoff_radius = 0.0;
+        parser.optional(_cutoff_radius, option / "cutoff_radius");
+        cutoff_radius[i] = _cutoff_radius;
+      } catch (std::invalid_argument const &ex) {
+        continue;
       }
-
-      // read "max_length" & "cutoff_radius" (defaults = 0.0)
-      fs::path option = fs::path("orbit_branch_specs") / branch;
-      double _max_length = 0.0;
-      parser.optional(_max_length, option / "max_length");
-      double _cutoff_radius = 0.0;
-      parser.optional(_cutoff_radius, option / "cutoff_radius");
-
-      // store
-      max_length.push_back(_max_length);
-      cutoff_radius.push_back(_cutoff_radius);
     }
 
     // if "cutoff_radius" never included in input, clear

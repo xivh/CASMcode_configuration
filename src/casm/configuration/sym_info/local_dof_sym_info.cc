@@ -59,24 +59,33 @@ std::map<DoFKey, LocalDoFSymGroupRep> make_local_dof_symgroup_rep(
 
         if (!dof_equals(transformed_dof_from)) {
           std::stringstream msg;
-          msg << "Error in make_global_dof_symgroup_rep: Local DoF \""
-              << dof_key
+          msg << "Error in make_local_dof_symgroup_rep: Local DoF \"" << dof_key
               << "\" that originally identified as equivalent cannot be mapped "
                  "by symmetry.";
           throw std::runtime_error(msg.str());
         }
-        Eigen::MatrixXd basis_change_representation;
+
+        // B_to * x_to = op * B_from * x_from
+        // x_to = M * x_from
+        // ->
+        // B_to * M * x_from = op * B_from * x_from
+        // M = B_to.solve(op * B_from)
+
+        Eigen::MatrixXd M;
         try {
-          basis_change_representation = xtal::dofset_transformation_matrix(
-              dof_to.basis(), transformed_dof_from.basis(), xtal_tol);
+          M = dof_to.basis().colPivHouseholderQr().solve(
+              transformed_dof_from.basis());
+          if (!(M.transpose() * M).eval().isIdentity(xtal_tol)) {
+            throw std::runtime_error(
+                "Cannot find orthogonal symmetry representation!");
+          }
         } catch (std::runtime_error &e) {
           std::stringstream msg;
-          msg << "Error in make_global_dof_symgroup_rep: Local DoF \""
-              << dof_key
+          msg << "Error in make_local_dof_symgroup_rep: Local DoF \"" << dof_key
               << "\" basis change representation construction failed.";
           throw std::runtime_error(msg.str());
         }
-        op_rep[from_b] = basis_change_representation;
+        op_rep[from_b] = M;
       }
       group_rep.push_back(op_rep);
       ++op_index;

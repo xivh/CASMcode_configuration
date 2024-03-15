@@ -334,7 +334,7 @@ PYBIND11_MODULE(_clusterography, m) {
               The serialized Cluster
 
           xtal_prim : libcasm.xtal.Prim
-              The :class:`~libcasm.xtal.Prim`
+              The :class:`libcasm.xtal.Prim`
 
           Returns
           -------
@@ -356,7 +356,7 @@ PYBIND11_MODULE(_clusterography, m) {
           Parameters
           ----------
           xtal_prim : libcasm.xtal.Prim
-              The :class:`~libcasm.xtal.Prim`
+              The :class:`libcasm.xtal.Prim`
 
           Returns
           -------
@@ -383,6 +383,15 @@ PYBIND11_MODULE(_clusterography, m) {
           If True, include subcluster orbits
       )pbdoc")
       //
+      .def_readwrite("prototype",
+                     &clust::IntegralClusterOrbitGenerator::prototype, R"pbdoc(
+                     Cluster: A prototype cluster.
+                     )pbdoc")
+      .def_readwrite("include_subclusters",
+                     &clust::IntegralClusterOrbitGenerator::include_subclusters,
+                     R"pbdoc(
+                     bool: If True, include subcluster orbits.
+                     )pbdoc")
       .def_static(
           "from_list",
           [](const nlohmann::json &data, xtal::BasicStructure const &prim)
@@ -405,7 +414,7 @@ PYBIND11_MODULE(_clusterography, m) {
               The serialized list of ClusterOrbitGenerator
 
           xtal_prim : libcasm.xtal.Prim
-              The :class:`~libcasm.xtal.Prim`
+              The :class:`libcasm.xtal.Prim`
 
           Returns
           -------
@@ -427,7 +436,7 @@ PYBIND11_MODULE(_clusterography, m) {
           Parameters
           ----------
           xtal_prim : libcasm.xtal.Prim
-              The :class:`~libcasm.xtal.Prim`
+              The :class:`libcasm.xtal.Prim`
 
           Returns
           -------
@@ -448,7 +457,7 @@ PYBIND11_MODULE(_clusterography, m) {
       Parameters
       ----------
       xtal_prim : libcasm.xtal.Prim
-          The :class:`~libcasm.xtal.Prim`
+          The :class:`libcasm.xtal.Prim`
       generating_group: libcasm.sym_info.SymGroup
           The group used to generate orbits of equivalent clusters
       max_length: list[float]=[]
@@ -612,7 +621,7 @@ PYBIND11_MODULE(_clusterography, m) {
               The serialized list of ClusterOrbitGenerator
 
           xtal_prim : libcasm.xtal.Prim
-              The :class:`~libcasm.xtal.Prim`
+              The :class:`libcasm.xtal.Prim`
 
           prim_factor_group: libcasm.sym_info.SymGroup
               The prim factor group
@@ -963,7 +972,7 @@ PYBIND11_MODULE(_clusterography, m) {
         The serialized equivalents info
 
     xtal_prim : libcasm.xtal.Prim
-        The :class:`~libcasm.xtal.Prim`
+        The :class:`libcasm.xtal.Prim`
 
     Returns
     -------

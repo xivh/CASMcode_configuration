@@ -4,6 +4,66 @@ import libcasm.enumerate._enumerate as _enumerate
 import libcasm.occ_events
 
 
+def make_all_distinct_periodic_perturbations(
+    supercell: libcasm.configuration.Supercell,
+    motif: libcasm.configuration.Configuration,
+    clusters: list[libcasm.clusterography.Cluster],
+) -> list[libcasm.configuration.Configuration]:
+    r"""
+    Construct distinct local perturbations of a configuration
+
+    This method constructs symmetrically distinct perturbations of a "motif"
+    configuration, in a given supercell, on specified clusters. The method works as
+    follows:
+
+    - Each cluster is used to generate cluster orbits using the symmetry of the
+      :class:`~libcasm.xtal.Prim`, without regard to the motif
+      :class:`~libcasm.configuration.Configuration` or
+      :class:`~libcasm.configuration.Supercell`. Duplicate cluster orbits are
+      discarded.
+    - The motif :class:`~libcasm.configuration.Configuration` is tiled into the
+      :class:`~libcasm.configuration.Supercell` to generate all possible background
+      :class:`~libcasm.configuration.Configuration`, using
+      :class:`~libcasm.configuration.make_all_super_configurations`.
+    - For each distinct background :class:`~libcasm.configuration.Configuration`, the
+      cluster orbits are used to find the distinct clusters, now taking
+      into account the background :class:`~libcasm.configuration.Configuration` and
+      :class:`~libcasm.configuration.Supercell`.
+    - For each distinct cluster in a distinct background configuration, all
+      possible changes in occupation are performed to generate perturbation
+      configurations.
+    - Each perturbation configuration is put into a canonical form, using the
+      supercell factor group in order to identify the distinct perturbation
+      :class:`~libcasm.configuration.Configuration`.
+
+    Parameters
+    ----------
+    supercell : ~libcasm.configuration.Supercell
+        The supercell in which perturbation configurations will be generated.
+
+    motif: ~libcasm.configuration.Configuration
+        The motif configuration is tiled into the supercell to generate
+        background configurations that are perturbed. Only perfect tilings into the
+        supercell are kept.
+
+    clusters: list[~libcasm.clusterography.Cluster]
+        Clusters, on which the occupation variables will be enumerated in order
+        to generate perturbation configurations. Each cluster is first used
+        to generate orbits without regard to the motif or supercell. Then,
+        the clusters that are distinct taking the motif and supercell into
+        account are perturbed with each possible occupation.
+
+    Returns
+    -------
+    configurations : list[~libcasm.configuration.Configuration]
+        The symmetrically distinct perturbations of the motif configuration,
+        in the supercell, on the specified clusters.
+    """
+    return _enumerate.make_all_distinct_periodic_perturbations(
+        supercell, motif, clusters
+    )
+
+
 def make_occevent_suborbits(
     supercell: libcasm.configuration.Supercell, occ_event: libcasm.occ_events.OccEvent
 ) -> list[list[libcasm.occ_events.OccEvent]]:
@@ -29,10 +89,10 @@ def make_occevent_suborbits(
         The sub-orbits, where `suborbits[i][j]` is the j-th
         :class:`~libcasm.occ_events.OccEvent` in the i-th sub-orbit.
     """
-    prim = supercell.prim()
-    prim_factor_group = prim.factor_group()
+    prim = supercell.prim
+    prim_factor_group = prim.factor_group
     prim_rep = libcasm.occ_events.make_occevent_symgroup_rep(
-        prim_factor_group.elements(), prim.xtal_prim()
+        prim_factor_group.elements, prim.xtal_prim
     )
     orbit = libcasm.occ_events.make_prim_periodic_orbit(occ_event, prim_rep)
 
@@ -43,9 +103,9 @@ def make_occevent_suborbits(
         return False
 
     suborbits = []
-    scel_factor_group = supercell.factor_group()
+    scel_factor_group = supercell.factor_group
     scel_rep = libcasm.occ_events.make_occevent_symgroup_rep(
-        scel_factor_group.elements(), prim.xtal_prim()
+        scel_factor_group.elements, prim.xtal_prim
     )
     for x in orbit:
         if in_any_suborbit(x, suborbits):
@@ -60,7 +120,7 @@ def make_all_distinct_local_perturbations(
     supercell: libcasm.configuration.Supercell,
     occ_event: libcasm.occ_events.OccEvent,
     motif: libcasm.configuration.Configuration,
-    local_clusters: list[list[libcasm.clusterography.Cluster]],
+    local_clusters: list[libcasm.clusterography.Cluster],
 ) -> list[libcasm.configuration.Configuration]:
     r"""
     Construct distinct local perturbations of a configuration
@@ -70,7 +130,7 @@ def make_all_distinct_local_perturbations(
     local-clusters around an :class:`~libcasm.occ_events.OccEvent`. The
     method works as follows:
 
-    - Each local cluster is used to generated local-cluster orbits around the
+    - Each local cluster is used to generate local-cluster orbits around the
       :class:`~libcasm.occ_events.OccEvent`, using the symmetry of the
       :class:`~libcasm.xtal.Prim` and :class:`~libcasm.occ_events.OccEvent`, without
       regard to the background :class:`~libcasm.configuration.Configuration` or
@@ -111,7 +171,7 @@ def make_all_distinct_local_perturbations(
         the background configuration and occ_event before generating
         perturbations. Only perfect tilings into the supercell are kept.
 
-    local_clusters: list[list[~libcasm.clusterography.Cluster]]
+    local_clusters: list[~libcasm.clusterography.Cluster]
         Local clusters, on which the occupation variables will be enumerated
         in order to generate local perturbation configurations. The initial
         cluster in each local-cluster orbit generated using

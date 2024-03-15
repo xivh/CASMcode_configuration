@@ -27,10 +27,16 @@ std::shared_ptr<sym_info::SymGroup> make_symgroup(
   return std::make_shared<sym_info::SymGroup>(element, multiplication_table);
 }
 
-std::shared_ptr<sym_info::SymGroup> make_symgroup_subgroup(
-    std::shared_ptr<sym_info::SymGroup const> const &head_group,
+std::shared_ptr<sym_info::SymGroup const> make_symgroup_subgroup(
+    std::shared_ptr<sym_info::SymGroup const> const &group,
     std::set<Index> const &head_group_index,
     std::optional<std::vector<xtal::SymOp>> element = std::nullopt) {
+  std::shared_ptr<sym_info::SymGroup const> head_group;
+  if (!group->head_group) {
+    head_group = group;
+  } else {
+    head_group = group->head_group;
+  }
   if (!element.has_value()) {
     return std::make_shared<sym_info::SymGroup>(head_group, head_group_index);
   }
@@ -58,49 +64,136 @@ PYBIND11_MODULE(_sym_info, m) {
 
   py::class_<sym_info::SymGroup, std::shared_ptr<sym_info::SymGroup>>(
       m, "SymGroup", R"pbdoc(
-      Data structure holding group elements and other group info, such as group-subgroup relationships.
+      Data structure holding group elements and other group info, such as
+      group-subgroup relationships.
+
+      The :class:`~libcasm.sym_info.SymGroup` class goes beyond storing a ``list[SymOp]``
+      to include the multiplication table and inverse element table. The SymGroup class
+      may represent a head group, or a subgroup.
+
+      When representing a subgroup, the head group can be obtained as a shared pointer
+      from :func:`~libcasm.sym_info.SymGroup.head_group`. Pointers to subgroups are not
+      stored by the head group. For subgroups, there is a list of indices indicating which
+      element in the head group each subgroup element corresponds to
+      (:func:`~libcasm.sym_info.SymGroup.head_group_index`).
+
+
+      The :class:`libcasm.sym_info` package provides factory functions for the common use
+      cases of constructing the prim factor group and prim point group:
+
+      .. rubric:: Factory Functions
+
+      - :func:`~libcasm.sym_info.make_factor_group`:  Make the \
+        :class:`libcasm.xtal.Prim` factor group
+      - :func:`~libcasm.sym_info.make_point_group`: Make the \
+        :class:`libcasm.xtal.Prim` point group
+
+      .. rubric:: Special methods
+
+      - Get the `i`-th element of the group using: ``element = group[i]``
+
       )pbdoc")
-      .def(py::init(&make_symgroup), py::arg("element"),
-           py::arg("multiplication_table"))
-      .def("make_subgroup", &make_symgroup_subgroup,
+      .def(py::init(&make_symgroup), R"pbdoc(
+
+          .. rubric:: Constructor
+
+          Parameters
+          ----------
+          elements: list[libcasm.xtal.SymOp]
+              The matrix representation of elements of the group.
+          multiplication_table: list[list[int]]
+              The multiplication table element
+              `multiplication_table[i][j] == k` represents that
+              ``np.allclose(elements[k], elements[i] @ elements[j]) == True``.
+          )pbdoc",
+           py::arg("elements"), py::arg("multiplication_table"))
+      .def("make_subgroup", &make_symgroup_subgroup, R"pbdoc(
+          Make a subgroup
+
+          Parameters
+          ----------
+          head_group_index: list[int]
+              Indices of elements in the head group (which may or may not be
+              `self`) of elements to include in subgroup.
+          elements: Optional[list[libcasm.xtal.SymOp]] = None
+              If not None, use the provided elements for subgroup elements list.
+              This allows representing subgroups of factor groups such as
+              cluster invariant groups using SymOp that have the correct
+              translation to leave the cluster invariant, which may may be
+              different a different translation than the corresponding element
+              in the factor group elements list.
+          )pbdoc",
            py::arg("head_group_index"), py::arg("element") = std::nullopt)
-      .def(
+      .def_property_readonly(
           "elements",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->element;
           },
-          "Returns the elements list.")
+          R"pbdoc(
+          list[libcasm.xtal.SymOp]: The elements list
+          )pbdoc")
       .def(
           "__getitem__",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
              Index i) { return symgroup->element[i]; },
-          py::arg("i"), "Returns an element from group.")
-      .def(
+          py::arg("i"), R"pbdoc(
+          libcasm.xtal.SymOp: The `i`-th element in the group.
+          )pbdoc")
+      .def_property_readonly(
           "multiplication_table",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->multiplication_table;
           },
-          "Returns the multiplication table.")
+          R"pbdoc(
+          list[list[int]]: The multiplication table.
+
+          The multiplication table element `multiplication_table[i][j] == k`
+          represents that
+          ``np.allclose(elements[k], elements[i] @ elements[j]) == True``.
+          )pbdoc")
       .def(
           "conjugacy_classes",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return make_conjugacy_classes(*symgroup);
           },
-          "Returns a List[List[int]], where `conjugacy_classes[i]` is a list "
-          "of the indices of elements in class 'i'")
+          R"pbdoc(
+          Returns the conjugacy classes
+
+          Returns
+          -------
+          conjugacy_classes: list[list[int]]
+              ``conjugacy_classes[i]`` is a list of the indices of elements in
+              the `i`-th class."
+          )pbdoc")
       .def(
           "mult",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup, Index i,
              Index j) { return symgroup->mult(i, j); },
           py::arg("i"), py::arg("j"),
-          "Returns the index `k == multiplication_table[i][j]`.")
-      .def(
+          R"pbdoc(
+          Returns the index of the element product.
+
+          Parameters
+          ----------
+          i: int
+              lhs element index.
+          j: int
+              rhs element index.
+
+          Returns
+          -------
+          k: int
+              The index ``k == multiplication_table[i][j]``.
+          )pbdoc")
+      .def_property_readonly(
           "is_subgroup",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->head_group != nullptr;
           },
-          "Returns True if this is a subgroup.")
-      .def(
+          R"pbdoc(
+          bool: True if this is a subgroup, False otherwise.
+          )pbdoc")
+      .def_property_readonly(
           "head_group",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             std::optional<std::shared_ptr<sym_info::SymGroup const>> head_group;
@@ -109,30 +202,90 @@ PYBIND11_MODULE(_sym_info, m) {
             }
             return head_group;
           },
-          "If this is a subgroup, return the head group, else return None.")
-      .def(
+          R"pbdoc(
+          Optional[SymGroup]: The head group if this is a subgroup, else None.
+          )pbdoc")
+      .def_property_readonly(
           "head_group_index",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->head_group_index;
           },
-          "Return the list of head group indices")
-      .def(
+          R"pbdoc(
+          list[int]: The list of head group indices (guaranteed sorted)
+
+          If this is the head group, then
+          ``group.head_group_index == [0, 1, 2, ...]``.
+
+          If this is a sub group, then ``subgroup.element[i]`` is the same element
+          as ``subgroup.head_group.element[subgroup.head_group_index[i]]``.
+
+          )pbdoc")
+      .def_property_readonly(
           "inverse_index",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
             return symgroup->inverse_index;
           },
-          "Return the list of head group indices")
+          R"pbdoc(
+          list[int]: The list of inverse indices
+
+          Represents that ``group.element[group.inverse_index[i]]`` is the
+          inverse of ``group.element[i]``.
+          )pbdoc")
       .def(
           "inv",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
              Index i) { return symgroup->inv(i); },
-          py::arg("i"), "Return the index of the inverse element.");
+          py::arg("i"), R"pbdoc(
+          Returns the index of the inverse of an element
 
-  m.def("make_factor_group", &sym_info::make_factor_group,
+          Parameters
+          ----------
+          i: int
+              The element index.
+
+          Returns
+          -------
+          i_inverse: int
+              The index the inverse of the `i`-th element.
+          )pbdoc");
+
+  m.def("make_factor_group", &sym_info::make_factor_group, R"pbdoc(
+        Construct the prim factor group as a SymGroup
+
+        Parameters
+        ----------
+        xtal_prim: libcasm.xtal.Prim
+            The :class:`libcasm.xtal.Prim`.
+
+        Returns
+        -------
+        factor_group : SymGroup
+            The group which leaves `xtal_prim` invariant
+        )pbdoc",
         py::arg("xtal_prim"));
 
-  m.def("make_point_group", &sym_info::make_point_group, py::arg("xtal_prim"),
-        py::arg("factor_group"));
+  m.def("make_point_group", &sym_info::make_point_group, R"pbdoc(
+        Construct the prim point group as a SymGroup
+
+        Parameters
+        ----------
+        xtal_prim: libcasm.xtal.Prim
+            The :class:`libcasm.xtal.Prim`.
+
+        factor_group: SymGroup
+            The factor group of `prim`, as calculated by
+            :func:`~libcasm.sym_info.make_factor_group`.
+
+        Returns
+        -------
+        point_group : SymGroup
+            The prim point group operations, constructed by removing the translation from
+            prim factor group operations. Degenerate symmetry operations are not added. The
+            resulting point_group is its own head group, not a subgroup of the input
+            factor_group.
+
+        )pbdoc",
+        py::arg("xtal_prim"), py::arg("factor_group"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

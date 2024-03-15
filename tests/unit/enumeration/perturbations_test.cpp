@@ -3,6 +3,7 @@
 #include "casm/configuration/Configuration.hh"
 #include "casm/configuration/clusterography/IntegralCluster.hh"
 #include "casm/configuration/clusterography/orbits.hh"
+#include "casm/configuration/copy_configuration.hh"
 #include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "gtest/gtest.h"
@@ -29,6 +30,7 @@ class FCCBinaryPerturbationsTest : public testing::Test {
       std::vector<clust::IntegralCluster> const &clusters) {
     auto const &supercell = configuration.supercell;
     auto const &prim = supercell->prim;
+    auto const &xtal_prim = prim->basicstructure;
     std::vector<std::set<clust::IntegralCluster>> orbits;
     for (auto const &cluster : clusters) {
       orbits.emplace_back(make_prim_periodic_orbit(
@@ -83,10 +85,11 @@ TEST_F(FCCBinaryPerturbationsTest, Test2) {
   using namespace clust;
 
   Eigen::Matrix3d L;
-  // conventional 4-atom fcc supercell
-  L.col(0) << 12., 0., 0.;
-  L.col(1) << 0., 12., 0.;
-  L.col(2) << 0., 0., 12.;
+  // conventional 4-atom fcc supercell * m^3 total sites
+  L.col(0) << 4., 0., 0.;
+  L.col(1) << 0., 4., 0.;
+  L.col(2) << 0., 0., 4.;
+  L *= 3;
   supercell = std::make_shared<config::Supercell const>(prim, xtal::Lattice(L));
 
   std::vector<clust::IntegralCluster> clusters(
@@ -104,7 +107,7 @@ TEST_F(FCCBinaryPerturbationsTest, Test3) {
   using namespace clust;
 
   Eigen::Matrix3d L;
-  // conventional 4-atom fcc supercell
+  // conventional 4-atom fcc supercell * 3
   L.col(0) << 4., 0., 0.;
   L.col(1) << 0., 4., 0.;
   L.col(2) << 0., 0., 12.;
@@ -125,7 +128,7 @@ TEST_F(FCCBinaryPerturbationsTest, Test4) {
   using namespace clust;
 
   Eigen::Matrix3d L;
-  // conventional 4-atom fcc supercell
+  // conventional 4-atom fcc supercell * 6
   L.col(0) << 4., 0., 0.;
   L.col(1) << 0., 8., 0.;
   L.col(2) << 0., 0., 12.;
@@ -140,4 +143,103 @@ TEST_F(FCCBinaryPerturbationsTest, Test4) {
     std::cout << c.dof_values.occupation.transpose() << std::endl;
   }
   EXPECT_EQ(perturbations.size(), 5);
+}
+
+TEST_F(FCCBinaryPerturbationsTest, Test5) {
+  using namespace clust;
+
+  Eigen::Matrix3d L;
+  // conventional 4-atom fcc supercell * m^3 total sites
+  L.col(0) << 4., 0., 0.;
+  L.col(1) << 0., 4., 0.;
+  L.col(2) << 0., 0., 4.;
+  L *= 1;
+  supercell = std::make_shared<config::Supercell const>(prim, xtal::Lattice(L));
+
+  std::vector<clust::IntegralCluster> clusters(
+      {clust::IntegralCluster({{0, 0, 0, 0}})});
+  config::Configuration configuration(supercell);
+  configuration.dof_values.occupation(0) = 1;
+  std::set<config::Configuration> perturbations =
+      make_distinct_perturbations(configuration, clusters);
+  for (auto const &c : perturbations) {
+    std::cout << c.dof_values.occupation.transpose() << std::endl;
+  }
+  EXPECT_EQ(perturbations.size(), 3);
+}
+
+TEST_F(FCCBinaryPerturbationsTest, Test6) {
+  using namespace clust;
+
+  Eigen::Matrix3d L;
+  // conventional 4-atom fcc supercell * 2 total sites
+  L.col(0) << 4., 0., 0.;
+  L.col(1) << 0., 4., 0.;
+  L.col(2) << 0., 0., 8.;
+  supercell = std::make_shared<config::Supercell const>(prim, xtal::Lattice(L));
+
+  std::vector<clust::IntegralCluster> clusters(
+      {clust::IntegralCluster({{0, 0, 0, 0}})});
+  config::Configuration configuration(supercell);
+  configuration.dof_values.occupation(0) = 1;
+  std::set<config::Configuration> perturbations =
+      make_distinct_perturbations(configuration, clusters);
+  for (auto const &c : perturbations) {
+    std::cout << c.dof_values.occupation.transpose() << std::endl;
+  }
+  EXPECT_EQ(perturbations.size(), 6);
+}
+
+TEST_F(FCCBinaryPerturbationsTest, Test7) {
+  using namespace clust;
+
+  Eigen::Matrix3d motif_L;
+  // conventional 4-atom fcc supercell * 2 total sites
+  motif_L.col(0) << 4., 0., 0.;
+  motif_L.col(1) << 0., 4., 0.;
+  motif_L.col(2) << 0., 0., 4.;
+  auto motif_supercell =
+      std::make_shared<config::Supercell const>(prim, xtal::Lattice(motif_L));
+
+  // L12 config
+  config::Configuration motif(motif_supercell);
+  motif.dof_values.occupation(0) = 1;
+
+  Eigen::Matrix3d L;
+  // conventional 4-atom fcc supercell * 2 total sites
+  L.col(0) << 4., 0., 0.;
+  L.col(1) << 0., 4., 0.;
+  L.col(2) << 0., 0., 4.;
+  L *= 2;
+  supercell = std::make_shared<config::Supercell const>(prim, xtal::Lattice(L));
+
+  // L12 super-config
+  config::Configuration configuration =
+      config::copy_configuration(motif, supercell);
+
+  // point-cluster perturbations
+  {
+    std::vector<clust::IntegralCluster> clusters(
+        {clust::IntegralCluster({{0, 0, 0, 0}})});
+
+    std::set<config::Configuration> perturbations =
+        make_distinct_perturbations(configuration, clusters);
+    for (auto const &c : perturbations) {
+      std::cout << c.dof_values.occupation.transpose() << std::endl;
+    }
+    EXPECT_EQ(perturbations.size(), 3);
+  }
+
+  // 1NN pair-cluster perturbations
+  {
+    std::vector<clust::IntegralCluster> clusters(
+        {clust::IntegralCluster({{0, 0, 0, 0}, {0, 1, 0, 0}})});
+
+    std::set<config::Configuration> perturbations =
+        make_distinct_perturbations(configuration, clusters);
+    for (auto const &c : perturbations) {
+      std::cout << c.dof_values.occupation.transpose() << std::endl;
+    }
+    EXPECT_EQ(perturbations.size(), 5);
+  }
 }

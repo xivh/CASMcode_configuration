@@ -18,13 +18,14 @@ from ._configuration import (
     copy_transformed_configuration,
     dof_space_analysis,
     from_canonical_configuration,
-    from_canonical_supercell,
     is_canonical_configuration,
     is_canonical_supercell,
     is_primitive_configuration,
     make_all_super_configurations,
+    make_all_super_configurations_by_subsets,
     make_canonical_configuration,
     make_canonical_supercell,
+    make_distinct_super_configurations,
     make_dof_space_rep,
     make_equivalent_configurations,
     make_equivalent_supercells,
@@ -33,5 +34,9 @@ from ._configuration import (
     make_local_dof_matrix_rep,
     make_primitive_configuration,
     to_canonical_configuration,
-    to_canonical_supercell,
+)
+from ._misc import (
+    equivalent_order_parameters_index,
+    is_canonical_order_parameters,
+    make_canonical_order_parameters,
 )

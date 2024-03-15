@@ -3,6 +3,7 @@
 #include "casm/casm_io/Log.hh"
 #include "casm/casm_io/container/json_io.hh"
 #include "casm/casm_io/json/InputParser_impl.hh"
+#include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
 #include "casm/clexulator/io/json/ConfigDoFValues_json_io.hh"
 #include "casm/configuration/ConfigurationSet.hh"
 #include "casm/configuration/SupercellSet.hh"
@@ -14,14 +15,20 @@ namespace CASM {
 
 namespace {  // (anonymous)
 
-/// \brief Validate ConfigDoFValues for correct DoF types and dimensions
+/// \brief Validate ConfigDoFValues for correct DoF types and dimensions for
+///     the standard basis
 ///
 /// \param validator An object to store error messages. May be a
 ///     standalone Validator, or an InputParser.
 /// \param dof_values The ConfigDoFValues being validated
 /// \param supercell_volume The integer supercell volume, as a multiple of the
-/// prim \param basis_size The prim basis size \param global_dof_info The prim
-/// global DoF basis sets \param local_dof_info the prim local DoF basis sets
+///     prim
+/// \param basis_size The prim basis size
+/// \param global_dof_info The prim global DoF basis sets
+/// \param local_dof_info the prim local DoF basis sets
+/// \param standard_basis If true, expect DoF values to have the dimension of
+/// the standard basis. Otherwise, expect DoF values to have the dimension of
+/// the prim basis.
 ///
 /// Note:
 /// - This does not validate that DoF values lie in the allowed DoF space
@@ -30,7 +37,8 @@ void validate_dof_values(
     Validator &validator, clexulator::ConfigDoFValues const &dof_values,
     Index supercell_volume, Index basis_size,
     std::map<DoFKey, xtal::DoFSet> const &global_dof_info,
-    std::map<DoFKey, std::vector<xtal::SiteDoFSet>> const &local_dof_info) {
+    std::map<DoFKey, std::vector<xtal::SiteDoFSet>> const &local_dof_info,
+    bool standard_basis) {
   Index N_site = supercell_volume * basis_size;
 
   if (dof_values.occupation.size() != N_site) {
@@ -68,13 +76,18 @@ void validate_dof_values(
           << " is inconsistent with the supercell number of sites.";
       validator.error.insert(msg.str());
     }
-    Index standard_dim =
-        local_dof_info.at(name_value.first).front().basis().rows();
-    if (name_value.second.rows() != standard_dim) {
+    Index expected_dim;
+    if (standard_basis) {
+      expected_dim = local_dof_info.at(name_value.first).front().basis().rows();
+    } else {
+      expected_dim = clexulator::max_dim(local_dof_info.at(name_value.first));
+    }
+    if (name_value.second.rows() != expected_dim) {
       std::stringstream msg;
       msg << "Error reading Configuration from JSON: size of local dof "
-          << name_value.first
-          << " is inconsistent with the standard dof dimension.";
+          << name_value.first << " is inconsistent with the "
+          << (standard_basis ? "standard basis" : "max prim basis")
+          << " dof dimension.";
       validator.error.insert(msg.str());
     }
   }
@@ -104,12 +117,18 @@ void validate_dof_values(
           << name_value.first << " is incorrect.";
       validator.error.insert(msg.str());
     }
-    Index standard_dim = global_dof_info.at(name_value.first).basis().rows();
-    if (name_value.second.rows() != standard_dim) {
+    Index expected_dim;
+    if (standard_basis) {
+      expected_dim = global_dof_info.at(name_value.first).basis().rows();
+    } else {
+      expected_dim = global_dof_info.at(name_value.first).basis().cols();
+    }
+    if (name_value.second.rows() != expected_dim) {
       std::stringstream msg;
       msg << "Error reading Configuration from JSON: size of global dof "
-          << name_value.first
-          << " is inconsistent with the standard dof dimension.";
+          << name_value.first << " is inconsistent with the "
+          << (standard_basis ? "standard basis" : "max prim basis")
+          << " dof dimension.";
       validator.error.insert(msg.str());
     }
   }
@@ -187,6 +206,47 @@ void _parse_properties(
   }
 }
 
+bool get_read_prim_basis(Validator &validator, jsonParser const &json,
+                         std::string what) {
+  bool read_prim_basis = false;
+  if (json.contains("basis")) {
+    if (json["basis"].is_string() &&
+        json["basis"].get<std::string>() == "prim") {
+      read_prim_basis = true;
+    } else if (json["basis"].is_string() &&
+               json["basis"].get<std::string>() == "standard") {
+      read_prim_basis = false;
+    } else {
+      validator.error.insert("Error reading " + what +
+                             ": If present, \"basis\" value must be "
+                             "\"prim\" or \"standard\".");
+    }
+  }
+  return read_prim_basis;
+}
+
+clexulator::ConfigDoFValues read_dof_values(
+    Validator &validator, jsonParser const &json,
+    std::shared_ptr<config::Supercell const> supercell, bool read_prim_basis) {
+  clexulator::ConfigDoFValues dof_values;
+  if (!json.contains("dof")) {
+    validator.error.insert("Error reading DoF values: \"dof\" not found.");
+    return dof_values;
+  }
+  auto &prim = *supercell->prim;
+  from_json(dof_values, json["dof"]);
+  validate_dof_values(validator, dof_values,
+                      supercell->unitcell_index_converter.total_sites(),
+                      prim.basicstructure->basis().size(), prim.global_dof_info,
+                      prim.local_dof_info, !read_prim_basis);
+  if (read_prim_basis) {
+    dof_values = clexulator::from_standard_values(
+        dof_values, prim.basicstructure->basis().size(),
+        supercell->unitcell_index_converter.total_sites(), prim.global_dof_info,
+        prim.local_dof_info);
+  }
+  return dof_values;
+}
 }  // namespace
 
 void from_json(config::SupercellSet &supercells,
@@ -209,6 +269,9 @@ void from_json(config::SupercellSet &supercells,
   if (!json.is_obj() || !json.contains("supercells")) {
     validator.error.insert("Error reading configurations: invalid format");
   }
+
+  bool read_prim_basis =
+      get_read_prim_basis(validator, json, "ConfigurationSet");
 
   if (!validator.valid()) {
     log.indent() << "Errors reading configurations:" << std::endl;
@@ -248,11 +311,8 @@ void from_json(config::SupercellSet &supercells,
 
     // try to construct configurations for supercell
     for (; config_it != config_end; ++config_it) {
-      from_json(dof_values, (*config_it)["dof"]);
-      validate_dof_values(validator, dof_values,
-                          s->supercell->unitcell_index_converter.total_sites(),
-                          prim->basicstructure->basis().size(),
-                          prim->global_dof_info, prim->local_dof_info);
+      dof_values = read_dof_values(validator, (*config_it), s->supercell,
+                                   read_prim_basis);
 
       // jsonParser source;
       // config_it->get_if(source, "source");
@@ -280,15 +340,31 @@ void from_json(config::SupercellSet &supercells,
   configurations.set_next_config_id(next_config_id);
 }
 
+/// \brief Write ConfigurationSet to JSON
+///
+/// \param configurations The ConfigurationSet
+/// \param json The jsonParser
+/// \param write_prim_basis If true, write DoF values using the prim basis.
+///     Default (false) is to write DoF values in the standard basis.
+/// \return jsonParser with ConfigurationSet added.
 jsonParser &to_json(config::ConfigurationSet const &configurations,
-                    jsonParser &json) {
+                    jsonParser &json, bool write_prim_basis) {
   json.put_obj();
   json["version"] = "1.0";
   json["supercells"] = jsonParser::object();
+  if (write_prim_basis) {
+    json["basis"] = "prim";
+  } else {
+    json["basis"] = "standard";
+  }
   for (const auto &c : configurations) {
     jsonParser &configjson =
         json["supercells"][c.supercell_name][c.configuration_id];
-    to_json(c.configuration.dof_values, configjson["dof"]);
+    if (write_prim_basis) {
+      to_json(c.configuration.dof_values, configjson["dof"]);
+    } else {
+      to_json(make_standard_dof_values(c.configuration), configjson["dof"]);
+    }
 
     // if (c.source.size()) {
     //   to_json(c.source, configjson["source"]);
@@ -340,8 +416,14 @@ jsonMake<config::Configuration>::make_from_json(
 }
 
 /// Insert Configuration to JSON
+///
+/// \param configuration A Configuration
+/// \param json A jsonParser
+/// \param write_prim_basis If true, write DoF values using the prim basis.
+///     Default (false) is to write DoF values in the standard basis.
+///
 jsonParser &to_json(config::Configuration const &configuration,
-                    jsonParser &json) {
+                    jsonParser &json, bool write_prim_basis) {
   if (!json.is_obj()) {
     throw std::runtime_error(
         "Error inserting configuration to json: not an object");
@@ -373,10 +455,9 @@ void parse(InputParser<config::Configuration> &parser,
   clexulator::ConfigDoFValues dof_values;
   parser.require(dof_values, "dof");
 
-  validate_dof_values(parser, dof_values,
-                      supercell->unitcell_index_converter.total_sites(),
-                      prim->basicstructure->basis().size(),
-                      prim->global_dof_info, prim->local_dof_info);
+  bool read_prim_basis =
+      get_read_prim_basis(parser, parser.self, "Configuration");
+  dof_values = read_dof_values(parser, parser.self, supercell, read_prim_basis);
 
   if (parser.valid()) {
     parser.value =
@@ -397,10 +478,9 @@ void parse(InputParser<config::Configuration> &parser,
   clexulator::ConfigDoFValues dof_values;
   parser.require(dof_values, "dof");
 
-  validate_dof_values(
-      parser, dof_values, supercell->unitcell_index_converter.total_sites(),
-      supercells.prim()->basicstructure->basis().size(),
-      supercells.prim()->global_dof_info, supercells.prim()->local_dof_info);
+  bool read_prim_basis =
+      get_read_prim_basis(parser, parser.self, "Configuration");
+  dof_values = read_dof_values(parser, parser.self, supercell, read_prim_basis);
 
   if (parser.valid()) {
     parser.value =
@@ -452,6 +532,11 @@ jsonMake<config::ConfigurationWithProperties>::make_from_json(
 }
 
 /// Insert ConfigurationWithProperties to JSON
+///
+/// \param configuration A Configuration
+/// \param json A jsonParser
+/// \param write_prim_basis If true, write DoF values using the prim basis.
+///     Default (false) is to write DoF values in the standard basis.
 ///
 /// Format:
 /// \code
@@ -522,13 +607,13 @@ jsonMake<config::ConfigurationWithProperties>::make_from_json(
 ///
 jsonParser &to_json(
     config::ConfigurationWithProperties const &configuration_with_properties,
-    jsonParser &json) {
+    jsonParser &json, bool write_prim_basis) {
   auto const &x = configuration_with_properties;
   if (!json.is_obj()) {
     throw std::runtime_error(
         "Error inserting ConfigurationWithProperties to json: not an object");
   }
-  json["configuration"] = x.configuration;
+  to_json(x.configuration, json["configuration"], write_prim_basis);
   if (!x.local_properties.empty()) {
     for (auto const &local_property : x.local_properties) {
       to_json(local_property.second.transpose(),
