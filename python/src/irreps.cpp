@@ -380,6 +380,7 @@ PYBIND11_MODULE(_irreps, m) {
               for (Index i = 0; i < dim; ++i) {
                 _glossary.push_back(std::string("x") + std::to_string(i + 1));
               }
+              glossary = _glossary;
             }
 
             return irreps::vector_space_sym_report(self, calc_wedges,
