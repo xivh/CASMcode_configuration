@@ -15,10 +15,8 @@ Currently, symmetry representations are not accessed in Python directly through
 The :py:mod:`libcasm.sym_info` module only has a dependency on
 :py:mod:`libcasm.xtal`.
 """
-from ._methods import (
+from ._sym_info import (
+    SymGroup,
     make_factor_group,
     make_point_group,
-)
-from ._sym_group import (
-    SymGroup,
 )

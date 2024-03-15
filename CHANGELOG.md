@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `with_prim_basis` option to `Configuration.to_dict` and `ConfigurationSet.to_dict` to allow output of DoF values in the prim basis, along with "basis" tag which is respected on reading from JSON/dict.
 - Added set_order_parameters, make_dof_space, order_parameters, order_parameters_contribution, dof_values_vector, and dof_values_vector_contribution methods to libcasm.configuration.Configuration
 - Added CASM::config::cluster_from_index_vector and CASM::config::cluster_from_index_set
+- Added `libcasm.irreps.IrrepDecomposition` and `libcasm.irreps.MatrixRepGroup` for generic irreducible space decompositions
 
 
 ### Removed

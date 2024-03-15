@@ -23,16 +23,45 @@
 
 namespace py = pybind11;
 
+namespace CASM {
+namespace irreps {
+typedef group::Group<Eigen::MatrixXd> MatrixRepGroup;
+}
+}  // namespace CASM
+
 /// CASM - Python binding code
 namespace CASMpy {
 
 using namespace CASM;
 
+std::shared_ptr<irreps::MatrixRepGroup> make_matrixrepgroup(
+    std::vector<Eigen::MatrixXd> const &elements, double abs_tol) {
+  return std::make_shared<irreps::MatrixRepGroup>(group::make_group(
+      elements,
+      [](Eigen::MatrixXd const &A,
+         Eigen::MatrixXd const &B) -> Eigen::MatrixXd { return A * B; },
+      [=](Eigen::MatrixXd const &A, Eigen::MatrixXd const &B) -> bool {
+        return CASM::almost_equal(A, B, abs_tol);
+      }));
+}
+
+std::shared_ptr<irreps::MatrixRepGroup const> make_matrixrepgroup_subgroup(
+    std::shared_ptr<irreps::MatrixRepGroup const> const &group,
+    std::set<Index> const &head_group_index) {
+  std::shared_ptr<irreps::MatrixRepGroup const> head_group;
+  if (!group->head_group) {
+    head_group = group;
+  } else {
+    head_group = group->head_group;
+  }
+  return std::make_shared<irreps::MatrixRepGroup>(head_group, head_group_index);
+}
+
 irreps::IrrepDecomposition make_IrrepDecomposition(
     irreps::MatrixRep const &matrix_rep,
     std::optional<irreps::GroupIndices> head_group,
     std::optional<Eigen::MatrixXd> init_subspace, bool allow_complex,
-    bool abs_tol) {
+    double abs_tol) {
   if (matrix_rep.size() == 0) {
     throw std::runtime_error(
         "Error in make_IrrepDecomposition: matrix_rep.size() == 0");
@@ -61,23 +90,13 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
     init_subspace = Eigen::MatrixXd::Identity(dim, dim);
   }
 
-  typedef Eigen::MatrixXd ElementType;
-  typedef group::Group<ElementType> GroupType;
-
-  std::shared_ptr<GroupType const> symgroup =
-      std::make_shared<GroupType>(group::make_group(
-          matrix_rep,
-          [](ElementType const &A, ElementType const &B) -> ElementType {
-            return A * B;
-          },
-          [=](ElementType const &A, ElementType const &B) -> bool {
-            return CASM::almost_equal(A, B, abs_tol);
-          }));
+  std::shared_ptr<irreps::MatrixRepGroup> matrixrepgroup =
+      make_matrixrepgroup(matrix_rep, abs_tol);
 
   std::function<irreps::GroupIndicesOrbitSet()> make_cyclic_subgroups_f =
-      [=]() { return group::make_cyclic_subgroups(*symgroup); };
+      [=]() { return group::make_cyclic_subgroups(*matrixrepgroup); };
   std::function<irreps::GroupIndicesOrbitSet()> make_all_subgroups_f = [=]() {
-    return group::make_all_subgroups(*symgroup);
+    return group::make_all_subgroups(*matrixrepgroup);
   };
 
   std::optional<Log> log;
@@ -104,6 +123,173 @@ PYBIND11_MODULE(_irreps, m) {
 
     )pbdoc";
   py::module::import("libcasm.sym_info");
+
+  //
+  py::class_<irreps::MatrixRepGroup, std::shared_ptr<irreps::MatrixRepGroup>>(
+      m, "MatrixRepGroup", R"pbdoc(
+      Data structure holding group elements and other group info, such as
+      group-subgroup relationships.
+
+      .. rubric:: Special methods
+
+      - Get the `i`-th element of the group using: ``element = group[i]``
+
+      )pbdoc")
+      .def(py::init(&make_matrixrepgroup), R"pbdoc(
+
+          .. rubric:: Constructor
+
+          Parameters
+          ----------
+
+          elements: list[numpy.ndarray[numpy.float64[m, m]]
+              The matrix representation of elements of the group.
+          abs_tol: float = :data:`~libcasm.casmglobal.TOL`
+              The absolute tolerance, used to construct the group multiplication
+              table.
+          )pbdoc",
+           py::arg("elements"), py::arg("abs_tol") = CASM::TOL)
+      .def("make_subgroup", &make_matrixrepgroup_subgroup, R"pbdoc(
+          Make a subgroup
+
+          Parameters
+          ----------
+          head_group_index: list[int]
+              Indices of elements in the head group (which may or may not be
+              `self`) of elements to include in subgroup.
+          )pbdoc",
+           py::arg("head_group_index"))
+      .def_property_readonly(
+          "elements",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup) { return matrixrepgroup->element; },
+          R"pbdoc(
+          list[numpy.ndarray[numpy.float64[m, m]]]: The elements list
+          )pbdoc")
+      .def(
+          "__getitem__",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup,
+             Index i) { return matrixrepgroup->element[i]; },
+          py::arg("i"),
+          R"pbdoc(
+          numpy.ndarray[numpy.float64[m, m]]: The `i`-th element in the group.
+          )pbdoc")
+      .def_property_readonly(
+          "multiplication_table",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup) {
+            return matrixrepgroup->multiplication_table;
+          },
+          R"pbdoc(
+          list[list[int]]: The multiplication table.
+
+          The multiplication table element `multiplication_table[i][j] == k`
+          represents that
+          ``np.allclose(elements[k], elements[i] @ elements[j]) == True``.
+          )pbdoc")
+      .def(
+          "conjugacy_classes",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup) {
+            return make_conjugacy_classes(*matrixrepgroup);
+          },
+          R"pbdoc(
+          Returns the conjugacy classes
+
+          Returns
+          -------
+          conjugacy_classes: list[list[int]]
+              ``conjugacy_classes[i]`` is a list of the indices of elements in
+              the `i`-th class."
+          )pbdoc")
+      .def(
+          "mult",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup,
+             Index i, Index j) { return matrixrepgroup->mult(i, j); },
+          py::arg("i"), py::arg("j"),
+          R"pbdoc(
+          Returns the index of the element product.
+
+          Parameters
+          ----------
+          i: int
+              lhs element index.
+          j: int
+              rhs element index.
+
+          Returns
+          -------
+          k: int
+              The index ``k == multiplication_table[i][j]``.
+          )pbdoc")
+      .def_property_readonly(
+          "is_subgroup",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup) {
+            return matrixrepgroup->head_group != nullptr;
+          },
+          R"pbdoc(
+          bool: True if this is a subgroup, False otherwise.
+          )pbdoc")
+      .def_property_readonly(
+          "head_group",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup) {
+            std::optional<std::shared_ptr<irreps::MatrixRepGroup const>>
+                head_group;
+            if (matrixrepgroup->head_group != nullptr) {
+              head_group = matrixrepgroup->head_group;
+            }
+            return head_group;
+          },
+          R"pbdoc(
+          Optional[MatrixRepGroup]: The head group if this is a subgroup, else None.
+          )pbdoc")
+      .def_property_readonly(
+          "head_group_index",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup) { return matrixrepgroup->head_group_index; },
+          R"pbdoc(
+          list[int]: The list of head group indices (guaranteed sorted)
+
+          If this is the head group, then
+          ``group.head_group_index == [0, 1, 2, ...]``.
+
+          If this is a sub group, then ``subgroup.element[i]`` is the same element
+          as ``subgroup.head_group.element[subgroup.head_group_index[i]]``.
+
+          )pbdoc")
+      .def_property_readonly(
+          "inverse_index",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup) { return matrixrepgroup->inverse_index; },
+          R"pbdoc(
+          list[int]: The list of inverse indices
+
+          Represents that ``group.element[group.inverse_index[i]]`` is the
+          inverse of ``group.element[i]``.
+          )pbdoc")
+      .def(
+          "inv",
+          [](std::shared_ptr<irreps::MatrixRepGroup const> const
+                 &matrixrepgroup,
+             Index i) { return matrixrepgroup->inv(i); },
+          py::arg("i"), "Return the index of the inverse element.",
+          R"pbdoc(
+          Returns the index of the inverse of an element
+
+          Parameters
+          ----------
+          i: int
+              The element index.
+
+          Returns
+          -------
+          i_inverse: int
+              The index the inverse of the `i`-th element.
+          )pbdoc");
 
   //
   py::class_<irreps::IrrepInfo>(m, "IrrepInfo", R"pbdoc(
@@ -234,8 +420,8 @@ PYBIND11_MODULE(_irreps, m) {
 
           Parameters
           ----------
-          symgroup_rep: list[numpy.ndarray[numpy.float64[vector_dim, vector_dim]]]
-              The symmetry group representation matrices
+          matrix_rep: list[numpy.ndarray[numpy.float64[vector_dim, vector_dim]]]
+              The group element representation matrices
           irreps: list[IrrepInfo]
               The irreducible subspaces
           irreducible_wedge: list[SubWedge]
@@ -248,10 +434,10 @@ PYBIND11_MODULE(_irreps, m) {
               Names given to individual axes in the initial vector space,
               corresponding to rows of `symmetry_adapted_subspace`.
           )pbdoc",
-          py::arg("symgroup_rep"), py::arg("irreps"),
+          py::arg("matrix_rep"), py::arg("irreps"),
           py::arg("irreducible_wedge"), py::arg("symmetry_adapted_subspace"),
           py::arg("axis_glossary"))
-      .def_readonly("symgroup_rep", &irreps::VectorSpaceSymReport::symgroup_rep,
+      .def_readonly("matrix_rep", &irreps::VectorSpaceSymReport::symgroup_rep,
                     R"pbdoc(
           list[numpy.ndarray[numpy.float64[vector_dim, vector_dim]]]: The symmetry "
           group representation matrices

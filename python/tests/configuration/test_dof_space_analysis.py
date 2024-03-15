@@ -3,7 +3,6 @@ import numpy as np
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
 import libcasm.irreps as casmirreps
-import libcasm.xtal as xtal
 
 
 def conventional_FCC_occ_symmetry_adapted_basis():
@@ -168,8 +167,6 @@ def test_dof_space_analysis_2(FCC_binary_prim):
     symmetry_adapted_dof_space = results.symmetry_adapted_dof_space
     sym_report = results.symmetry_report
 
-    print(symmetry_adapted_dof_space.basis)
-
     assert len(sym_report.irreps) == 2
     assert sym_report.symmetry_adapted_subspace.shape[0] == 8
     assert sym_report.symmetry_adapted_subspace.shape[1] == 4
@@ -185,8 +182,7 @@ def test_dof_space_analysis_2(FCC_binary_prim):
     data = sym_report.to_dict()
     assert isinstance(data, dict)
 
-    print(xtal.pretty_json(data))
-    assert False
+    # print(xtal.pretty_json(data))
 
 
 def test_dof_space_analysis_2_generic(FCC_binary_prim):
@@ -241,6 +237,11 @@ def test_dof_space_analysis_2_generic(FCC_binary_prim):
     assert irrep_decomposition.symmetry_adapted_subspace.shape[0] == 8
     assert irrep_decomposition.symmetry_adapted_subspace.shape[1] == 4
 
+    assert np.allclose(
+        irrep_decomposition.symmetry_adapted_subspace,
+        conventional_FCC_occ_symmetry_adapted_basis(),
+    )
+
     sym_report = irrep_decomposition.make_symmetry_report(
         calc_wedges=True,
     )
@@ -249,8 +250,7 @@ def test_dof_space_analysis_2_generic(FCC_binary_prim):
     data = sym_report.to_dict()
     assert isinstance(data, dict)
 
-    print(xtal.pretty_json(data))
-    assert False
+    # print(xtal.pretty_json(data))
 
 
 def test_dof_space_analysis_2a(FCC_binary_prim):
