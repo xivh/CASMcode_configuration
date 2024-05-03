@@ -13,7 +13,10 @@ intersphinx_libcasm_packages = [
     ("xtal", "2.0"),
     ("clexulator", "2.0"),
 ]
-
+autodoc_type_aliases = {
+    "CasmObjectWithLattice": "CasmObjectWithLattice",
+    "CasmObjectWithPositions": "CasmObjectWithPositions",
+}
 
 # -- CASM common configuration ---
 

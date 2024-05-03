@@ -5,6 +5,7 @@
 #include "casm/configuration/sym_info/local_dof_sym_info.hh"
 #include "casm/configuration/sym_info/occ_sym_info.hh"
 #include "casm/configuration/sym_info/unitcellcoord_sym_info.hh"
+#include "casm/crystallography/BasicStructure.hh"
 
 namespace CASM {
 namespace config {
@@ -32,6 +33,7 @@ PrimSymInfo::PrimSymInfo(std::shared_ptr<SymGroup const> const &_factor_group,
   using namespace sym_info;
 
   this->point_group = make_point_group(prim, this->factor_group);
+  this->lattice_point_group = make_lattice_point_group(prim.lattice());
 
   this->unitcellcoord_symgroup_rep =
       make_unitcellcoord_symgroup_rep(this->factor_group->element, prim);

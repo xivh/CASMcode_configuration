@@ -203,6 +203,12 @@ PYBIND11_MODULE(_configuration, m) {
           },
           "The internal shared :class:`libcasm.xtal.Prim`")
       .def_property_readonly(
+          "lattice_point_group",
+          [](std::shared_ptr<config::Prim const> const &prim) {
+            return prim->sym_info.lattice_point_group;
+          },
+          "The lattice point group.")
+      .def_property_readonly(
           "factor_group",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.factor_group;

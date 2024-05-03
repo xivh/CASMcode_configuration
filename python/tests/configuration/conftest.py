@@ -1,3 +1,4 @@
+import builtins
 from math import sqrt
 
 import numpy as np
@@ -5,6 +6,18 @@ import pytest
 
 import libcasm.configuration as config
 import libcasm.xtal as xtal
+
+
+@pytest.fixture
+def hide_available_pkg(monkeypatch):
+    import_orig = builtins.__import__
+
+    def mocked_import(name, *args, **kwargs):
+        if name == "pkg":
+            raise ImportError()
+        return import_orig(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", mocked_import)
 
 
 @pytest.fixture
@@ -445,3 +458,46 @@ def simple_cubic_binary_SupercellSet_1_non_canonical():
     supercell = config.Supercell(prim, T)
     supercells.add(supercell)
     return supercells
+
+
+@pytest.fixture
+def ZrO_prim():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [3.233986856383, 0.000000000000, 0.000000000000],  # a
+            [-1.616993428191, 2.800714773133, 0.000000000000],  # a
+            [0.000000000000, 0.000000000000, 5.168678340000],  # c
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [2.0 / 3.0, 1.0 / 3.0, 1.0 / 2.0],
+            [1.0 / 3.0, 2.0 / 3.0, 1.0 / 4.0],
+            [1.0 / 3.0, 2.0 / 3.0, 3.0 / 4.0],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occ_dof = [["Zr"], ["Zr"], ["O", "Va"], ["O", "Va"]]
+
+    # Local continuous degrees of freedom (DoF)
+    local_dof = []
+
+    # Global continuous degrees of freedom (DoF)
+    global_dof = []
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
+        local_dof=local_dof,
+        global_dof=global_dof,
+        occupants=occupants,
+    )

@@ -115,6 +115,7 @@ set(
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/sym_info/occ_sym_info.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/sym_info/definitions.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/sym_info/global_dof_sym_info.hh
+  ${PROJECT_SOURCE_DIR}/include/casm/configuration/sym_info/io/json/SymGroup_json_io.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/IrrepDecomposition.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/IrrepWedge.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/irreps/VectorSpaceSymReport.hh
@@ -199,6 +200,7 @@ set(
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/sym_info/local_dof_sym_info.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/sym_info/factor_group.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/sym_info/global_dof_sym_info.cc
+  ${PROJECT_SOURCE_DIR}/src/casm/configuration/sym_info/io/json/SymGroup_json_io.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/irreps/VectorSpaceSymReport.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/irreps/IrrepWedge.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/irreps/IrrepDecomposition.cc

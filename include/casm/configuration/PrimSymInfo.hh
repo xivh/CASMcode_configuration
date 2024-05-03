@@ -33,6 +33,9 @@ struct PrimSymInfo {
   /// - Degenerate symmetry operations will not be added
   std::shared_ptr<SymGroup const> point_group;
 
+  /// \brief Lattice point group
+  std::shared_ptr<SymGroup const> lattice_point_group;
+
   /// \brief Describes how xtal::UnitCellCoord permute under symmetry
   ///
   /// Usage:

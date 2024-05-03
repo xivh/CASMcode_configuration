@@ -1,6 +1,7 @@
 import numpy as np
 
 import libcasm.configuration as casmconfig
+import libcasm.configuration.io.spglib as spglib_io
 
 
 def permute_columns(perm, before):
@@ -221,3 +222,120 @@ def test_configuration_with_properties_2(FCC_binary_prim):
         )
 
         # print()
+
+
+def make_config_with_props(
+    prim: casmconfig.Prim,
+    T: np.ndarray,
+    occupation: np.ndarray,
+    disp: np.ndarray,
+    Hstrain: np.ndarray,
+):
+    supercell = casmconfig.make_canonical_supercell(casmconfig.Supercell(prim, T))
+    config_init = casmconfig.Configuration(
+        supercell=supercell,
+    )
+
+    config_init.set_occupation(occupation)
+    local_properties_init = {
+        "disp": disp,
+    }
+    global_properties_init = {
+        "Hstrain": Hstrain,
+    }
+    return casmconfig.ConfigurationWithProperties(
+        configuration=config_init,
+        local_properties=local_properties_init,
+        global_properties=global_properties_init,
+    )
+
+
+def test_config_with_props_spglib_io_1(FCC_binary_prim):
+    xtal_prim = FCC_binary_prim
+    prim = casmconfig.Prim(xtal_prim)
+    T_conventional = np.array(
+        [  # conventional FCC cubic cell
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ],
+        dtype=int,
+    )
+
+    occupation = np.array([1, 1, 0, 0], dtype=int)
+    disp = np.array(
+        [
+            [0.01, 0.05, 0.09],
+            [0.02, 0.06, 0.10],
+            [0.03, 0.07, 0.11],
+            [0.04, 0.08, 0.12],
+        ]
+    ).transpose()
+    Hstrain = np.array([[0.01, 0.02, 0.03, 0.04, 0.05, 0.06]]).transpose()
+    config_w_props = make_config_with_props(
+        prim=prim,
+        T=T_conventional,
+        occupation=occupation,
+        disp=disp,
+        Hstrain=Hstrain,
+    )
+
+    ###
+
+    cell = spglib_io.as_cell(config_w_props)
+
+    assert isinstance(cell, tuple)
+    assert len(cell) == 3
+
+    symmetry_dataset = spglib_io.get_symmetry_dataset(config_w_props)
+    # print(symmetry_dataset.keys())
+    # for key, value in symmetry_dataset.items():
+    #     print("symmetry", key)
+    #     print(value)
+    #     print()
+    assert isinstance(symmetry_dataset, dict)
+    assert symmetry_dataset["number"] == 1
+    assert len(symmetry_dataset["rotations"]) == 1
+
+
+def test_config_with_props_spglib_io_2(FCC_binary_prim):
+    xtal_prim = FCC_binary_prim
+    prim = casmconfig.Prim(xtal_prim)
+    T_conventional = np.array(
+        [  # conventional FCC cubic cell
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ],
+        dtype=int,
+    )
+
+    occupation = np.array([0, 0, 0, 0], dtype=int)
+    disp = np.array(
+        [
+            [0.00, 0.00, 0.00],
+            [0.00, 0.00, 0.00],
+            [0.00, 0.00, 0.00],
+            [0.00, 0.00, 0.00],
+        ]
+    ).transpose()
+    Hstrain = np.array([[0.01, 0.01, 0.01, 0.00, 0.00, 0.00]]).transpose()
+    config_w_props = make_config_with_props(
+        prim=prim,
+        T=T_conventional,
+        occupation=occupation,
+        disp=disp,
+        Hstrain=Hstrain,
+    )
+
+    ###
+
+    cell = spglib_io.as_cell(config_w_props)
+
+    assert isinstance(cell, tuple)
+    assert len(cell) == 3
+
+    symmetry_dataset = spglib_io.get_symmetry_dataset(config_w_props)
+    assert isinstance(symmetry_dataset, dict)
+    assert symmetry_dataset["number"] == 225
+    assert len(symmetry_dataset["rotations"]) == 4 * 48

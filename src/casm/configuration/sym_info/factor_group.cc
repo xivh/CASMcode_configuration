@@ -3,6 +3,7 @@
 #include "casm/configuration/group/Group.hh"
 #include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/BasicStructureTools.hh"
+#include "casm/crystallography/SymTools.hh"
 #include "casm/crystallography/SymTypeComparator.hh"
 
 namespace CASM {
@@ -15,23 +16,21 @@ bool ConjugacyClassCompare::operator()(const map_type &A,
   return float_lexicographical_compare(A.begin()->first, B.begin()->first, tol);
 }
 
-/// \brief Generate prim factor group
-///
-/// Notes:
-/// - Result is sorted by class, with classes sorted by symop
-/// - Uses lattice tol for comparison
-std::shared_ptr<SymGroup const> make_factor_group(
-    xtal::BasicStructure const &prim) {
-  // these SymOp are sorted by `xtal::symop_sort_key_type`, but not by class
-  std::vector<SymOp> factor_group_elements = xtal::make_factor_group(prim);
+/// \brief Construct a SymGroup from the group elements, sorting by class
+/// and operation
+std::shared_ptr<SymGroup const> make_symgroup(
+    std::vector<SymOp> const &_elements, xtal::Lattice const &lattice) {
+  std::vector<SymOp> elements{_elements};
 
-  double xtal_tol = prim.lattice().tol();
+  // this is called `sort_factor_group`, but can sort any xtal::SymOp
+  sort_factor_group(elements, lattice);
+
+  double xtal_tol = lattice.tol();
   std::multiplies<SymOp> multiply_f;
-  xtal::SymOpPeriodicCompare_f equal_to_f(prim.lattice(), xtal_tol);
+  xtal::SymOpPeriodicCompare_f equal_to_f(lattice, xtal_tol);
 
   // make a `tmp` group, so we can use the multiplication table
-  SymGroup tmp =
-      group::make_group(factor_group_elements, multiply_f, equal_to_f);
+  SymGroup tmp = group::make_group(elements, multiply_f, equal_to_f);
 
   // use the group with multiplication table to make conjugacy classes
   std::vector<std::vector<Index>> conjugacy_classes =
@@ -49,7 +48,7 @@ std::shared_ptr<SymGroup const> make_factor_group(
     ConjugacyClassCompare::map_type cclass(op_compare);
     for (int j = 0; j < conjugacy_classes[i].size(); ++j) {
       const SymOp &op = tmp.element.at(conjugacy_classes[i][j]);
-      cclass.emplace(make_symop_sort_key(op, prim.lattice()), op);
+      cclass.emplace(make_symop_sort_key(op, lattice), op);
     }
     sorter.emplace(std::move(cclass));
   }
@@ -67,16 +66,33 @@ std::shared_ptr<SymGroup const> make_factor_group(
       group::make_group(sorted_elements, multiply_f, equal_to_f));
 }
 
-/// \brief Use prim factor group
-std::shared_ptr<SymGroup const> use_factor_group(
-    std::vector<xtal::SymOp> const &factor_group_elements,
-    xtal::BasicStructure const &prim) {
-  xtal::Lattice const &lattice = prim.lattice();
+/// \brief Construct a SymGroup from the group elements,
+///     without sorting by class or operation
+std::shared_ptr<SymGroup const> make_symgroup_without_sorting(
+    std::vector<SymOp> const &elements, xtal::Lattice const &lattice) {
   double xtal_tol = lattice.tol();
   std::multiplies<SymOp> multiply_f;
   xtal::SymOpPeriodicCompare_f equal_to_f(lattice, xtal_tol);
   return std::make_shared<SymGroup>(
-      group::make_group(factor_group_elements, multiply_f, equal_to_f));
+      group::make_group(elements, multiply_f, equal_to_f));
+}
+
+/// \brief Generate prim factor group
+///
+/// Notes:
+/// - Result is sorted by class, with classes sorted by symop
+/// - Uses lattice tol for comparison
+std::shared_ptr<SymGroup const> make_factor_group(
+    xtal::BasicStructure const &prim) {
+  std::vector<SymOp> elements = xtal::make_factor_group(prim);
+  return make_symgroup(elements, prim.lattice());
+}
+
+/// \brief Use prim factor group
+std::shared_ptr<SymGroup const> use_factor_group(
+    std::vector<xtal::SymOp> const &factor_group_elements,
+    xtal::BasicStructure const &prim) {
+  return make_symgroup_without_sorting(factor_group_elements, prim.lattice());
 }
 
 /// \brief Generate prim point group
@@ -104,6 +120,14 @@ std::shared_ptr<SymGroup const> make_point_group(
 
   return std::make_shared<SymGroup>(
       group::make_group(pg_element, multiply_f, equal_to_f));
+}
+
+/// \brief Generate lattice point group
+std::shared_ptr<SymGroup const> make_lattice_point_group(
+    xtal::Lattice const &lattice) {
+  // these SymOp are not sorted
+  std::vector<SymOp> elements = xtal::make_point_group(lattice);
+  return make_symgroup(elements, lattice);
 }
 
 }  // namespace sym_info

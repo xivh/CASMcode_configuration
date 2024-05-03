@@ -1,8 +1,11 @@
 from typing import Any
 
 import numpy as np
+import pytest
 
 import libcasm.configuration as config
+import libcasm.configuration.io as config_io
+import libcasm.configuration.io.spglib as spglib_io
 import libcasm.xtal as xtal
 
 
@@ -104,3 +107,63 @@ def test_FCC_binary_discrete_Cmagspin_prim_1():
     for op in prim.factor_group.elements:
         syminfo = xtal.SymInfo(op, lattice)
         print(xtal.pretty_json(syminfo.to_dict()))
+
+
+def test_prim_magspin_spglib_io():
+    xtal_prim = FCC_binary_discrete_Cmagspin_prim()
+    prim = config.Prim(xtal_prim)
+    cell = spglib_io.as_cell(prim)
+
+    assert isinstance(cell, tuple)
+    assert len(cell) == 4
+
+    symmetry_dataset = spglib_io.get_symmetry_dataset(prim)
+
+    # print(symmetry_dataset.keys())
+    # for key, value in symmetry_dataset.items():
+    #     print("symmetry", key)
+    #     print(value)
+    #     print()
+
+    assert isinstance(symmetry_dataset, dict)
+    assert symmetry_dataset["number"] == 225
+    assert symmetry_dataset["hall_number"] == 523
+    assert len(symmetry_dataset["rotations"]) == 48
+
+    mag_symmetry_dataset = spglib_io.get_magnetic_symmetry_dataset(prim)
+
+    # print(mag_symmetry_dataset.keys())
+    # for key, value in mag_symmetry_dataset.items():
+    #     print("mag_symmetry", key)
+    #     print(value)
+    #     print()
+
+    assert isinstance(mag_symmetry_dataset, dict)
+    assert mag_symmetry_dataset["uni_number"] == 1619
+    assert mag_symmetry_dataset["hall_number"] == 523
+    assert mag_symmetry_dataset["n_operations"] == 96
+
+    # print(prim.factor_group.brief_cart(xtal_prim.lattice()))
+
+    with pytest.raises(
+        ValueError, match="not valid for operations with time reversal symmetry"
+    ):
+        _ = spglib_io.get_spacegroup_type_from_symmetry(
+            elements=prim.factor_group.elements,
+            lattice=xtal_prim.lattice(),
+        )
+
+
+def test_symgroup_to_dict_with_group_classification():
+    xtal_prim = FCC_binary_discrete_Cmagspin_prim()
+    prim = config.Prim(xtal_prim)
+
+    data = config_io.symgroup_to_dict_with_group_classification(prim, prim.factor_group)
+
+    assert isinstance(data, dict)
+    assert "spacegroup_type" in data["group_classification"]
+    assert data["group_classification"]["spacegroup_type"]["number"] == 225
+    assert "magnetic_spacegroup_type" in data["group_classification"]
+    assert (
+        data["group_classification"]["magnetic_spacegroup_type"]["uni_number"] == 1619
+    )

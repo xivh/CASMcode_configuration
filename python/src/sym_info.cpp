@@ -3,11 +3,19 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+// nlohmann::json binding
+#define JSON_USE_IMPLICIT_CONVERSIONS 0
+#include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/group/Group.hh"
 #include "casm/configuration/sym_info/factor_group.hh"
+#include "casm/configuration/sym_info/io/json/SymGroup_json_io.hh"
 #include "casm/crystallography/BasicStructure.hh"
+#include "casm/crystallography/SymInfo.hh"
 #include "casm/crystallography/SymType.hh"
+#include "casm/crystallography/io/SymInfo_json_io.hh"
+#include "casm/crystallography/io/SymInfo_stream_io.hh"
+#include "pybind11_json/pybind11_json.hpp"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -107,6 +115,17 @@ PYBIND11_MODULE(_sym_info, m) {
               ``np.allclose(elements[k], elements[i] @ elements[j]) == True``.
           )pbdoc",
            py::arg("elements"), py::arg("multiplication_table"))
+      .def_static(
+          "from_elements",
+          [](std::vector<xtal::SymOp> elements, xtal::Lattice const &lattice,
+             bool sort) -> std::shared_ptr<sym_info::SymGroup const> {
+            if (sort) {
+              return sym_info::make_symgroup(elements, lattice);
+            } else {
+              return sym_info::make_symgroup_without_sorting(elements, lattice);
+            }
+          },
+          py::arg("elements"), py::arg("lattice"), py::arg("sort") = true)
       .def("make_subgroup", &make_symgroup_subgroup, R"pbdoc(
           Make a subgroup
 
@@ -247,7 +266,140 @@ PYBIND11_MODULE(_sym_info, m) {
           -------
           i_inverse: int
               The index the inverse of the `i`-th element.
+          )pbdoc")
+      .def(
+          "brief_cart",
+          [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
+             xtal::Lattice const &lattice, int index_from) {
+            std::stringstream ss;
+            int index = index_from;
+            for (auto const &op : symgroup->element) {
+              xtal::SymInfo syminfo(op, lattice);
+              ss << index << ": "
+                 << to_brief_unicode(syminfo, xtal::SymInfoOptions(CART))
+                 << std::endl;
+              index += 1;
+            }
+            return ss.str();
+          },
+          py::arg("lattice"), py::arg("index_from") = 1, R"pbdoc(
+          Brief description, in Cartesian coordinates
+
+          Parameters
+          ----------
+          lattice: libcasm.xtal.Lattice
+              The lattice.
+          index_from: int = 1
+              The first element index.
+
+          Returns
+          -------
+          brief_desc_cart: str
+              Brief description of the group elements, in Cartesian coordinates.
+          )pbdoc")
+      .def(
+          "brief_frac",
+          [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
+             xtal::Lattice const &lattice, int index_from) {
+            std::stringstream ss;
+
+            int index = index_from;
+            for (auto const &op : symgroup->element) {
+              xtal::SymInfo syminfo(op, lattice);
+              ss << index << ": "
+                 << to_brief_unicode(syminfo, xtal::SymInfoOptions(FRAC))
+                 << std::endl;
+              index += 1;
+            }
+            return ss.str();
+          },
+          py::arg("lattice"), py::arg("index_from") = 1, R"pbdoc(
+          Brief description, in fractional coordinates
+
+          Parameters
+          ----------
+          lattice: libcasm.xtal.Lattice
+              The lattice.
+          index_from: int = 1
+              The first element index.
+
+          Returns
+          -------
+          brief_desc_cart: str
+              Brief description of the group elements, in fractional
+              coordinates.
+          )pbdoc")
+      .def_static(
+          "from_dict",
+          [](const nlohmann::json &data, xtal::Lattice const &lattice) {
+            jsonParser json{data};
+            InputParser<std::shared_ptr<sym_info::SymGroup const>> parser(
+                json, lattice);
+            std::runtime_error error_if_invalid{
+                "Error in libcasm.sym_info.SymGroup.from_dict"};
+            report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+            return std::move(*parser.value);
+          },
+          R"pbdoc(
+          Construct a SymGroup from a Python dict.
+
+          The
+          `SymGroup reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/symmetry/SymGroup/>`_
+          documents the expected format.
+
+          Parameters
+          ----------
+          lattice : libcasm.xtal.Lattice
+              The lattice, used to construct the multiplication table.
+
+          Returns
+          -------
+          symgroup: libcasm.sym_info.SymGroup
+              The SymGroup
+          )pbdoc",
+          py::arg("data"), py::arg("lattice"))
+      .def(
+          "to_dict",
+          [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
+             xtal::Lattice const &lattice) {
+            jsonParser json;
+            to_json(symgroup, json, lattice);
+            return static_cast<nlohmann::json>(json);
+          },
+          py::arg("lattice"),
+          R"pbdoc(
+          Represent the SymGroup as a Python dict
+
+          Parameters
+          ----------
+          lattice : libcasm.xtal.Lattice
+              The lattice, used to construct the fractional coordinate
+              representation and symmetry operation info.
+
+          Returns
+          -------
+          data : json
+              The
+              `SymGroup reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/symmetry/SymGroup/>`_
+              documents the expected format.
+
           )pbdoc");
+
+  m.def("make_lattice_point_group", &sym_info::make_lattice_point_group,
+        R"pbdoc(
+        Construct the lattice point group as a SymGroup
+
+        Parameters
+        ----------
+        lattice: libcasm.xtal.Lattice
+            The :class:`libcasm.xtal.Lattice`.
+
+        Returns
+        -------
+        lattice_point_group : SymGroup
+            The group which leaves `lattice` invariant
+        )pbdoc",
+        py::arg("lattice"));
 
   m.def("make_factor_group", &sym_info::make_factor_group, R"pbdoc(
         Construct the prim factor group as a SymGroup

@@ -1,7 +1,11 @@
-"""Additional methods for supercell and configuration IO"""
+"""Additional methods for IO"""
 from typing import Dict, List, Optional
 
 import libcasm.configuration._configuration as _config
+
+from ._symgroup import (
+    symgroup_to_dict_with_group_classification,
+)
 
 
 def supercell_list_to_data(

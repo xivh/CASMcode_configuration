@@ -5,6 +5,17 @@ All notable changes to `libcasm-configuration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## Unreleased
+
+### Added
+
+- Added libcasm.sym_info.make_lattice_point_group
+- Added libcasm.configuration.Prim.lattice_point_group
+- Added libcasm.configuration.io.spglib to interface with spglib
+- Added libcasm.io.symgroup_to_dict_with_group_classification to add group classification from spglib to SymGroup.to_dict data.
+
+
 ## [v2.0a3] - 2024-03-15
 
 ### Fixed

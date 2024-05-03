@@ -3,6 +3,7 @@ from sortedcontainers import SortedList
 
 import libcasm.clexulator as casmclex
 import libcasm.configuration as config
+import libcasm.configuration.io.spglib as spglib_io
 
 
 def test_configuration_constructor(simple_cubic_binary_prim):
@@ -110,6 +111,40 @@ def test_configuration_invariant_subgroup(simple_cubic_binary_prim):
     configuration.set_occ(0, 1)
     invariant_subgroup = config.make_invariant_subgroup(configuration)
     assert len(invariant_subgroup) == 48
+
+
+def test_configuration_spglib_io(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    T = np.array(
+        [
+            [4, 0, 0],
+            [0, 4, 0],
+            [0, 0, 4],
+        ]
+    )
+    supercell = config.make_canonical_supercell(config.Supercell(prim, T))
+    configuration = config.Configuration(supercell)
+
+    cell = spglib_io.as_cell(configuration)
+
+    assert isinstance(cell, tuple)
+    assert len(cell) == 3
+
+    symmetry_dataset = spglib_io.get_symmetry_dataset(configuration)
+    # print(symmetry_dataset.keys())
+    # for key, value in symmetry_dataset.items():
+    #     print("symmetry", key)
+    #     print(value)
+    #     print()
+    assert isinstance(symmetry_dataset, dict)
+    assert symmetry_dataset["number"] == 221
+    assert len(symmetry_dataset["rotations"]) == 64 * 48
+
+    configuration.set_occ(0, 1)
+    symmetry_dataset = spglib_io.get_symmetry_dataset(configuration)
+    assert isinstance(symmetry_dataset, dict)
+    assert symmetry_dataset["number"] == 221
+    assert len(symmetry_dataset["rotations"]) == 48
 
 
 def test_configuration_apply(simple_cubic_binary_prim):

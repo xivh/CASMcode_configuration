@@ -34,6 +34,7 @@ dependencies = [
   "libcasm-xtal>=2.0a9",
   "libcasm-clexulator>=2.0a4",
   "numpy",
+  "spglib",
 ]
 
 [project.urls]
