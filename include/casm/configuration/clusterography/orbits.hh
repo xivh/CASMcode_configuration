@@ -138,6 +138,12 @@ std::vector<std::shared_ptr<SymGroup const>> make_local_cluster_groups(
     std::shared_ptr<SymGroup const> const &phenomenal_group,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
 
+/// \brief Make the group that leaves a local cluster invariant
+std::shared_ptr<SymGroup const> make_local_cluster_group(
+    IntegralCluster cluster,
+    std::shared_ptr<SymGroup const> const &phenomenal_group,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
+
 /// \brief Make local-cluster orbits
 std::vector<std::set<IntegralCluster>> make_local_orbits(
     std::shared_ptr<xtal::BasicStructure const> const &prim,

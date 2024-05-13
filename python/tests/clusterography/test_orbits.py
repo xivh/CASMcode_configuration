@@ -141,3 +141,15 @@ def test_make_local_orbit():
     # fmt: on
 
     assert equivalence_map_indices == expected
+
+    ## Check local cluster group
+    cluster_group = clust.make_local_cluster_group(
+        cluster=prototype,
+        phenomenal_group=phenomenal_group,
+        integral_site_coordinate_symgroup_rep=phenomenal_group_site_rep,
+    )
+    assert len(cluster_group.elements) == 2
+    assert cluster_group.head_group_index == [
+        phenomenal_group.head_group_index[0],
+        phenomenal_group.head_group_index[5],
+    ]

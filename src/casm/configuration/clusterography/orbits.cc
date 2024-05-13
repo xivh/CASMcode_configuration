@@ -591,12 +591,14 @@ std::vector<std::vector<xtal::SymOp>> make_local_equivalence_map(
 ///
 /// \param orbit A cluster orbit
 /// \param phenomenal_group The phenomenal cluster group used to generate the
-/// orbit. \param unitcellcoord_symgroup_rep Symmetry group representation (as
-/// xtal::UnitCellCoordRep)
+///     orbit.
+/// \param unitcellcoord_symgroup_rep Symmetry group representation (as
+///     xtal::UnitCellCoordRep)
 ///
 /// \returns Cluster invariant groups, where prim_periodic_cluster_groups[i], is
 ///     the SymGroup whose operations leave the sites of the i-th cluster in the
-///     orbit invariant (up to a permutation).
+///     orbit invariant (up to a permutation). The head groups are set to
+///     `phenomenal_group->head_group`.
 std::vector<std::shared_ptr<SymGroup const>> make_local_cluster_groups(
     std::set<IntegralCluster> const &orbit,
     std::shared_ptr<SymGroup const> const &phenomenal_group,
@@ -621,15 +623,59 @@ std::vector<std::shared_ptr<SymGroup const>> make_local_cluster_groups(
   auto subgroup_indices_end = subgroup_indices.end();
   while (subgroup_indices_it != subgroup_indices_end) {
     std::vector<xtal::SymOp> cluster_group_elements;
+    std::set<Index> head_group_indices;
     for (Index j : *subgroup_indices_it) {
       cluster_group_elements.push_back(phenomenal_group->element[j]);
+      head_group_indices.insert(phenomenal_group->head_group_index[j]);
     }
-    cluster_groups.emplace_back(std::make_shared<SymGroup>(
-        phenomenal_group, cluster_group_elements, *subgroup_indices_it));
+    cluster_groups.emplace_back(
+        std::make_shared<SymGroup>(phenomenal_group->head_group,
+                                   cluster_group_elements, head_group_indices));
     ++subgroup_indices_it;
     ++orbit_it;
   }
   return cluster_groups;
+}
+
+/// \brief Make the group that leaves a local cluster invariant
+///
+/// \param cluster A local cluster
+/// \param phenomenal_group The phenomenal cluster group used to generate the
+///     orbit.
+/// \param unitcellcoord_symgroup_rep Symmetry group representation (as
+///     xtal::UnitCellCoordRep)
+///
+/// \returns Cluster invariant group, the subgroup of `phenomenal_group`
+///     whose operations leave the sites of `cluster` invariant (up to a
+///     permutation). The head group is set to `phenomenal_group->head_group`.
+std::shared_ptr<SymGroup const> make_local_cluster_group(
+    IntegralCluster cluster,
+    std::shared_ptr<SymGroup const> const &phenomenal_group,
+    std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  if (!cluster.size()) {
+    return phenomenal_group;
+  }
+
+  cluster.sort();
+
+  std::vector<xtal::SymOp> elements;
+  std::set<Index> indices;
+  if (!phenomenal_group->head_group) {
+    throw std::runtime_error(
+        "Error in make_local_cluster_group: "
+        "phenomenal group has no head group");
+  }
+  for (Index i = 0; i < phenomenal_group->element.size(); ++i) {
+    IntegralCluster tclust = copy_apply(unitcellcoord_symgroup_rep[i], cluster);
+    tclust.sort();
+
+    if (tclust == cluster) {
+      elements.push_back(phenomenal_group->element[i]);
+      indices.insert(phenomenal_group->head_group_index[i]);
+    }
+  }
+  return std::make_shared<SymGroup>(phenomenal_group->head_group, elements,
+                                    indices);
 }
 
 /// \brief Make local-cluster orbits

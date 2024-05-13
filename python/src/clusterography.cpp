@@ -820,9 +820,45 @@ PYBIND11_MODULE(_clusterography, m) {
       Returns
       -------
       cluster_group : libcasm.sym_info.SymGroup
-          The subgroup which leaves the cluster invariant
+          The subgroup which leaves the cluster invariant. Elements may differ
+          from elements of `group` by a translation. The head group of
+          `cluster_group` is set to `group`.
       )pbdoc",
       py::arg("cluster"), py::arg("group"), py::arg("lattice"),
+      py::arg("integral_site_coordinate_symgroup_rep"));
+
+  m.def(
+      "make_local_cluster_group",
+      [](clust::IntegralCluster cluster,
+         std::shared_ptr<clust::SymGroup const> const &phenomenal_group,
+         std::vector<xtal::UnitCellCoordRep> const
+             &unitcellcoord_symgroup_rep) {
+        return make_local_cluster_group(cluster, phenomenal_group,
+                                        unitcellcoord_symgroup_rep);
+      },
+      R"pbdoc(
+      Construct the subgroup which leaves a local Cluster invariant
+
+      Parameters
+      ----------
+      cluster : Cluster
+          The local cluster that remains invariant after transformation by
+          subgroup elements.
+
+      phenomenal_group: libcasm.sym_info.SymGroup
+          The symmetry group that generates an orbit of the local cluster.
+
+      integral_site_coordinate_symgroup_rep: list[libcasm.xtal.IntegralSiteCoordinateRep]
+          Symmetry group representation of `phenomenal_group`.
+
+      Returns
+      -------
+      cluster_group : libcasm.sym_info.SymGroup
+          The subgroup which leaves the cluster invariant. Elements may not
+          differ from elements of `group` by a translation. The head group of
+          `cluster_group` is set to the head group of `phenomenal_group`.
+      )pbdoc",
+      py::arg("cluster"), py::arg("phenomenal_group"),
       py::arg("integral_site_coordinate_symgroup_rep"));
 
   m.def(

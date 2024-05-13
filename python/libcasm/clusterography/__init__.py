@@ -30,6 +30,7 @@ from ._clusterography import (
     equivalents_info_from_dict,
     make_cluster_group,
     make_integral_site_coordinate_symgroup_rep,
+    make_local_cluster_group,
     make_local_equivalence_map,
     make_local_equivalence_map_indices,
     make_local_orbit,
