@@ -73,14 +73,13 @@ std::vector<xtal::UnitCell> make_phenomenal_generating_translations(
 /// \brief Make groups that leave cluster orbit elements invariant
 std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
     std::set<IntegralCluster> const &orbit,
-    std::shared_ptr<SymGroup const> const &factor_group,
+    std::shared_ptr<SymGroup const> const &symggroup,
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
 
 /// \brief Make the group which leaves a cluster invariant
 std::shared_ptr<SymGroup const> make_cluster_group(
-    IntegralCluster cluster,
-    std::shared_ptr<SymGroup const> const &factor_group,
+    IntegralCluster cluster, std::shared_ptr<SymGroup const> const &symggroup,
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep);
 

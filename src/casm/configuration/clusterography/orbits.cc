@@ -246,17 +246,19 @@ std::vector<xtal::UnitCell> make_phenomenal_generating_translations(
 /// \brief Make groups that leave cluster orbit elements invariant
 ///
 /// \param orbit A cluster orbit
-/// \param factor_group The factor group used to generate the orbit.
+/// \param symgroup The group used to generate the orbit.
 /// \param lat_column_mat The 3x3 matrix whose columns are the lattice vectors.
 /// \param unitcellcoord_symgroup_rep Symmetry group representation (as
-///     xtal::UnitCellCoordRep) of the factor group.
+///     xtal::UnitCellCoordRep) of `symgroup`.
 ///
 /// \returns Cluster invariant groups, where cluster_groups[i] is
 ///     the SymGroup whose operations leave the sites of the i-th cluster in the
-///     orbit invariant (up to a permutation).
+///     orbit invariant (up to a permutation). The head group of the cluster
+///     groups is set to be the head group of `symgroup`, which may be
+///     `symgroup` itself.
 std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
     std::set<IntegralCluster> const &orbit,
-    std::shared_ptr<SymGroup const> const &factor_group,
+    std::shared_ptr<SymGroup const> const &symgroup,
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
   // The indices eq_map[i] are the indices of the group
@@ -270,7 +272,7 @@ std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
   // The indices subgroup_indices[i] are the indices of the group
   // elements which leave orbit element i invariant (up to a translation).
   std::vector<group::SubgroupIndices> subgroup_indices =
-      group::make_invariant_subgroups(eq_map, *factor_group);
+      group::make_invariant_subgroups(eq_map, *symgroup);
 
   // The group cluster_groups[i] contains the SymOp corresponding to
   // subgroup_indices[i] and including the translation which keeps
@@ -280,15 +282,23 @@ std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
   auto subgroup_indices_it = subgroup_indices.begin();
   auto subgroup_indices_end = subgroup_indices.end();
 
+  std::shared_ptr<SymGroup const> head_group;
+  if (!symgroup->head_group) {
+    head_group = symgroup;
+  } else {
+    head_group = symgroup->head_group;
+  }
   while (subgroup_indices_it != subgroup_indices_end) {
     std::vector<xtal::SymOp> cluster_group_elements;
+    std::set<Index> head_group_indices;
     for (Index j : *subgroup_indices_it) {
       cluster_group_elements.push_back(make_cluster_group_element(
-          *orbit_it, lat_column_mat, factor_group->element[j],
+          *orbit_it, lat_column_mat, symgroup->element[j],
           unitcellcoord_symgroup_rep[j]));
+      head_group_indices.insert(symgroup->head_group_index[j]);
     }
     cluster_groups.emplace_back(std::make_shared<SymGroup>(
-        factor_group, cluster_group_elements, *subgroup_indices_it));
+        head_group, cluster_group_elements, head_group_indices));
     ++subgroup_indices_it;
     ++orbit_it;
   }
@@ -296,20 +306,41 @@ std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
 }
 
 /// \brief Make the group which leaves a cluster invariant
+///
+/// \param cluster A cluster
+/// \param symgroup The super group of the cluster group.
+/// \param lat_column_mat The 3x3 matrix whose columns are the lattice vectors.
+/// \param unitcellcoord_symgroup_rep Symmetry group representation (as
+///     xtal::UnitCellCoordRep) of `symgroup`.
+///
+/// \returns Cluster invariant groups, where cluster_groups[i] is
+///     the SymGroup whose operations leave the sites of the i-th cluster in the
+///     orbit invariant (up to a permutation). The head group of the cluster
+///     group is set to be the head group of `symgroup`, which may be
+///     `symgroup` itself.
 std::shared_ptr<SymGroup const> make_cluster_group(
-    IntegralCluster cluster,
-    std::shared_ptr<SymGroup const> const &factor_group,
+    IntegralCluster cluster, std::shared_ptr<SymGroup const> const &symgroup,
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  std::shared_ptr<SymGroup const> head_group;
+  if (!symgroup->head_group) {
+    head_group = symgroup;
+  } else {
+    head_group = symgroup->head_group;
+  }
+
   if (!cluster.size()) {
-    return factor_group;
+    return std::make_shared<SymGroup>(
+        head_group, symgroup->element,
+        std::set<Index>(symgroup->head_group_index.begin(),
+                        symgroup->head_group_index.end()));
   }
 
   cluster.sort();
 
   std::vector<xtal::SymOp> elements;
   std::set<Index> indices;
-  for (Index i = 0; i < factor_group->element.size(); ++i) {
+  for (Index i = 0; i < symgroup->element.size(); ++i) {
     IntegralCluster tclust = copy_apply(unitcellcoord_symgroup_rep[i], cluster);
     tclust.sort();
 
@@ -319,11 +350,11 @@ std::shared_ptr<SymGroup const> make_cluster_group(
     if (tclust == cluster) {
       xtal::SymOp cart_trans(Eigen::Matrix3d::Identity(),
                              lat_column_mat * frac_trans.cast<double>(), false);
-      elements.push_back(cart_trans * factor_group->element[i]);
-      indices.insert(i);
+      elements.push_back(cart_trans * symgroup->element[i]);
+      indices.insert(symgroup->head_group_index[i]);
     }
   }
-  return std::make_shared<SymGroup>(factor_group, elements, indices);
+  return std::make_shared<SymGroup>(head_group, elements, indices);
 }
 
 /// \brief Make orbits of clusters, with periodic symmetry of a prim
@@ -603,6 +634,12 @@ std::vector<std::shared_ptr<SymGroup const>> make_local_cluster_groups(
     std::set<IntegralCluster> const &orbit,
     std::shared_ptr<SymGroup const> const &phenomenal_group,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  if (!phenomenal_group->head_group) {
+    throw std::runtime_error(
+        "Error in make_local_cluster_groups: "
+        "phenomenal group has no head group");
+  }
+
   // The indices eq_map[i] are the indices of the group
   // elements transform the first element in the orbit into the
   // i-th element in the orbit.
@@ -652,19 +689,23 @@ std::shared_ptr<SymGroup const> make_local_cluster_group(
     IntegralCluster cluster,
     std::shared_ptr<SymGroup const> const &phenomenal_group,
     std::vector<xtal::UnitCellCoordRep> const &unitcellcoord_symgroup_rep) {
+  if (!phenomenal_group->head_group) {
+    throw std::runtime_error(
+        "Error in make_local_cluster_group: "
+        "phenomenal group has no head group");
+  }
+
   if (!cluster.size()) {
-    return phenomenal_group;
+    return std::make_shared<SymGroup>(
+        phenomenal_group->head_group, phenomenal_group->element,
+        std::set<Index>(phenomenal_group->head_group_index.begin(),
+                        phenomenal_group->head_group_index.end()));
   }
 
   cluster.sort();
 
   std::vector<xtal::SymOp> elements;
   std::set<Index> indices;
-  if (!phenomenal_group->head_group) {
-    throw std::runtime_error(
-        "Error in make_local_cluster_group: "
-        "phenomenal group has no head group");
-  }
   for (Index i = 0; i < phenomenal_group->element.size(); ++i) {
     IntegralCluster tclust = copy_apply(unitcellcoord_symgroup_rep[i], cluster);
     tclust.sort();

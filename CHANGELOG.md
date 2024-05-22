@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added libcasm.io.symgroup_to_dict_with_group_classification to add group classification from spglib to SymGroup.to_dict data.
 - Added libcasm.clusterography.make_local_cluster_group
 
+### Changed
+
+- Changed libcasm.clusterography.make_cluster_group, CASM::clust::make_cluster_group, and CASM::clust::make_cluster_groups so that the head group of the cluster group is set to the head group of the group used to generate the cluster group. In typical use this means the head group of the cluster group is the prim factor group rather than a subgroup, even if a subgroup was used to generate the cluster group.
+
 
 ## [v2.0a3] - 2024-03-15
 
