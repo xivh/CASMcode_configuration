@@ -201,32 +201,32 @@ PYBIND11_MODULE(_configuration, m) {
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->basicstructure;
           },
-          "The internal shared :class:`libcasm.xtal.Prim`")
+          "libcasm.xtal.Prim: The internal shared :class:`libcasm.xtal.Prim`")
       .def_property_readonly(
           "lattice_point_group",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.lattice_point_group;
           },
-          "The lattice point group.")
+          "libcasm.sym_info.SymGroup: The lattice point group.")
       .def_property_readonly(
           "factor_group",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.factor_group;
           },
-          "The factor group.")
+          "libcasm.sym_info.SymGroup: The factor group.")
       .def_property_readonly(
           "crystal_point_group",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.point_group;
           },
-          "The crystal point group.")
+          "libcasm.sym_info.SymGroup: The crystal point group.")
       .def_property_readonly(
           "has_occupation_dofs",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.has_occupation_dofs;
           },
           R"pbdoc(
-          True if >1 occupant allowed on any sublattice, False otherwise.
+          bool: True if >1 occupant allowed on any sublattice, False otherwise.
           )pbdoc")
       .def_property_readonly(
           "is_atomic",
@@ -234,7 +234,7 @@ PYBIND11_MODULE(_configuration, m) {
             return prim->is_atomic;
           },
           R"pbdoc(
-          True if the prim allows 1 or more occupants on each site, all
+          bool: True if the prim allows 1 or more occupants on each site, all
           occupants have a single atom without coordinate offset, and no
           occupants have :class:`~libcasm.xtal.Occupant` properties, only
           :class:`~libcasm.xtal.AtomComponent` properties.
@@ -245,7 +245,7 @@ PYBIND11_MODULE(_configuration, m) {
             return prim->sym_info.has_aniso_occs;
           },
           R"pbdoc(
-          Returns True if any permutation in :func:`Prim.occ_symgroup_rep` is
+          bool: Returns True if any permutation in :func:`Prim.occ_symgroup_rep` is
           non-trivial, False otherwise.
           )pbdoc")
       .def(
@@ -305,22 +305,75 @@ PYBIND11_MODULE(_configuration, m) {
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.unitcellcoord_symgroup_rep;
           },
-          "Returns the symmetry group representation that describes how "
-          "IntegralSiteCoordinate transform under symmetry.")
+          R"pbdoc(
+          list[xtal.IntegralSiteCoordinateRep]: The symmetry group \
+          representation for transforming \
+          :class:`~libcasm.xtal.IntegralSiteCoordinate` by prim factor group \
+          operations.
+
+          The mapping between sites due to the `i_factor_group`-th prim factor
+          group operation can be performed using
+
+          .. code-block:: Python
+
+              site_after = prim.integral_site_coordinate_symgroup_rep[i_factor_group] * site_before
+
+          where `site_after` and `site_before` are
+          :class:`~libcasm.xtal.IntegralSiteCoordinate`.
+          )pbdoc")
       .def_property_readonly(
           "occ_symgroup_rep",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.occ_symgroup_rep;
           },
-          "Returns the symmetry group representation that describes how "
-          "occupant indices transform under symmetry.")
+          R"pbdoc(
+          list[list[list[int]]]: The symmetry group representation that \
+          describes how occupant indices transform under symmetry.
+
+          When the `i_factor_group`-th prim factor group operation is used to
+          transform the `i_occ_before`-th occupant allowed on the
+          `i_sublat_before`-th sublattice, it becomes the
+          `i_occ_after`-th occupant allowed on the site it is
+          mapped to, where
+
+          .. code-block:: Python
+
+              i_occ_after = prim.occ_symgroup_rep[i_factor_group][i_sublat_before][i_occ_before]
+
+          The mapping between sites can be determined using
+
+          .. code-block:: Python
+
+              site_after = prim.integral_site_coordinate_symgroup_rep[i_factor_group] * site_before
+
+          where `site_after` and `site_before` are
+          :class:`~libcasm.xtal.IntegralSiteCoordinate`.
+          )pbdoc")
       .def_property_readonly(
           "atom_position_symgroup_rep",
           [](std::shared_ptr<config::Prim const> const &prim) {
             return prim->sym_info.atom_position_symgroup_rep;
           },
-          "Returns the symmetry group representation that describes how atom "
-          "position indices transform under symmetry.")
+          R"pbdoc(
+          list[list[list[list[int]]]]: The symmetry group representation that \
+          describes how the atom positions of molecular occupants transform
+          under symmetry.
+
+          When the `i_factor_group`-th prim factor group operation is used to
+          transform the `i_occ_before`-th molecular occupant allowed on the
+          `i_sublat_before`-th sublattice, it's `i_atom_before`-th atom maps to
+          the `i_atom_after`-th atom in the molecular occupant it is mapped to,
+          where
+
+          .. code-block:: Python
+
+              i_atom_after = prim.occ_symgroup_rep[i_factor_group][i_sublat_before][i_occ_before][i_atom_before]
+
+          The mapping between sites is determined using
+          :py:meth:`~libcasm.configuration.Prim.integral_site_coordinate_symgroup_rep`,
+          and the mapping between occupants is determined using
+          :py:meth:`~libcasm.configuration.Prim.occ_symgroup_rep`.
+          )pbdoc")
       .def(
           "local_dof_matrix_rep",
           [](std::shared_ptr<config::Prim const> const &prim, std::string key) {
@@ -393,12 +446,7 @@ PYBIND11_MODULE(_configuration, m) {
             return prim->magspin_info.continuous_magspin_key;
           },
           R"pbdoc(
-          Returns the continuous magspin DoF `key` if present, else None.
-
-          Returns
-          -------
-          key: Optional[str]
-              The continuous magspin DoF `key` if present, else None.
+          Optional[str]: The continuous magspin DoF `key` if present, else None.
           )pbdoc")
       .def_property_readonly(
           "continuous_magspin_flavor",
@@ -406,12 +454,7 @@ PYBIND11_MODULE(_configuration, m) {
             return prim->magspin_info.continuous_magspin_flavor;
           },
           R"pbdoc(
-          Returns the continuous magspin DoF flavor if present, else None.
-
-          Returns
-          -------
-          key: Optional[str]
-              The continuous magspin DoF flavor if present, else None.
+          Optional[str]: The continuous magspin DoF flavor if present, else None.
           )pbdoc")
       .def_property_readonly(
           "discrete_atomic_magspin_key",
@@ -419,12 +462,7 @@ PYBIND11_MODULE(_configuration, m) {
             return prim->magspin_info.discrete_atomic_magspin_key;
           },
           R"pbdoc(
-          Returns the discrete atomic magspin `key` if present, else None.
-
-          Returns
-          -------
-          key: Optional[str]
-              The discrete atomic magspin `key` if present, else None.
+          Optional[str]: The discrete atomic magspin `key` if present, else None.
           )pbdoc")
       .def_property_readonly(
           "discrete_atomic_magspin_flavor",
@@ -432,12 +470,7 @@ PYBIND11_MODULE(_configuration, m) {
             return prim->magspin_info.discrete_atomic_magspin_flavor;
           },
           R"pbdoc(
-          Returns the discrete atomic magspin flavor if present, else None.
-
-          Returns
-          -------
-          key: Optional[str]
-              The discrete atomic magspin flavor if present, else None.
+          Optional[str]: The discrete atomic magspin flavor if present, else None.
           )pbdoc")
       .def_static(
           "from_dict",

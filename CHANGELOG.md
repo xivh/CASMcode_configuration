@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed libcasm.clusterography.make_cluster_group, CASM::clust::make_cluster_group, and CASM::clust::make_cluster_groups so that the head group of the cluster group is set to the head group of the group used to generate the cluster group. In typical use this means the head group of the cluster group is the prim factor group rather than a subgroup, even if a subgroup was used to generate the cluster group.
 
+### Fixed
+
+- Fixed occ_symgroup_rep and atom_position_symgroup_rep in CASM::config::PrimSymInfo and libcasm.configuration.Prim, which were giving the inverse of the documented permutation.
+
 
 ## [v2.0a3] - 2024-03-15
 

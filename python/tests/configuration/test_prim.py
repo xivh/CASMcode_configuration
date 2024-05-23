@@ -228,3 +228,147 @@ def test_symgroup_to_dict_with_group_classification_2():
     assert "spacegroup_type" in data["group_classification"]
     assert data["group_classification"]["spacegroup_type"]["number"] == 225
     assert "magnetic_spacegroup_type" not in data["group_classification"]
+
+
+def test_prim_occ_symgroup_rep():
+    occ_dof = [
+        ["A", "B"],
+        ["B", "C", "D"],
+        ["B", "D", "C"],
+        ["C", "D", "B"],
+    ]
+    xtal_prim = xtal.Prim(
+        lattice=xtal.Lattice(
+            column_vector_matrix=np.eye(3),
+        ),
+        coordinate_frac=np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.5, 0.5],
+                [0.5, 0.0, 0.5],
+                [0.5, 0.5, 0.0],
+            ]
+        ).T,
+        occ_dof=occ_dof,
+    )
+    prim = config.Prim(xtal_prim)
+    occ_symgroup_rep = prim.occ_symgroup_rep
+
+    for i_factor_group, occ_op_rep in enumerate(occ_symgroup_rep):
+        site_rep = prim.integral_site_coordinate_symgroup_rep[i_factor_group]
+        for i_sublat_before, occ_sublat_rep in enumerate(occ_op_rep):
+            site_before = xtal.IntegralSiteCoordinate(i_sublat_before, [0, 0, 0])
+            site_after = site_rep * site_before
+            i_sublat_after = site_after.sublattice()
+            for i_occ_before in range(len(occ_sublat_rep)):
+                i_occ_after = occ_sublat_rep[i_occ_before]
+                assert (
+                    occ_dof[i_sublat_before][i_occ_before]
+                    == occ_dof[i_sublat_after][i_occ_after]
+                )
+
+
+def test_prim_atom_position_symgroup_rep():
+    mol_x = xtal.Occupant(
+        name="mol",
+        atoms=[
+            xtal.AtomComponent(name="B", coordinate=[-0.1, 0.0, 0.0], properties={}),
+            xtal.AtomComponent(name="B", coordinate=[0.1, 0.0, 0.0], properties={}),
+        ],
+    )
+    mol_y = xtal.Occupant(
+        name="mol",
+        atoms=[
+            xtal.AtomComponent(name="B", coordinate=[0.0, -0.1, 0.0], properties={}),
+            xtal.AtomComponent(name="B", coordinate=[0.0, 0.1, 0.0], properties={}),
+        ],
+    )
+    mol_z = xtal.Occupant(
+        name="mol",
+        atoms=[
+            xtal.AtomComponent(name="B", coordinate=[0.0, 0.0, -0.1], properties={}),
+            xtal.AtomComponent(name="B", coordinate=[0.0, 0.0, 0.1], properties={}),
+        ],
+    )
+    atom_A = xtal.Occupant(
+        name="A",
+        atoms=[
+            xtal.AtomComponent(name="A", coordinate=[0.0, 0.0, 0.0], properties={}),
+        ],
+    )
+    occupants = {"mol.x": mol_x, "mol.y": mol_y, "mol.z": mol_z, "A": atom_A}
+    occ_dof = [
+        ["A"],
+        ["mol.x", "mol.y", "mol.z", "A"],
+        ["mol.x", "mol.z", "mol.y", "A"],
+        ["mol.y", "mol.z", "A", "mol.x"],
+    ]
+    xtal_prim = xtal.Prim(
+        lattice=xtal.Lattice(
+            column_vector_matrix=np.eye(3),
+        ),
+        coordinate_frac=np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.5, 0.5],
+                [0.5, 0.0, 0.5],
+                [0.5, 0.5, 0.0],
+            ]
+        ).T,
+        occ_dof=occ_dof,
+        occupants=occupants,
+    )
+    prim = config.Prim(xtal_prim)
+    assert len(prim.factor_group.elements) == 48
+
+    coordinate_cart = xtal_prim.coordinate_cart()
+    occ_symgroup_rep = prim.occ_symgroup_rep
+    atom_position_symgroup_rep = prim.atom_position_symgroup_rep
+
+    for i_factor_group, occ_op_rep in enumerate(occ_symgroup_rep):
+        site_rep = prim.integral_site_coordinate_symgroup_rep[i_factor_group]
+        for i_sublat_before, occ_sublat_rep in enumerate(occ_op_rep):
+            site_before = xtal.IntegralSiteCoordinate(i_sublat_before, [0, 0, 0])
+            site_after = site_rep * site_before
+            i_sublat_after = site_after.sublattice()
+            for i_occ_before in range(len(occ_sublat_rep)):
+                i_occ_after = occ_sublat_rep[i_occ_before]
+
+                orientation_name_before = occ_dof[i_sublat_before][i_occ_before]
+                orientation_name_after = occ_dof[i_sublat_after][i_occ_after]
+
+                # assert occupants map (chemical name match)
+                assert (
+                    occupants[orientation_name_before].name()
+                    == occupants[orientation_name_after].name()
+                )
+
+                atom_position_rep = atom_position_symgroup_rep[i_factor_group][
+                    i_sublat_before
+                ][i_occ_before]
+                for i_atom_before in range(len(atom_position_rep)):
+                    i_atom_after = atom_position_rep[i_atom_before]
+
+                    occ_before = occupants[occ_dof[i_sublat_before][i_occ_before]]
+                    atom_before = occ_before.atoms()[i_atom_before]
+                    occ_after = occupants[occ_dof[i_sublat_after][i_occ_after]]
+                    atom_after = occ_after.atoms()[i_atom_after]
+
+                    # assert atom names map
+                    assert atom_before.name() == atom_after.name()
+
+                    # assert atom positions map
+                    cart_before = (
+                        coordinate_cart[:, i_sublat_before] + atom_before.coordinate()
+                    )
+                    sym_op = prim.factor_group.elements[i_factor_group]
+                    cart_after = (
+                        coordinate_cart[:, i_sublat_after] + atom_after.coordinate()
+                    )
+
+                    d = xtal.min_periodic_displacement(
+                        lattice=xtal_prim.lattice(),
+                        r1=sym_op.matrix() @ cart_before + sym_op.translation(),
+                        r2=cart_after,
+                    )
+                    assert np.allclose(d, np.zeros((3,)))

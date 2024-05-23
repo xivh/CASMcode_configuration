@@ -167,3 +167,70 @@ def test_symgroup_to_dict_with_group_classification():
     assert (
         data["group_classification"]["magnetic_spacegroup_type"]["uni_number"] == 1619
     )
+
+
+def test_magspin_occ_symgroup_rep():
+    # Lattice vectors
+    lattice = xtal.Lattice(np.eye(3))
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.5, 0.5],
+            [0.5, 0.0, 0.5],
+            [0.5, 0.5, 0.0],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {
+        "A.up": make_discrete_magnetic_atom(name="A", value=1, flavor="C"),
+        "A.down": make_discrete_magnetic_atom(name="A", value=-1, flavor="C"),
+        "B.up": make_discrete_magnetic_atom(name="B", value=1, flavor="C"),
+        "B.down": make_discrete_magnetic_atom(name="B", value=-1, flavor="C"),
+    }
+    occ_dof = [
+        ["A.up", "A.down"],
+        ["A.up", "A.down", "B.up", "B.down"],
+        ["A.up", "B.up", "B.down", "A.down"],
+        ["A.up", "A.down", "B.up", "B.down"],
+    ]
+
+    xtal_prim = xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
+        occupants=occupants,
+    )
+    prim = config.Prim(xtal_prim)
+
+    assert len(prim.factor_group.elements) == 96
+
+    occ_symgroup_rep = prim.occ_symgroup_rep
+
+    up_down_mappings = 0
+
+    for i_factor_group, occ_op_rep in enumerate(occ_symgroup_rep):
+        site_rep = prim.integral_site_coordinate_symgroup_rep[i_factor_group]
+        for i_sublat_before, occ_sublat_rep in enumerate(occ_op_rep):
+            site_before = xtal.IntegralSiteCoordinate(i_sublat_before, [0, 0, 0])
+            site_after = site_rep * site_before
+            i_sublat_after = site_after.sublattice()
+            for i_occ_before in range(len(occ_sublat_rep)):
+                i_occ_after = occ_sublat_rep[i_occ_before]
+
+                orientation_name_before = occ_dof[i_sublat_before][i_occ_before]
+                orientation_name_after = occ_dof[i_sublat_after][i_occ_after]
+
+                # assert occupants map (chemical name match)
+                assert (
+                    occupants[orientation_name_before].name()
+                    == occupants[orientation_name_after].name()
+                )
+
+                if orientation_name_before != orientation_name_after:
+                    up_down_mappings += 1
+
+    assert up_down_mappings != 0

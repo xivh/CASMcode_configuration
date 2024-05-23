@@ -52,11 +52,11 @@ OccSymInfo::OccSymInfo(std::vector<xtal::SymOp> const &group_elements,
         if (!eq.perm().is_identity()) {
           this->has_aniso_occs = true;
         }
-        occ_rep.push_back(inverse(eq.perm().perm_array()));
+        occ_rep.push_back(eq.perm().perm_array());
 
         std::vector<Permutation> tmp;
         for (Index i = 0; i < dofref_from.size(); ++i) {
-          tmp.push_back(inverse(eq.atom_position_perm()[i].perm_array()));
+          tmp.push_back(eq.atom_position_perm()[i].perm_array());
         }
         atom_position_rep.push_back(tmp);
       } else {
