@@ -21,8 +21,8 @@ namespace CASM {
 
 namespace {  // anonymous for implementation methods
 
-void parse_resevoir_position(InputParser<occ_events::OccPosition> &parser,
-                             occ_events::OccSystem const &system) {
+void parse_reservoir_position(InputParser<occ_events::OccPosition> &parser,
+                              occ_events::OccSystem const &system) {
   // parse "occupant_index"
   Index occupant_index;
   parser.require(occupant_index, "occupant_index");
@@ -32,7 +32,7 @@ void parse_resevoir_position(InputParser<occ_events::OccPosition> &parser,
   std::unique_ptr<occ_events::OccPosition> p;
   try {
     p = std::make_unique<occ_events::OccPosition>(
-        system.make_molecule_in_resevoir_position(occupant_index));
+        system.make_molecule_in_reservoir_position(occupant_index));
   } catch (std::exception &e) {
     parser.insert_error("occupant_index", e.what());
     return;
@@ -42,8 +42,8 @@ void parse_resevoir_position(InputParser<occ_events::OccPosition> &parser,
   }
 }
 
-void parse_non_resevoir_position(InputParser<occ_events::OccPosition> &parser,
-                                 occ_events::OccSystem const &system) {
+void parse_non_reservoir_position(InputParser<occ_events::OccPosition> &parser,
+                                  occ_events::OccSystem const &system) {
   // parse and validate "coordinate"
   xtal::UnitCellCoord integral_site_coordinate{};
   parser.require(integral_site_coordinate, "coordinate");
@@ -95,8 +95,8 @@ void parse_non_resevoir_position(InputParser<occ_events::OccPosition> &parser,
 jsonParser &to_json(occ_events::OccPosition const &pos, jsonParser &json,
                     occ_events::OccSystem const &system) {
   json.put_obj();
-  if (pos.is_in_resevoir) {
-    json["is_in_resevoir"] = true;
+  if (pos.is_in_reservoir) {
+    json["is_in_reservoir"] = true;
     json["occupant_index"] = pos.occupant_index;
     json["chemical_name"] = system.get_chemical_name(pos);
   } else {
@@ -137,14 +137,14 @@ occ_events::OccPosition jsonConstructor<occ_events::OccPosition>::from_json(
 
 void parse(InputParser<occ_events::OccPosition> &parser,
            occ_events::OccSystem const &system) {
-  // parse "is_in_resevoir"
-  bool is_in_resevoir = false;
-  parser.optional(is_in_resevoir, "is_in_resevoir");
+  // parse "is_in_reservoir"
+  bool is_in_reservoir = false;
+  parser.optional(is_in_reservoir, "is_in_reservoir");
 
-  if (is_in_resevoir) {
-    parse_resevoir_position(parser, system);
+  if (is_in_reservoir) {
+    parse_reservoir_position(parser, system);
   } else {
-    parse_non_resevoir_position(parser, system);
+    parse_non_reservoir_position(parser, system);
   }
 }
 

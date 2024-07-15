@@ -186,11 +186,11 @@ struct OccEventCounterParameters {
   bool allow_reverse_occ = false;
 
   /// \brief Current implementation requires this is true.
-  ///     Future implementation will allow moves to/from resevoir
+  ///     Future implementation will allow moves to/from reservoir
   ///     by setting this to false.
   bool require_atom_conservation = true;
 
-  /// \brief If not allowing molecule breakup or moves to/from resevoir,
+  /// \brief If not allowing molecule breakup or moves to/from reservoir,
   ///     requiring molecule conservation can allow skipping some
   ///     unallowed final occupations.
   bool require_molecule_conservation = false;
@@ -205,10 +205,10 @@ struct OccEventCounterParameters {
   ///     purposes)
   bool do_not_allow_indivisible_molecule_breakup = true;
 
-  /// \brief Skip events in which a molecule in the resevoir
-  ///     remains in the resevoir (for debugging purposes...
+  /// \brief Skip events in which a molecule in the reservoir
+  ///     remains in the reservoir (for debugging purposes...
   ///     this situation should not occur)
-  bool require_no_molecules_remain_in_resevoir = true;
+  bool require_no_molecules_remain_in_reservoir = true;
 };
 
 /// \brief Saves OccEventCounter state info for output / debugging purposes

@@ -172,9 +172,9 @@ class OccEventPrinter:
     def _write_pos(self, pos: OccPosition):
         """Print cluster occupation (indices, then orientation names)
 
-        Example output, if in resevoir:
+        Example output, if in reservoir:
 
-            {chemical_name} (in resevoir)
+            {chemical_name} (in reservoir)
 
         Example output, if molecule:
 
@@ -198,9 +198,9 @@ class OccEventPrinter:
             The occupant position
 
         """
-        if pos.is_in_resevoir():
+        if pos.is_in_reservoir():
             chemical_name = self.system.get_chemical_name(pos)
-            return self.f.write(f"{chemical_name} (in resevoir)")
+            return self.f.write(f"{chemical_name} (in reservoir)")
         else:
             orientation_name = self.system.get_orientation_name(pos)
             poslist = [

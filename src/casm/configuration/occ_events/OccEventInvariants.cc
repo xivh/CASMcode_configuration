@@ -12,7 +12,7 @@ namespace occ_events {
 namespace {
 
 // Determines coordinate for each occupant (site coordinate for Mol, atom
-// position for component atoms of molecules, skips resevoir positions) and
+// position for component atoms of molecules, skips reservoir positions) and
 // keeps those that are not approximately equal
 std::vector<Eigen::Vector3d> make_unique_coordinates(OccEvent const &event,
                                                      OccSystem const &system) {
@@ -21,7 +21,7 @@ std::vector<Eigen::Vector3d> make_unique_coordinates(OccEvent const &event,
   std::vector<Eigen::Vector3d> unique_coordinates;
   for (auto const &traj : event) {
     for (auto const &pos : traj.position) {
-      if (pos.is_in_resevoir) {
+      if (pos.is_in_reservoir) {
         continue;
       }
       Eigen::Vector3d test_coord = system.get_cartesian_coordinate(pos);
@@ -44,7 +44,7 @@ std::vector<double> make_sorted_distances(OccEvent const &event,
   std::vector<Eigen::Vector3d> unique_coordinates =
       make_unique_coordinates(event, system);
 
-  // calculate distances between points (excludes resevoir positions)
+  // calculate distances between points (excludes reservoir positions)
   std::vector<double> distances;
   for (int i = 0; i < unique_coordinates.size(); i++) {
     for (int j = i + 1; j < unique_coordinates.size(); j++) {

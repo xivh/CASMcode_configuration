@@ -225,37 +225,37 @@ OccPosition OccSystem::make_atom_position(
                      atom_position_index};
 }
 
-OccPosition OccSystem::make_molecule_in_resevoir_position(
+OccPosition OccSystem::make_molecule_in_reservoir_position(
     Index chemical_index) const {
   if (chemical_index < 0 || chemical_index >= this->chemical_name_list.size()) {
     throw std::runtime_error(
-        "Error in OccSystem::make_molecule_in_resevoir_position: Invalid "
+        "Error in OccSystem::make_molecule_in_reservoir_position: Invalid "
         "chemical_index");
   }
   return OccPosition{true, false, xtal::UnitCellCoord{0, 0, 0, 0},
                      chemical_index, -1};
 }
 
-/// Make an OccPosition that indicates occupant in the resevoir
-OccPosition OccSystem::make_molecule_in_resevoir_position(
+/// Make an OccPosition that indicates occupant in the reservoir
+OccPosition OccSystem::make_molecule_in_reservoir_position(
     std::string chemical_name) const {
   Index chemical_index = find_index(this->chemical_name_list, chemical_name);
   if (chemical_index < 0 || chemical_index >= this->chemical_name_list.size()) {
     throw std::runtime_error(
-        "Error in OccSystem::make_molecule_in_resevoir_position: Invalid "
+        "Error in OccSystem::make_molecule_in_reservoir_position: Invalid "
         "chemical_name");
   }
   return OccPosition{true, false, xtal::UnitCellCoord{0, 0, 0, 0},
                      chemical_index, -1};
 }
 
-/// Make an OccPosition that indicates atomic molecule in the resevoir
-OccPosition OccSystem::make_atom_in_resevoir_position(
+/// Make an OccPosition that indicates atomic molecule in the reservoir
+OccPosition OccSystem::make_atom_in_reservoir_position(
     std::string chemical_name) const {
   Index occupant_index = find_index(this->chemical_name_list, chemical_name);
   if (occupant_index < 0 || occupant_index >= this->chemical_name_list.size()) {
     throw std::runtime_error(
-        "Error in OccSystem::make_atom_in_resevoir_position: Invalid "
+        "Error in OccSystem::make_atom_in_reservoir_position: Invalid "
         "OccPosition "
         "chemical_name");
   }
@@ -277,7 +277,7 @@ OccPosition OccSystem::make_atom_in_resevoir_position(
 /// Notes:
 /// - `positions` is populated with an OccPosition for each atom in each
 ///   molecule on each site in `occ_init`.
-/// - To be implemented: include resevoir OccPosition determined from
+/// - To be implemented: include reservoir OccPosition determined from
 ///   difference between `occ_init` and `occ_final`.
 void OccSystem::make_occ_positions(std::vector<OccPosition> &positions,
                                    Eigen::VectorXi &count,
@@ -305,18 +305,18 @@ void OccSystem::make_occ_positions(std::vector<OccPosition> &positions,
         "not "
         "yet implemented.");
     // this will use parameter `count`
-    // if non-conserved indivisible molecules, add mol-in-resevoir
-    // add remaining as atom-in-resevoir
+    // if non-conserved indivisible molecules, add mol-in-reservoir
+    // add remaining as atom-in-reservoir
   }
 }
 
 Eigen::Vector3d OccSystem::get_cartesian_coordinate(
     OccPosition const &occ_position) const {
   auto const &pos = occ_position;
-  if (pos.is_in_resevoir) {
+  if (pos.is_in_reservoir) {
     throw std::runtime_error(
         "Error in OccSystem::get_cartesian_coordinate: OccPosition is in "
-        "resevoir");
+        "reservoir");
   }
 
   Index b = pos.integral_site_coordinate.sublattice();
@@ -350,10 +350,10 @@ Eigen::Vector3d OccSystem::get_cartesian_coordinate(
 /// \brief Return reference to molecule occupant
 ///
 /// Note:
-/// - For resevoir positions, this returns the first xtal::Molecule orientation
+/// - For reservoir positions, this returns the first xtal::Molecule orientation
 ///   with matching chemical name
 xtal::Molecule const &OccSystem::get_occupant(OccPosition const &pos) const {
-  if (pos.is_in_resevoir) {
+  if (pos.is_in_reservoir) {
     std::string chemical_name = this->get_chemical_name(pos);
     for (Index b = 0; b < prim->basis().size(); ++b) {
       for (auto const &mol : prim->basis()[b].occupant_dof()) {
@@ -563,12 +563,12 @@ bool OccSystem::is_direct_exchange(
   auto const &after = position_after;
 
   for (auto const &pos : before) {
-    if (pos.is_in_resevoir || this->is_vacancy(pos)) {
+    if (pos.is_in_reservoir || this->is_vacancy(pos)) {
       return false;
     }
   }
   for (auto const &pos : after) {
-    if (pos.is_in_resevoir || this->is_vacancy(pos)) {
+    if (pos.is_in_reservoir || this->is_vacancy(pos)) {
       return false;
     }
   }
@@ -604,14 +604,16 @@ bool OccSystem::is_any_unchanging_vacant_site(
   return false;
 }
 
-/// \brief Return true if before and after position are both in resevoir
+/// \brief Return true if before and after position are both in reservoir
 ///
-bool OccSystem::is_any_unchanging_resevoir_type(
+bool OccSystem::is_any_unchanging_reservoir_type(
     std::vector<OccPosition> const &position_before,
     std::vector<OccPosition> const &position_after) const {
-  // check if before and after are in resevoir or before and after are same site
+  // check if before and after are in reservoir or before and after are same
+  // site
   for (Index i = 0; i < position_before.size(); ++i) {
-    if (position_before[i].is_in_resevoir && position_after[i].is_in_resevoir) {
+    if (position_before[i].is_in_reservoir &&
+        position_after[i].is_in_reservoir) {
       return true;
     }
   }
@@ -625,7 +627,7 @@ bool OccSystem::is_any_unchanging_molecule(
   // initialize site:<has_a_change> to false for all sites
   std::map<xtal::UnitCellCoord, bool> has_a_change;
   for (auto const &p1 : position_before) {
-    if (p1.is_in_resevoir == false) {
+    if (p1.is_in_reservoir == false) {
       has_a_change[p1.integral_site_coordinate] = false;
     }
   }
@@ -635,11 +637,11 @@ bool OccSystem::is_any_unchanging_molecule(
   auto p2_it = position_after.begin();
   for (auto const &p1 : position_before) {
     auto const &p2 = *p2_it;
-    if (p1.is_in_resevoir && p2.is_in_resevoir) {
+    if (p1.is_in_reservoir && p2.is_in_reservoir) {
       // pass
-    } else if (p1.is_in_resevoir && !p2.is_in_resevoir) {
+    } else if (p1.is_in_reservoir && !p2.is_in_reservoir) {
       has_a_change[p2.integral_site_coordinate] = true;
-    } else if (!p1.is_in_resevoir && p2.is_in_resevoir) {
+    } else if (!p1.is_in_reservoir && p2.is_in_reservoir) {
       has_a_change[p1.integral_site_coordinate] = true;
     } else if (p1.integral_site_coordinate != p2.integral_site_coordinate) {
       has_a_change[p1.integral_site_coordinate] = true;
@@ -668,14 +670,14 @@ bool OccSystem::is_molecule_breakup(
     std::vector<OccPosition> const &position_after) const {
   std::map<xtal::UnitCellCoord, std::set<xtal::UnitCellCoord>> init_to_final;
   for (auto const &p1 : position_before) {
-    if (p1.is_in_resevoir) {
+    if (p1.is_in_reservoir) {
       continue;
     }
     init_to_final[p1.integral_site_coordinate].clear();
   }
 
   for (auto const &p2 : position_after) {
-    if (p2.is_in_resevoir) {
+    if (p2.is_in_reservoir) {
       continue;
     }
     init_to_final[p2.integral_site_coordinate].clear();
@@ -685,7 +687,7 @@ bool OccSystem::is_molecule_breakup(
   auto p2_it = position_after.begin();
   for (auto const &p1 : position_before) {
     auto const &p2 = *p2_it;
-    if (p1.is_in_resevoir) {
+    if (p1.is_in_reservoir) {
       continue;
     }
 
@@ -698,7 +700,7 @@ bool OccSystem::is_molecule_breakup(
   auto p1_it = position_before.begin();
   for (auto const &p2 : position_after) {
     auto const &p1 = *p1_it;
-    if (p2.is_in_resevoir) {
+    if (p2.is_in_reservoir) {
       continue;
     }
 
@@ -726,7 +728,7 @@ bool OccSystem::is_indivisible_molecule_breakup(
                     std::vector<OccPosition> const &position_after) {
     init_to_final.clear();
     for (auto const &p1 : position_before) {
-      if (p1.is_in_resevoir || !is_indivisible(p1)) {
+      if (p1.is_in_reservoir || !is_indivisible(p1)) {
         continue;
       }
       init_to_final[p1.integral_site_coordinate].clear();
@@ -738,7 +740,7 @@ bool OccSystem::is_indivisible_molecule_breakup(
     auto p2_it = position_after.begin();
     for (auto const &p1 : position_before) {
       auto const &p2 = *p2_it;
-      if (p1.is_in_resevoir || !is_indivisible(p1)) {
+      if (p1.is_in_reservoir || !is_indivisible(p1)) {
         continue;
       }
 

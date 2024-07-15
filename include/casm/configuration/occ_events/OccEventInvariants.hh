@@ -29,7 +29,7 @@ class OccEventInvariants {
 
   /// Sorted distances between sites in the OccEvent
   /// - Excludes sites with sublattice == -1 (which is used to indicate
-  ///   the resevoir)
+  ///   the reservoir)
   std::vector<double> const &distances() const;
 
   /// Count of each molecule type involved in the OccEvent,

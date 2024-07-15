@@ -314,9 +314,12 @@ PYBIND11_MODULE(_occ_events, m) {
           py::arg("integral_site_coordinate"), py::arg("occupant_index"),
           py::arg("atom_position_index"))
       .def(
-          "is_in_resevoir",
-          [](occ_events::OccPosition const &pos) { return pos.is_in_resevoir; },
-          "If true, indicates molecule/atom in resevoir. If false, indicates a "
+          "is_in_reservoir",
+          [](occ_events::OccPosition const &pos) {
+            return pos.is_in_reservoir;
+          },
+          "If true, indicates molecule/atom in reservoir. If false, indicates "
+          "a "
           "molecule/atom on integral_site_coordinate.")
       .def(
           "is_atom",
@@ -328,20 +331,20 @@ PYBIND11_MODULE(_occ_events, m) {
           [](occ_events::OccPosition const &pos) {
             return pos.integral_site_coordinate;
           },
-          "If is_in_resevoir() is False: Integral coordinates of site "
+          "If is_in_reservoir() is False: Integral coordinates of site "
           "containing occupant; otherwise invalid.")
       .def(
           "occupant_index",
           [](occ_events::OccPosition const &pos) { return pos.occupant_index; },
-          "If is_in_resevoir() is False: Index of occupant in "
+          "If is_in_reservoir() is False: Index of occupant in "
           ":func:`~libcasm.xtal.Prim.occ_dof` for sublattice specified by "
-          "`integral_site_coordinate`.  If is_in_resevoir() is True: Index "
+          "`integral_site_coordinate`.  If is_in_reservoir() is True: Index "
           "into :func:`~libcasm.occ_events.OccSystem.chemical_name_list` of a "
-          "molecule in the resevoir.")
+          "molecule in the reservoir.")
       .def(
           "atom_position_index",
           [](occ_events::OccPosition const &pos) { return pos.occupant_index; },
-          "If is_atom() is True and is_in_resevoir() is False: Index of atom "
+          "If is_atom() is True and is_in_reservoir() is False: Index of atom "
           "position in the indicated occupant molecule.")
       .def_static(
           "from_dict",

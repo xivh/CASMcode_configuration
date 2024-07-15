@@ -51,7 +51,7 @@ struct OccSystem {
   /// \brief Names of the unique chemical components
   ///
   /// Notes:
-  /// - When `is_in_resevoir==true` OccPosition::occupant_index
+  /// - When `is_in_reservoir==true` OccPosition::occupant_index
   ///   is an index into this / chemical_list
   /// - These come from Molecule::name
   /// - `chemical_index` indicates an index into this list
@@ -132,12 +132,12 @@ struct OccSystem {
       xtal::UnitCellCoord const &integral_site_coordinate,
       std::string orientation_name, Index atom_position_index = 0) const;
 
-  OccPosition make_molecule_in_resevoir_position(Index chemical_index) const;
+  OccPosition make_molecule_in_reservoir_position(Index chemical_index) const;
 
-  OccPosition make_molecule_in_resevoir_position(
+  OccPosition make_molecule_in_reservoir_position(
       std::string chemical_name) const;
 
-  OccPosition make_atom_in_resevoir_position(std::string chemical_name) const;
+  OccPosition make_atom_in_reservoir_position(std::string chemical_name) const;
 
   void make_occ_positions(std::vector<OccPosition> &positions,
                           Eigen::VectorXi &count,
@@ -190,7 +190,7 @@ struct OccSystem {
     return chemical_name_list[get_chemical_index(p)];
   }
 
-  /// Valid if p.is_in_resevoir==false
+  /// Valid if p.is_in_reservoir==false
   std::string get_orientation_name(OccPosition const &p) const {
     return orientation_name_list[get_orientation_index(p)];
   }
@@ -200,21 +200,21 @@ struct OccSystem {
     return atom_name_list[get_atom_name_index(p)];
   }
 
-  /// Valid if p.is_in_resevoir==false
+  /// Valid if p.is_in_reservoir==false
   Index get_sublattice_index(OccPosition const &p) const {
     return p.integral_site_coordinate.sublattice();
   }
 
   /// Valid if p is valid
   Index get_chemical_index(OccPosition const &p) const {
-    if (p.is_in_resevoir) {
+    if (p.is_in_reservoir) {
       return p.occupant_index;
     }
     return occupant_to_chemical_index[get_sublattice_index(p)]
                                      [p.occupant_index];
   }
 
-  /// Valid if p.is_in_resevoir==false
+  /// Valid if p.is_in_reservoir==false
   Index get_orientation_index(OccPosition const &p) const {
     return occupant_to_orientation_index[get_sublattice_index(p)]
                                         [p.occupant_index];
@@ -226,7 +226,7 @@ struct OccSystem {
                                       [p.occupant_index][p.atom_position_index];
   }
 
-  /// Valid if p.is_in_resevoir==false
+  /// Valid if p.is_in_reservoir==false
   Eigen::Vector3d get_cartesian_coordinate(OccPosition const &p) const;
 
   /// Return true if molecule is indivisible
@@ -290,8 +290,8 @@ struct OccSystem {
   bool is_direct_exchange(std::vector<OccPosition> const &position_before,
                           std::vector<OccPosition> const &position_after) const;
 
-  /// \brief Return true if before and after position are both in resevoir
-  bool is_any_unchanging_resevoir_type(
+  /// \brief Return true if before and after position are both in reservoir
+  bool is_any_unchanging_reservoir_type(
       std::vector<OccPosition> const &position_before,
       std::vector<OccPosition> const &position_after) const;
 

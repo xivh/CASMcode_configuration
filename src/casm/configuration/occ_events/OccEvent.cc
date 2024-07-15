@@ -141,7 +141,7 @@ OccEvent make_occevent(std::vector<OccPosition> const &position_before,
 
 /// \brief Make IntegralCluster from first position in each trajectory
 ///
-/// - Skip any position that `is_in_resevoir`
+/// - Skip any position that `is_in_reservoir`
 /// - Throw for any OccTrajectory with empty position vector
 /// - Result is sorted
 clust::IntegralCluster make_cluster(OccEvent const &event) {
@@ -152,7 +152,7 @@ clust::IntegralCluster make_cluster(OccEvent const &event) {
           "Error in `make_cluster(OccEvent const&)`: Empty trajectory");
     }
     OccPosition const &pos = traj.position[0];
-    if (pos.is_in_resevoir) {
+    if (pos.is_in_reservoir) {
       continue;
     }
     integral_sites.insert(pos.integral_site_coordinate);
@@ -191,7 +191,7 @@ make_cluster_occupation(OccEvent const &event) {
   for (OccTrajectory const &traj : event) {
     for (Index s = 0; s < 2; ++s) {
       OccPosition const &pos = traj.position[s];
-      if (pos.is_in_resevoir) {
+      if (pos.is_in_reservoir) {
         continue;
       }
       auto const &site = pos.integral_site_coordinate;

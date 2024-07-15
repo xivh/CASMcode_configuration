@@ -12,18 +12,18 @@ namespace occ_events {
 ///
 /// - Allows specifying a single-atom or multi-atom molecule
 /// - Allows specifying a single atom inside a multi-atom molecule
-/// - Allows specifying atoms/molecules "in the resevoir" for
+/// - Allows specifying atoms/molecules "in the reservoir" for
 ///   describing (semi) grand canonical Monte Carlo events
 struct OccPosition
     : public Comparisons<xtal::Translatable<CRTPBase<OccPosition>>> {
-  OccPosition(bool _is_in_resevoir, bool _is_atom,
+  OccPosition(bool _is_in_reservoir, bool _is_atom,
               xtal::UnitCellCoord const &_integral_site_coordinate,
               Index _occupant_index, Index _atom_position_index);
 
-  static OccPosition molecule_in_resevoir(Index _occupant_index);
+  static OccPosition molecule_in_reservoir(Index _occupant_index);
 
   /// \brief Only used for single-atom molecules
-  static OccPosition atom_in_resevoir(Index _occupant_index);
+  static OccPosition atom_in_reservoir(Index _occupant_index);
 
   static OccPosition molecule(
       xtal::UnitCellCoord const &_integral_site_coordinate,
@@ -32,28 +32,28 @@ struct OccPosition
   static OccPosition atom(xtal::UnitCellCoord const &_integral_site_coordinate,
                           Index _occupant_index, Index _atom_position_index);
 
-  /// If true, indicates molecule/atom in resevoir. If false,
+  /// If true, indicates molecule/atom in reservoir. If false,
   /// indicates a molecule/atom on integral_site_coordinate
-  bool is_in_resevoir;
+  bool is_in_reservoir;
 
   /// If true, indicates this tracks an atom position. If false, then
   /// this tracks a molecule position.
   bool is_atom;
 
-  /// - If is_in_resevoir==false: Integral coordinates of site containing
+  /// - If is_in_reservoir==false: Integral coordinates of site containing
   /// occupant
   /// - Otherwise: Ignored
   xtal::UnitCellCoord integral_site_coordinate;
 
-  /// - If is_in_resevoir==false: Index of Molecule in Site::occupant_dof()
+  /// - If is_in_reservoir==false: Index of Molecule in Site::occupant_dof()
   ///   for sublattice specified by `integral_site_coordinate`
-  /// - If is_in_resevoir==true: Index of molecule name in
-  ///   `OccSystem::resevoir_components`.
+  /// - If is_in_reservoir==true: Index of molecule name in
+  ///   `OccSystem::reservoir_components`.
   Index occupant_index;
 
-  /// - If is_atom==true && is_in_resevoir==false: Index of atom position
+  /// - If is_atom==true && is_in_reservoir==false: Index of atom position
   ///   in Molecule::atoms()
-  /// - If is_atom==true && is_in_resevoir==true: When indicating a Molecule
+  /// - If is_atom==true && is_in_reservoir==true: When indicating a Molecule
   ///   used to represent a single atom, set to zero 0.
   Index atom_position_index;
 

@@ -114,7 +114,7 @@ TEST(OccSystemTest, Test3) {
             std::vector<std::string>({"A2.x", "A2.y", "A2.z"}));
 }
 
-TEST(MakeResevoirPositionTest, Test1) {
+TEST(MakereservoirPositionTest, Test1) {
   auto prim =
       std::make_shared<xtal::BasicStructure const>(test::FCC_dimer_prim());
   std::shared_ptr<occ_events::SymGroup const> factor_group =
@@ -131,9 +131,9 @@ TEST(MakeResevoirPositionTest, Test1) {
 
   occ_events::OccSystem system(prim, chemical_name_list);
   occ_events::OccPosition occ_position =
-      system.make_molecule_in_resevoir_position("A2");
+      system.make_molecule_in_reservoir_position("A2");
 
-  EXPECT_EQ(occ_position.is_in_resevoir, true);
+  EXPECT_EQ(occ_position.is_in_reservoir, true);
   EXPECT_EQ(occ_position.is_atom, false);
   EXPECT_EQ(occ_position.integral_site_coordinate,
             xtal::UnitCellCoord(0, 0, 0, 0));
@@ -160,7 +160,7 @@ TEST(MakeMoleculePositionTest, Test1) {
   occ_events::OccPosition occ_position =
       system.make_molecule_position(xtal::UnitCellCoord(0, 1, 0, 0), "A2.y");
 
-  EXPECT_EQ(occ_position.is_in_resevoir, false);
+  EXPECT_EQ(occ_position.is_in_reservoir, false);
   EXPECT_EQ(occ_position.is_atom, false);
   EXPECT_EQ(occ_position.integral_site_coordinate,
             xtal::UnitCellCoord(0, 1, 0, 0));
@@ -187,7 +187,7 @@ TEST(MakeAtomicComponentPositionTest, Test1) {
   occ_events::OccPosition occ_position =
       system.make_atom_position(xtal::UnitCellCoord(0, 1, 0, 0), "A2.y", 1);
 
-  EXPECT_EQ(occ_position.is_in_resevoir, false);
+  EXPECT_EQ(occ_position.is_in_reservoir, false);
   EXPECT_EQ(occ_position.is_atom, true);
   EXPECT_EQ(occ_position.integral_site_coordinate,
             xtal::UnitCellCoord(0, 1, 0, 0));

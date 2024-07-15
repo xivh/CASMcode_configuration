@@ -8,22 +8,22 @@
 namespace CASM {
 namespace occ_events {
 
-OccPosition::OccPosition(bool _is_in_resevoir, bool _is_atom,
+OccPosition::OccPosition(bool _is_in_reservoir, bool _is_atom,
                          xtal::UnitCellCoord const &_integral_site_coordinate,
                          Index _occupant_index, Index _atom_position_index)
-    : is_in_resevoir(_is_in_resevoir),
+    : is_in_reservoir(_is_in_reservoir),
       is_atom(_is_atom),
       integral_site_coordinate(_integral_site_coordinate),
       occupant_index(_occupant_index),
       atom_position_index(_atom_position_index) {}
 
-OccPosition OccPosition::molecule_in_resevoir(Index _occupant_index) {
+OccPosition OccPosition::molecule_in_reservoir(Index _occupant_index) {
   return OccPosition(true, false, xtal::UnitCellCoord(0, 0, 0, 0),
                      _occupant_index, -1);
 }
 
 /// \brief Only used for single-atom molecules
-OccPosition OccPosition::atom_in_resevoir(Index _occupant_index) {
+OccPosition OccPosition::atom_in_reservoir(Index _occupant_index) {
   return OccPosition(true, true, xtal::UnitCellCoord(0, 0, 0, 0),
                      _occupant_index, 0);
 }
@@ -50,16 +50,16 @@ OccPosition &OccPosition::operator+=(xtal::UnitCell trans) {
 
 /// Compare (integral_site_coordinate, occupant_index, atom_position_index)
 bool OccPosition::operator<(OccPosition const &B) const {
-  // sort molecules < atomic components < resevoir molecules
-  if (this->is_in_resevoir != B.is_in_resevoir) {
-    return !this->is_in_resevoir;
+  // sort molecules < atomic components < reservoir molecules
+  if (this->is_in_reservoir != B.is_in_reservoir) {
+    return !this->is_in_reservoir;
   }
   if (this->is_atom != B.is_atom) {
     return !this->is_atom;
   }
 
-  // if both in resevoir:
-  if (this->is_in_resevoir) {
+  // if both in reservoir:
+  if (this->is_in_reservoir) {
     return this->occupant_index < B.occupant_index;
   }
 
@@ -78,7 +78,7 @@ bool OccPosition::operator<(OccPosition const &B) const {
 
 /// \brief Apply SymOp to OccPosition
 OccPosition &apply(OccEventRep const &rep, OccPosition &occ_position) {
-  if (occ_position.is_in_resevoir) {
+  if (occ_position.is_in_reservoir) {
     return occ_position;
   } else {
     Index b = occ_position.integral_site_coordinate.sublattice();

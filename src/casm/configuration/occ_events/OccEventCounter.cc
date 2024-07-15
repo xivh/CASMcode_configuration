@@ -838,8 +838,8 @@ class TrajectoryCounter : public SingleStepBase<OccEventCounterData> {
       _fails("trajectory:do_not_allow_indivisible_molecule_breakup");
       return false;
     }
-    if (this->fails_require_no_molecules_remain_in_resevoir()) {
-      _fails("trajectory:require_no_molecules_remain_in_resevoir");
+    if (this->fails_require_no_molecules_remain_in_reservoir()) {
+      _fails("trajectory:require_no_molecules_remain_in_reservoir");
       return false;
     }
 
@@ -937,13 +937,13 @@ class TrajectoryCounter : public SingleStepBase<OccEventCounterData> {
                data()->position_init, data()->position_final);
   }
 
-  /// \brief Check for events in which a molecule in the resevoir
-  ///     remains in the resevoir (for debugging purposes...
+  /// \brief Check for events in which a molecule in the reservoir
+  ///     remains in the reservoir (for debugging purposes...
   ///     this situation should not occur)
-  ///     (require_no_molecules_remain_in_resevoir)
-  bool fails_require_no_molecules_remain_in_resevoir() const {
-    return data()->params.require_no_molecules_remain_in_resevoir == true &&
-           data()->system->is_any_unchanging_resevoir_type(
+  ///     (require_no_molecules_remain_in_reservoir)
+  bool fails_require_no_molecules_remain_in_reservoir() const {
+    return data()->params.require_no_molecules_remain_in_reservoir == true &&
+           data()->system->is_any_unchanging_reservoir_type(
                data()->position_init, data()->position_final);
   }
 
