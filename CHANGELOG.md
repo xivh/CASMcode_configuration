@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## Unreleased
+## [2.0a4] - 2024-07-15
 
 ### Added
 
@@ -19,13 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Changed libcasm.clusterography.make_cluster_group, CASM::clust::make_cluster_group, and CASM::clust::make_cluster_groups so that the head group of the cluster group is set to the head group of the group used to generate the cluster group. In typical use this means the head group of the cluster group is the prim factor group rather than a subgroup, even if a subgroup was used to generate the cluster group.
+- Fixed spelling of reservoir (#16) 
+- Wheels compiled with numpy>=2.0.0
 
 ### Fixed
 
 - Fixed occ_symgroup_rep and atom_position_symgroup_rep in CASM::config::PrimSymInfo and libcasm.configuration.Prim, which were giving the inverse of the documented permutation.
 
 
-## [v2.0a3] - 2024-03-15
+## [2.0a3] - 2024-03-15
 
 ### Fixed
 
@@ -56,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `to_canonical_supercell` and `from_canonical_supercell` which can be too easily misinterpreted.
 
 
-## [v2.0a2] - 2023-12-11
+## [2.0a2] - 2023-12-11
 
 ### Fixed
 
@@ -85,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated to_json and from_json methods of libcasm.configuration.Prim
 
 
-## [v2.0a1] - 2023-08-21
+## [2.0a1] - 2023-08-21
 
 This release creates the libcasm-configuration comparison and enumeration module. It includes:
 
