@@ -7,65 +7,81 @@ import libcasm.configuration as casmconfig
 import libcasm.xtal
 import libcasm.xtal as xtal
 
-CasmObjectWithLattice: typing.TypeAlias = typing.Union[
-    libcasm.xtal.Lattice,
-    libcasm.xtal.Structure,
-    libcasm.xtal.Prim,
-    libcasm.configuration.Prim,
-    libcasm.configuration.Configuration,
-    libcasm.configuration.ConfigurationWithProperties,
-]
-"""TypeAlias for a CASM object with a lattice
+try:
+    # python 3.10+
+    CasmObjectWithLattice: typing.TypeAlias = typing.Union[
+        libcasm.xtal.Lattice,
+        libcasm.xtal.Structure,
+        libcasm.xtal.Prim,
+        libcasm.configuration.Prim,
+        libcasm.configuration.Configuration,
+        libcasm.configuration.ConfigurationWithProperties,
+    ]
+    """TypeAlias for a CASM object with a lattice
+    
+    May be:
+    
+    - a :class:`libcasm.xtal.Lattice`,
+    - a :class:`libcasm.xtal.Structure`,
+    - a :class:`libcasm.xtal.Prim`,
+    - a :class:`libcasm.configuration.Prim`,
+    - a :class:`libcasm.configuration.Configuration`, or
+    - a :class:`libcasm.configuration.ConfigurationWithProperties`.
+    
+    Note that :class:`~libcasm.configuration.Configuration` and 
+    :class:`~libcasm.configuration.ConfigurationWithProperties` are converted to 
+    :class:`~libcasm.xtal.Structure` using the equivalent of:
+    
+    .. code-block:: Python
+    
+        if isinstance(obj, libcasm.configuration.Configuration):
+            obj = obj.to_structure()
+        if isinstance(obj, libcasm.configuration.ConfigurationWithProperties):
+            obj = obj.to_structure()
+    
+    .. note::
+        typing.TypeAlias was introduced in Python3.10; for Python3.9 
+        CasmObjectWithLattice is typing.Any
+    
+    """
 
-May be:
-
-- a :class:`libcasm.xtal.Lattice`,
-- a :class:`libcasm.xtal.Structure`,
-- a :class:`libcasm.xtal.Prim`,
-- a :class:`libcasm.configuration.Prim`,
-- a :class:`libcasm.configuration.Configuration`, or
-- a :class:`libcasm.configuration.ConfigurationWithProperties`.
-
-Note that :class:`~libcasm.configuration.Configuration` and 
-:class:`~libcasm.configuration.ConfigurationWithProperties` are converted to 
-:class:`~libcasm.xtal.Structure` using the equivalent of:
-
-.. code-block:: Python
-
-    if isinstance(obj, libcasm.configuration.Configuration):
-        obj = obj.to_structure()
-    if isinstance(obj, libcasm.configuration.ConfigurationWithProperties):
-        obj = obj.to_structure()
-"""
-
-CasmObjectWithPositions: typing.TypeAlias = typing.Union[
-    libcasm.xtal.Structure,
-    libcasm.xtal.Prim,
-    libcasm.configuration.Prim,
-    libcasm.configuration.Configuration,
-    libcasm.configuration.ConfigurationWithProperties,
-]
-"""TypeAlias for a CASM object with positions
-
-May be:
-
-- a :class:`libcasm.xtal.Structure`,
-- a :class:`libcasm.xtal.Prim`,
-- a :class:`libcasm.configuration.Prim`,
-- a :class:`libcasm.configuration.Configuration`, or
-- a :class:`libcasm.configuration.ConfigurationWithProperties`.
-
-Note that :class:`~libcasm.configuration.Configuration` and 
-:class:`~libcasm.configuration.ConfigurationWithProperties` are converted to 
-:class:`~libcasm.xtal.Structure` using the equivalent of:
-
-.. code-block:: Python
-
-    if isinstance(obj, libcasm.configuration.Configuration):
-        obj = obj.to_structure()
-    if isinstance(obj, libcasm.configuration.ConfigurationWithProperties):
-        obj = obj.to_structure()
-"""
+    CasmObjectWithPositions: typing.TypeAlias = typing.Union[
+        libcasm.xtal.Structure,
+        libcasm.xtal.Prim,
+        libcasm.configuration.Prim,
+        libcasm.configuration.Configuration,
+        libcasm.configuration.ConfigurationWithProperties,
+    ]
+    """TypeAlias for a CASM object with positions
+    
+    May be:
+    
+    - a :class:`libcasm.xtal.Structure`,
+    - a :class:`libcasm.xtal.Prim`,
+    - a :class:`libcasm.configuration.Prim`,
+    - a :class:`libcasm.configuration.Configuration`, or
+    - a :class:`libcasm.configuration.ConfigurationWithProperties`.
+    
+    Note that :class:`~libcasm.configuration.Configuration` and 
+    :class:`~libcasm.configuration.ConfigurationWithProperties` are converted to 
+    :class:`~libcasm.xtal.Structure` using the equivalent of:
+    
+    .. code-block:: Python
+    
+        if isinstance(obj, libcasm.configuration.Configuration):
+            obj = obj.to_structure()
+        if isinstance(obj, libcasm.configuration.ConfigurationWithProperties):
+            obj = obj.to_structure()
+    
+    .. note::
+        typing.TypeAlias was introduced in Python3.10; for Python3.9 
+        CasmObjectWithPositions is typing.Any
+    
+    """
+except AttributeError:
+    # python 3.9
+    CasmObjectWithLattice = typing.Any
+    CasmObjectWithPositions = typing.Any
 
 
 def as_structure_if_config(obj: typing.Any):
