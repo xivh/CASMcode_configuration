@@ -60,6 +60,7 @@ jsonParser &to_json(std::shared_ptr<sym_info::SymGroup const> const &sym_group,
   }
 
   std::vector<xtal::SymInfo> sym_info_of_op;
+  sym_info_of_op.reserve(sym_group->element.size());
   for (auto const &op : sym_group->element) {
     sym_info_of_op.emplace_back(op, lattice);
   }
