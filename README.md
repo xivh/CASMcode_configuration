@@ -17,6 +17,11 @@ The libcasm-configuration package is the CASM configuration comparison and enume
     pip install libcasm-configuration
 
 
+#### Dependencies
+
+For symmetry group classification, we use the [spglib](https://spglib.readthedocs.io/en/latest/) package.
+
+
 #### Usage
 
 See the [libcasm docs](https://prisms-center.github.io/CASMcode_pydocs/libcasm/overview/latest/).

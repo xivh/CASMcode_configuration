@@ -57,7 +57,8 @@ def symgroup_to_dict_with_group_classification(
         - ``"magnetic_spacegroup_type_from_casm_symmetry"``: Space group type
           information from spglib, based on the symmetry operations found by CASM. Only
           added if there are magnetic spin properties or DoF and it differs from
-          `"magnetic_spacegroup_type"`.
+          `"magnetic_spacegroup_type"`. Set to `None` for ``spglib<2.5.0``, because the
+          method used is not available.
 
         If spglib is not available, ``data["group_classification"]`` is set to `None`.
 
