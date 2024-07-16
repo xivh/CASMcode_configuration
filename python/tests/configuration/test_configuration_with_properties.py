@@ -3,6 +3,8 @@ import numpy as np
 import libcasm.configuration as casmconfig
 import libcasm.configuration.io.spglib as spglib_io
 
+from .functions import check_symmetry_dataset
+
 
 def permute_columns(perm, before):
     # after[i] = before[permutation[i]];
@@ -288,14 +290,7 @@ def test_config_with_props_spglib_io_1(FCC_binary_prim):
     assert len(cell) == 3
 
     symmetry_dataset = spglib_io.get_symmetry_dataset(config_w_props)
-    # print(symmetry_dataset.keys())
-    # for key, value in symmetry_dataset.items():
-    #     print("symmetry", key)
-    #     print(value)
-    #     print()
-    assert isinstance(symmetry_dataset, dict)
-    assert symmetry_dataset["number"] == 1
-    assert len(symmetry_dataset["rotations"]) == 1
+    check_symmetry_dataset(symmetry_dataset, number=1, n_rotations=1)
 
 
 def test_config_with_props_spglib_io_2(FCC_binary_prim):
@@ -336,6 +331,4 @@ def test_config_with_props_spglib_io_2(FCC_binary_prim):
     assert len(cell) == 3
 
     symmetry_dataset = spglib_io.get_symmetry_dataset(config_w_props)
-    assert isinstance(symmetry_dataset, dict)
-    assert symmetry_dataset["number"] == 225
-    assert len(symmetry_dataset["rotations"]) == 4 * 48
+    check_symmetry_dataset(symmetry_dataset, number=225, n_rotations=4 * 48)

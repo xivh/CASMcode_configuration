@@ -8,6 +8,11 @@ import libcasm.configuration.io as config_io
 import libcasm.configuration.io.spglib as spglib_io
 import libcasm.xtal as xtal
 
+from .functions import (
+    check_magnetic_symmetry_dataset,
+    check_symmetry_dataset,
+)
+
 
 def make_discrete_magnetic_atom(
     name: str,
@@ -118,30 +123,20 @@ def test_prim_magspin_spglib_io():
     assert len(cell) == 4
 
     symmetry_dataset = spglib_io.get_symmetry_dataset(prim)
-
-    # print(symmetry_dataset.keys())
-    # for key, value in symmetry_dataset.items():
-    #     print("symmetry", key)
-    #     print(value)
-    #     print()
-
-    assert isinstance(symmetry_dataset, dict)
-    assert symmetry_dataset["number"] == 225
-    assert symmetry_dataset["hall_number"] == 523
-    assert len(symmetry_dataset["rotations"]) == 48
+    check_symmetry_dataset(
+        symmetry_dataset,
+        number=225,
+        n_rotations=48,
+        hall_number=523,
+    )
 
     mag_symmetry_dataset = spglib_io.get_magnetic_symmetry_dataset(prim)
-
-    # print(mag_symmetry_dataset.keys())
-    # for key, value in mag_symmetry_dataset.items():
-    #     print("mag_symmetry", key)
-    #     print(value)
-    #     print()
-
-    assert isinstance(mag_symmetry_dataset, dict)
-    assert mag_symmetry_dataset["uni_number"] == 1619
-    assert mag_symmetry_dataset["hall_number"] == 523
-    assert mag_symmetry_dataset["n_operations"] == 96
+    check_magnetic_symmetry_dataset(
+        mag_symmetry_dataset,
+        uni_number=1619,
+        n_operations=96,
+        hall_number=523,
+    )
 
     # print(prim.factor_group.brief_cart(xtal_prim.lattice()))
 
@@ -167,6 +162,17 @@ def test_symgroup_to_dict_with_group_classification():
     assert (
         data["group_classification"]["magnetic_spacegroup_type"]["uni_number"] == 1619
     )
+    assert "spacegroup_type_from_casm_symmetry" not in data["group_classification"]
+
+    # for spglib<2.5.0 this returns None because the method is not available;
+    # for spglib>=2.5.0 this should not exist (because the same magnetic spacegroup
+    # type should be found by spglib using its own symmetry operations or the ones
+    # found by CASM and therefore both are not included)
+    if "magnetic_spacegroup_type_from_casm_symmetry" in data["group_classification"]:
+        assert (
+            data["group_classification"]["magnetic_spacegroup_type_from_casm_symmetry"]
+            is None
+        )
 
 
 def test_magspin_occ_symgroup_rep():

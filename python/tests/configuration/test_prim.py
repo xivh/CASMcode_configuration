@@ -8,6 +8,12 @@ import libcasm.configuration.io.spglib as spglib_io
 import libcasm.sym_info as sym_info
 import libcasm.xtal as xtal
 
+from .functions import (
+    check_magnetic_symmetry_dataset,
+    check_spacegroup_type,
+    check_symmetry_dataset,
+)
+
 
 def test_simple_cubic_binary_factor_group(simple_cubic_binary_prim):
     xtal_prim = simple_cubic_binary_prim
@@ -138,38 +144,32 @@ def test_prim_spglib_io(ZrO_prim):
     assert len(cell) == 3
 
     symmetry_dataset = spglib_io.get_symmetry_dataset(prim)
-    # print(symmetry_dataset.keys())
-    # for key, value in symmetry_dataset.items():
-    #     print("symmetry", key)
-    #     print(value)
-    #     print()
-    assert isinstance(symmetry_dataset, dict)
+    check_symmetry_dataset(
+        symmetry_dataset,
+        number=194,
+        n_rotations=24,
+        hall_number=488,
+    )
 
     mag_symmetry_dataset = spglib_io.get_magnetic_symmetry_dataset(prim)
-
-    # print(mag_symmetry_dataset.keys())
-    # for key, value in mag_symmetry_dataset.items():
-    #     print("mag_symmetry", key)
-    #     print(value)
-    #     print()
-    assert isinstance(mag_symmetry_dataset, dict)
-
-    # print(prim.factor_group.brief_cart(xtal_prim.lattice()))
+    check_magnetic_symmetry_dataset(
+        mag_symmetry_dataset,
+        uni_number=1494,
+        n_operations=48,
+        hall_number=488,
+    )
 
     spacegroup_type = spglib_io.get_spacegroup_type_from_symmetry(
         elements=prim.factor_group.elements,
         lattice=xtal_prim.lattice(),
     )
-
-    # print(spacegroup_type.keys())
-    # for key, value in spacegroup_type.items():
-    #     print("spacegroup_type", key)
-    #     print(value)
-    #     print()
-    assert isinstance(spacegroup_type, dict)
-
-    assert symmetry_dataset["number"] == spacegroup_type["number"]
-    assert symmetry_dataset["hall_number"] == spacegroup_type["hall_number"]
+    # from libcasm.configuration.io.spglib import asdict as spg_asdict
+    # print(spg_asdict(spacegroup_type))
+    check_spacegroup_type(
+        spacegroup_type,
+        number=194,
+        hall_number=488,
+    )
 
 
 def test_symgroup_to_dict_with_group_classification_1(simple_cubic_binary_prim):
@@ -180,8 +180,14 @@ def test_symgroup_to_dict_with_group_classification_1(simple_cubic_binary_prim):
 
     assert isinstance(data, dict)
     assert "spacegroup_type" in data["group_classification"]
+    assert isinstance(data["group_classification"]["spacegroup_type"], dict)
     assert data["group_classification"]["spacegroup_type"]["number"] == 221
+    assert "spacegroup_type_from_casm_symmetry" not in data["group_classification"]
     assert "magnetic_spacegroup_type" not in data["group_classification"]
+    assert (
+        "magnetic_spacegroup_type_from_casm_symmetry"
+        not in data["group_classification"]
+    )
 
 
 def test_symgroup_to_dict_with_group_classification_2():
@@ -216,7 +222,12 @@ def test_symgroup_to_dict_with_group_classification_2():
     # print(xtal.pretty_json(data["group_classification"]))
     assert "spacegroup_type" in data["group_classification"]
     assert data["group_classification"]["spacegroup_type"]["number"] == 227
+    assert "spacegroup_type_from_casm_symmetry" not in data["group_classification"]
     assert "magnetic_spacegroup_type" not in data["group_classification"]
+    assert (
+        "magnetic_spacegroup_type_from_casm_symmetry"
+        not in data["group_classification"]
+    )
 
     # lattice point group
     data = config_io.symgroup_to_dict_with_group_classification(
@@ -227,7 +238,12 @@ def test_symgroup_to_dict_with_group_classification_2():
     # print(xtal.pretty_json(data["group_classification"]))
     assert "spacegroup_type" in data["group_classification"]
     assert data["group_classification"]["spacegroup_type"]["number"] == 225
+    assert "spacegroup_type_from_casm_symmetry" not in data["group_classification"]
     assert "magnetic_spacegroup_type" not in data["group_classification"]
+    assert (
+        "magnetic_spacegroup_type_from_casm_symmetry"
+        not in data["group_classification"]
+    )
 
 
 def test_prim_occ_symgroup_rep():

@@ -5,6 +5,8 @@ import libcasm.clexulator as casmclex
 import libcasm.configuration as config
 import libcasm.configuration.io.spglib as spglib_io
 
+from .functions import check_symmetry_dataset
+
 
 def test_configuration_constructor(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
@@ -131,20 +133,11 @@ def test_configuration_spglib_io(simple_cubic_binary_prim):
     assert len(cell) == 3
 
     symmetry_dataset = spglib_io.get_symmetry_dataset(configuration)
-    # print(symmetry_dataset.keys())
-    # for key, value in symmetry_dataset.items():
-    #     print("symmetry", key)
-    #     print(value)
-    #     print()
-    assert isinstance(symmetry_dataset, dict)
-    assert symmetry_dataset["number"] == 221
-    assert len(symmetry_dataset["rotations"]) == 64 * 48
+    check_symmetry_dataset(symmetry_dataset, number=221, n_rotations=64 * 48)
 
     configuration.set_occ(0, 1)
     symmetry_dataset = spglib_io.get_symmetry_dataset(configuration)
-    assert isinstance(symmetry_dataset, dict)
-    assert symmetry_dataset["number"] == 221
-    assert len(symmetry_dataset["rotations"]) == 48
+    check_symmetry_dataset(symmetry_dataset, number=221, n_rotations=48)
 
 
 def test_configuration_apply(simple_cubic_binary_prim):

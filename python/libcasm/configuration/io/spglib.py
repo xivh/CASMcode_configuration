@@ -1,86 +1,36 @@
 from __future__ import annotations
 
+import copy
+import dataclasses
 import typing
+import warnings
 
 import numpy as np
 import spglib
 
 import libcasm.configuration as casmconfig
-import libcasm.xtal
+import libcasm.configuration.io.tools as io_tools
 import libcasm.xtal as xtal
 
-CasmObjectWithLattice: typing.TypeAlias = typing.Union[
-    libcasm.xtal.Lattice,
-    libcasm.xtal.Structure,
-    libcasm.xtal.Prim,
-    libcasm.configuration.Prim,
-    libcasm.configuration.Configuration,
-    libcasm.configuration.ConfigurationWithProperties,
-]
-"""TypeAlias for a CASM object with a lattice
 
-May be:
-
-- a :class:`libcasm.xtal.Lattice`,
-- a :class:`libcasm.xtal.Structure`,
-- a :class:`libcasm.xtal.Prim`,
-- a :class:`libcasm.configuration.Prim`,
-- a :class:`libcasm.configuration.Configuration`, or
-- a :class:`libcasm.configuration.ConfigurationWithProperties`.
-
-Note that :class:`~libcasm.configuration.Configuration` and 
-:class:`~libcasm.configuration.ConfigurationWithProperties` are converted to 
-:class:`~libcasm.xtal.Structure` using the equivalent of:
-
-.. code-block:: Python
-
-    if isinstance(obj, libcasm.configuration.Configuration):
-        obj = obj.to_structure()
-    if isinstance(obj, libcasm.configuration.ConfigurationWithProperties):
-        obj = obj.to_structure()
-"""
-
-CasmObjectWithPositions: typing.TypeAlias = typing.Union[
-    libcasm.xtal.Structure,
-    libcasm.xtal.Prim,
-    libcasm.configuration.Prim,
-    libcasm.configuration.Configuration,
-    libcasm.configuration.ConfigurationWithProperties,
-]
-"""TypeAlias for a CASM object with positions
-
-May be:
-
-- a :class:`libcasm.xtal.Structure`,
-- a :class:`libcasm.xtal.Prim`,
-- a :class:`libcasm.configuration.Prim`,
-- a :class:`libcasm.configuration.Configuration`, or
-- a :class:`libcasm.configuration.ConfigurationWithProperties`.
-
-Note that :class:`~libcasm.configuration.Configuration` and 
-:class:`~libcasm.configuration.ConfigurationWithProperties` are converted to 
-:class:`~libcasm.xtal.Structure` using the equivalent of:
-
-.. code-block:: Python
-
-    if isinstance(obj, libcasm.configuration.Configuration):
-        obj = obj.to_structure()
-    if isinstance(obj, libcasm.configuration.ConfigurationWithProperties):
-        obj = obj.to_structure()
-"""
-
-
-def _to_structure_if_config(
-    obj: typing.Union[casmconfig.Configuration, casmconfig.ConfigurationWithProperties]
+def asdict(
+    obj: typing.Any,
 ):
-    if isinstance(obj, casmconfig.Configuration):
-        return obj.to_structure()
-    if isinstance(obj, casmconfig.ConfigurationWithProperties):
-        return obj.to_structure()
-    return obj
+    """If obj is a dataclass instance, convert to dict, converting numpy arrays to
+    lists"""
+    if obj is None:
+        return None
+    elif isinstance(obj, dict):
+        data = copy.deepcopy(obj)
+    else:
+        data = dataclasses.asdict(obj)
+    for key, value in data.items():
+        if isinstance(value, np.ndarray):
+            data[key] = value.tolist()
+    return data
 
 
-def as_lattice(obj: CasmObjectWithLattice):
+def as_lattice(obj: io_tools.CasmObjectWithLattice):
     """Get spglib lattice vectors from a lattice, structure, configuration, or prim
 
     Parameters
@@ -91,26 +41,13 @@ def as_lattice(obj: CasmObjectWithLattice):
     Returns
     -------
     lattice: list[list[float]]
-        The lattice vectors as rows.
+        The lattice vectors as rows (i.e. ``a == lattice[0]``, ``b == lattice[1]``,
+        ``c == lattice[2]``).
     """
-    obj = _to_structure_if_config(obj)
-    if isinstance(obj, xtal.Lattice):
-        lattice = obj
-    elif isinstance(obj, xtal.Prim):
-        lattice = obj.lattice()
-    elif isinstance(obj, casmconfig.Prim):
-        lattice = obj.xtal_prim.lattice()
-    elif isinstance(obj, xtal.Structure):
-        lattice = obj.lattice()
-    else:
-        raise Exception(
-            "Error in get_spglib_Lattice: "
-            "not a lattice, structure, configuration, or prim"
-        )
-    return lattice.column_vector_matrix().transpose().tolist()
+    return io_tools.get_lattice(obj).transpose().tolist()
 
 
-def as_positions(obj: CasmObjectWithPositions):
+def as_positions(obj: io_tools.CasmObjectWithPositions):
     """Get spglib positions from a structure, configuration, or prim
 
     Parameters
@@ -123,24 +60,10 @@ def as_positions(obj: CasmObjectWithPositions):
     positions: list[list[float]]
         The positions, as rows, in fractional coordinates.
     """
-    obj = _to_structure_if_config(obj)
-    if isinstance(obj, xtal.Prim):
-        coordinate_frac = obj.coordinate_frac()
-    elif isinstance(obj, casmconfig.Prim):
-        coordinate_frac = obj.xtal_prim.coordinate_frac()
-    elif isinstance(obj, xtal.Structure):
-        coordinate_frac = obj.atom_coordinate_frac()
-    else:
-        raise Exception(
-            "Error in get_spglib_Lattice: "
-            "not a libcasm.xtal.Structure, "
-            "libcasm.xtal.Prim, or libcasm.configuration.Prim"
-        )
-
-    return coordinate_frac.transpose().tolist()
+    return io_tools.get_coordinate_frac(obj).transpose().tolist()
 
 
-def as_numbers(obj: CasmObjectWithPositions):
+def as_numbers(obj: io_tools.CasmObjectWithPositions):
     """Get spglib numbers from a structure, configuration, or prim
 
     Parameters
@@ -154,35 +77,10 @@ def as_numbers(obj: CasmObjectWithPositions):
         For structures or configurations, a unique int for each atom type. For prim,
         the asymmetric unit indices.
     """
-    obj = _to_structure_if_config(obj)
-    if isinstance(obj, (xtal.Prim, casmconfig.Prim)):
-        if isinstance(obj, xtal.Prim):
-            xtal_prim = obj
-        else:
-            xtal_prim = obj.xtal_prim
-
-        numbers = [None] * xtal_prim.coordinate_frac().shape[1]
-        asym_indices = xtal.asymmetric_unit_indices(xtal_prim)
-        for a, asym_unit in enumerate(asym_indices):
-            for site_index in asym_unit:
-                numbers[site_index] = a
-
-    elif isinstance(obj, xtal.Structure):
-        atom_type = obj.atom_type()
-        unique_atom_types = list(set(atom_type))
-        numbers = [unique_atom_types.index(atom) for atom in atom_type]
-
-    else:
-        raise Exception(
-            "Error in get_spglib_Numbers: "
-            "not a libcasm.xtal.Structure, "
-            "libcasm.xtal.Prim, or libcasm.configuration.Prim"
-        )
-
-    return numbers
+    return io_tools.get_unique_numbers(obj)
 
 
-def as_magmoms(obj: CasmObjectWithPositions):
+def as_magmoms(obj: io_tools.CasmObjectWithPositions):
     """Get spglib magmoms from a structure, configuration, or prim
 
     Parameters
@@ -207,69 +105,10 @@ def as_magmoms(obj: CasmObjectWithPositions):
         present.
 
     """
-    obj = _to_structure_if_config(obj)
-    if isinstance(obj, (xtal.Prim, casmconfig.Prim)):
-        if isinstance(obj, xtal.Prim):
-            prim = casmconfig.Prim(obj)
-        else:
-            prim = obj
-
-        n_sites = prim.xtal_prim.coordinate_frac().shape[1]
-        if prim.continuous_magspin_key:
-            if prim.continuous_magspin_key[:1] == "C":
-                magmoms = [0] * n_sites
-            elif prim.continuous_magspin_key[:2] in ["NC", "SO"]:
-                magmoms = [[0] * 3] * n_sites
-            else:
-                raise Exception(
-                    "Error in as_magmoms: "
-                    f"Unexpected continuous_magspin_key={prim.continuous_magspin_key}"
-                )
-
-        elif prim.discrete_atomic_magspin_key:
-            if prim.discrete_atomic_magspin_key[:1] == "C":
-                magmoms = [0] * n_sites
-            elif prim.discrete_atomic_magspin_key[:2] in ["NC", "SO"]:
-                magmoms = [[0] * 3] * n_sites
-            else:
-                raise Exception(
-                    "Error in as_magmoms: Unexpected "
-                    f"discrete_atomic_magspin_key={prim.continuous_magspin_key}"
-                )
-
-        else:
-            magmoms = None
-
-    elif isinstance(obj, xtal.Structure):
-        atom_properties = obj.atom_properties()
-
-        magmoms = None
-        for key in atom_properties:
-            if "magspin" in key:
-                value = atom_properties[key]
-                if value.shape[0] == 1:
-                    magmoms = value[0, :].tolist()
-                elif value.shape[0] == 3:
-                    magmoms = value.transpose().tolist()
-                else:
-                    raise Exception(
-                        "Error in as_magmoms: "
-                        f"Invalid row dimension for atom_properties[{key}], "
-                        f"must be 1 or 3, found {value.shape[0]}."
-                    )
-                break
-
-    else:
-        raise Exception(
-            "Error in get_spglib_Magmoms: "
-            "not a libcasm.xtal.Structure, "
-            "libcasm.xtal.Prim, or libcasm.configuration.Prim"
-        )
-
-    return magmoms
+    return io_tools.get_magmoms(obj)
 
 
-def as_cell(obj: CasmObjectWithPositions):
+def as_cell(obj: io_tools.CasmObjectWithPositions):
     """Convert a structure, configuration, or prim to a spglib cell tuple
 
     Parameters
@@ -287,7 +126,7 @@ def as_cell(obj: CasmObjectWithPositions):
         are present. For prim, magmoms are all set to value ``0.`` (collinear) or
         ``[0., 0., 0.]`` (non-collinear).
     """
-    obj = _to_structure_if_config(obj)
+    obj = io_tools.as_structure_if_config(obj)
     if isinstance(obj, (xtal.Prim, casmconfig.Prim)):
         if isinstance(obj, xtal.Prim):
             prim = casmconfig.Prim(obj)
@@ -354,7 +193,26 @@ def as_translations(elements: list[xtal.SymOp], lattice: xtal.Lattice):
     return translations
 
 
-def get_symmetry_dataset(obj: CasmObjectWithPositions):
+def as_time_reversals(elements: list[xtal.SymOp]):
+    """Get time reversal values from a list of SymOp
+
+    Parameters
+    ----------
+    elements: list[libcasm.xtal.SymOp]
+        A list of symmetry group operations
+
+    Returns
+    -------
+    time_reversals: list[bool], shape=(n_elements,)
+        The time_reversal values the symmetry group operations.
+    """
+    time_reversals = []
+    for op in elements:
+        time_reversals.append(op.time_reversal())
+    return time_reversals
+
+
+def get_symmetry_dataset(obj: io_tools.CasmObjectWithPositions):
     """Get the spglib symmetry dataset for a structure, configuration, or prim
 
     Notes
@@ -370,10 +228,11 @@ def get_symmetry_dataset(obj: CasmObjectWithPositions):
 
     Returns
     -------
-    dataset: Optional[dict]
+    dataset: Optional[spglib.SpglibDataset]
         A spglib symmetry dataset, as documented
         `here <https://spglib.readthedocs.io/en/latest/api/python-api/spglib/spglib.html#spglib.get_symmetry_dataset>`_.
-        Returns None if getting the symmetry dataset fails.
+        Returns None if getting the symmetry dataset fails. Note: for
+        ``spglib<=2.4.0``, the return type is a dict.
     """
     cell = as_cell(obj)
 
@@ -384,7 +243,7 @@ def get_symmetry_dataset(obj: CasmObjectWithPositions):
 
 
 def get_magnetic_symmetry_dataset(
-    obj: CasmObjectWithPositions,
+    obj: io_tools.CasmObjectWithPositions,
 ):
     """Get the spglib magnetic symmetry dataset for a structure, configuration, or prim
 
@@ -396,10 +255,11 @@ def get_magnetic_symmetry_dataset(
 
     Returns
     -------
-    dataset: Optional[dict]
+    dataset: Optional[spglib.SpglibMagneticDataset]
         A spglib magnetic symmetry dataset, as documented
         `here <https://spglib.readthedocs.io/en/latest/api/python-api/spglib/spglib.html#spglib.get_magnetic_symmetry_dataset>`_.
-        Returns None if getting the magnetic symmetry dataset fails.
+        Returns None if getting the magnetic symmetry dataset fails. Note: for
+        ``spglib<=2.4.0``, the return type is a dict.
     """
     cell = as_cell(obj)
 
@@ -431,10 +291,11 @@ def get_spacegroup_type_from_symmetry(
 
     Returns
     -------
-    spacegroup_type: Optional[dict]
-        A spglib `spacegroup_type` dict, as documented
+    spacegroup_type: Optional[spglib.SpaceGroupType]
+        A spglib.SpaceGroupType instance, as documented
         `here <https://spglib.readthedocs.io/en/latest/api/python-api/spglib/spglib.html#spglib.get_spacegroup_type_from_symmetry>`_,
-        or None if getting the spacegroup type info fails.
+        or None if getting the spacegroup type info fails. Note: for
+        ``spglib<=2.4.0``, the return type is a dict.
 
     Raises
     ------
@@ -452,5 +313,44 @@ def get_spacegroup_type_from_symmetry(
     return spglib.get_spacegroup_type_from_symmetry(
         rotations=as_rotations(elements, lattice),
         translations=as_translations(elements, lattice),
+        lattice=as_lattice(lattice),
+    )
+
+
+def get_magnetic_spacegroup_type_from_symmetry(
+    elements: list[xtal.SymOp],
+    lattice: xtal.Lattice,
+):
+    """Get the spglib magnetic spacegroup type info from a list of SymOp
+
+    Parameters
+    ----------
+    elements: list[libcasm.xtal.SymOp]
+        A list of symmetry group operations.
+    lattice: libcasm.xtal.Lattice
+        The associated lattice
+
+    Returns
+    -------
+    magnetic_spacegroup_type: Optional[spglib.MagneticSpaceGroupType]
+        A spglib.MagneticSpaceGroupType instance, as documented
+        `here <https://spglib.readthedocs.io/en/latest/api/python-api/spglib/spglib.html#spglib.get_magnetic_spacegroup_type_from_symmetry>`_,
+        or None if getting the magnetic spacegroup type info fails. Note: for
+        ``spglib<=2.4.0``, the method is not available and this always returns None.
+
+    """
+    try:
+        from spglib import get_magnetic_spacegroup_type_from_symmetry
+    except ImportError:
+        warnings.warn(
+            "The function get_magnetic_spacegroup_type_from_symmetry is only available "
+            "in spglib>=2.5.0."
+        )
+        return None
+
+    return get_magnetic_spacegroup_type_from_symmetry(
+        rotations=as_rotations(elements, lattice),
+        translations=as_translations(elements, lattice),
+        time_reversals=as_time_reversals(elements),
         lattice=as_lattice(lattice),
     )

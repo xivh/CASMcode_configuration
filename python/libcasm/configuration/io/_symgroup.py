@@ -1,24 +1,17 @@
 from __future__ import annotations
 
 import numpy as np
-import spglib
 
 import libcasm.configuration as casmconfig
+import libcasm.configuration.io.tools as io_tools
 import libcasm.sym_info as sym_info
 import libcasm.xtal as xtal
 
-from .spglib import (
-    CasmObjectWithLattice,
-    _to_structure_if_config,
-    as_cell,
-    get_magnetic_symmetry_dataset,
-    get_spacegroup_type_from_symmetry,
-    get_symmetry_dataset,
-)
+from .spglib import asdict as spg_asdict
 
 
 def symgroup_to_dict_with_group_classification(
-    obj: CasmObjectWithLattice,
+    obj: io_tools.CasmObjectWithLattice,
     symgroup: sym_info.SymGroup,
 ) -> dict:
     """Use spglib to add group classification data for a lattice, structure,
@@ -61,9 +54,16 @@ def symgroup_to_dict_with_group_classification(
           from spglib, based on the lattice, positions, numbers, and magmoms. Only
           added if there are magnetic spin properties or DoF.
 
+        - ``"magnetic_spacegroup_type_from_casm_symmetry"``: Space group type
+          information from spglib, based on the symmetry operations found by CASM. Only
+          added if there are magnetic spin properties or DoF and it differs from
+          `"magnetic_spacegroup_type"`.
+
+        If spglib is not available, ``data["group_classification"]`` is set to `None`.
+
     """
 
-    obj = _to_structure_if_config(obj)
+    obj = io_tools.as_structure_if_config(obj)
 
     if isinstance(obj, xtal.Lattice):
         lattice = obj
@@ -78,44 +78,55 @@ def symgroup_to_dict_with_group_classification(
         lattice = obj.xtal_prim.lattice()
     data = symgroup.to_dict(lattice=lattice)
 
+    try:
+        import spglib
+
+    except ImportError:
+        data["group_classification"] = None
+        return data
+
+    from .spglib import (
+        as_cell,
+        get_magnetic_spacegroup_type_from_symmetry,
+        get_magnetic_symmetry_dataset,
+        get_spacegroup_type_from_symmetry,
+        get_symmetry_dataset,
+    )
+
     cell = as_cell(obj)
     is_magnetic = False
     if len(cell) == 4:
         is_magnetic = True
 
-    symmetry_dataset = get_symmetry_dataset(obj)
-    for key, value in symmetry_dataset.items():
-        if isinstance(value, np.ndarray):
-            symmetry_dataset[key] = value.tolist()
-
+    symmetry_dataset = spg_asdict(get_symmetry_dataset(obj))
     spacegroup_type = None
     if symmetry_dataset is not None:
-        spacegroup_type = spglib.get_spacegroup_type(symmetry_dataset["hall_number"])
-
+        spacegroup_type = spg_asdict(
+            spglib.get_spacegroup_type(symmetry_dataset["hall_number"])
+        )
     grpcls = data["group_classification"]
-
-    # grpcls["symmetry_dataset"] = symmetry_dataset
     grpcls["spacegroup_type"] = spacegroup_type
 
     if not is_magnetic:
-        from_casm = get_spacegroup_type_from_symmetry(symgroup.elements, lattice)
-
+        from_casm = spg_asdict(
+            get_spacegroup_type_from_symmetry(symgroup.elements, lattice)
+        )
         if from_casm != spacegroup_type:
             grpcls["spacegroup_type_from_casm_symmetry"] = from_casm
 
     if is_magnetic:
-        mag_symmetry_dataset = get_magnetic_symmetry_dataset(obj)
-        for key, value in mag_symmetry_dataset.items():
-            if isinstance(value, np.ndarray):
-                mag_symmetry_dataset[key] = value.tolist()
-
+        mag_symmetry_dataset = spg_asdict(get_magnetic_symmetry_dataset(obj))
         mag_spacegroup_type = None
         if mag_symmetry_dataset is not None:
-            mag_spacegroup_type = spglib.get_magnetic_spacegroup_type(
-                mag_symmetry_dataset["uni_number"]
+            mag_spacegroup_type = spg_asdict(
+                spglib.get_magnetic_spacegroup_type(mag_symmetry_dataset["uni_number"])
             )
-
-        # grpcls["magnetic_symmetry_dataset"] = mag_symmetry_dataset
         grpcls["magnetic_spacegroup_type"] = mag_spacegroup_type
+
+        from_casm = spg_asdict(
+            get_magnetic_spacegroup_type_from_symmetry(symgroup.elements, lattice)
+        )
+        if from_casm != mag_spacegroup_type:
+            grpcls["magnetic_spacegroup_type_from_casm_symmetry"] = from_casm
 
     return data
