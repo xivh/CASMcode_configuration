@@ -113,15 +113,18 @@ def test_get_occevent_coordinate(shared_datadir):
         prim.factor_group.elements, xtal_prim
     )
     occevent_orbit = []
-    for i in equivalent_generating_op_indices:
-        tmp = (occevent_symgroup_rep[i] * event).standardize()
-        trans = tmp.cluster()[0].unitcell()
-        occevent_orbit.append(tmp - trans)
+    for i, generating_op_index in enumerate(equivalent_generating_op_indices):
+        tmp = (occevent_symgroup_rep[generating_op_index] * event).standardize()
+        trans = (
+            phenomenal_clusters[i].sorted()[0].unitcell()
+            - tmp.cluster().sorted()[0].unitcell()
+        )
+        occevent_orbit.append(tmp + trans)
 
     # Check that the clusters are consistent with equivalents_info, up to a translation
     assert len(occevent_orbit) == 2
     for i, equiv_occevent in enumerate(occevent_orbit):
-        assert equiv_occevent.cluster() == phenomenal_clusters[i]
+        assert equiv_occevent.cluster().sorted() == phenomenal_clusters[i].sorted()
 
     # Make a supercell, get OccEvent coordinates within the supercell
     supercell = casmconfig.Supercell(
