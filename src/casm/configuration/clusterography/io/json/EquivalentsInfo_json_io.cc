@@ -74,16 +74,15 @@ void parse(InputParser<clust::EquivalentsInfo> &parser,
 
   clust::IntegralCluster cluster;
 
-  fs::path sites_path = fs::path("phenomenal") / "sites";
   auto const &equivalent_json = parser.self["equivalents"];
   for (Index i = 0; i < equivalent_json.size(); ++i) {
     parser.require(cluster,
-                   fs::path("equivalents") / std::to_string(i) / sites_path,
+                   fs::path("equivalents") / std::to_string(i) / "phenomenal",
                    prim);
     equivalents_info.phenomenal_clusters.push_back(cluster);
   }
 
-  if (parser.valid()) {
+  if (!parser.valid()) {
     parser.value = nullptr;
   }
 }

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## Unreleased
+
+### Fixed
+
+- Fixed `libcasm.clusterography.equivalents_info_from_dict`, which was trying to read clusters from the wrong position. This method was not used to read equivalents_info.json for KMC simulations.
+- Fixed `libcasm.occ_events.get_occevent_coordinate`, which was using the reverse of the appropriate translation to get the unitcell_index.
+
+
 ## [2.0a4] - 2024-07-16
 
 ### Added

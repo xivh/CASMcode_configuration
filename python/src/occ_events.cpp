@@ -103,8 +103,8 @@ std::tuple<Index, Index> get_occevent_coordinate(
   for (Index i = 0; i < phenomenal_occevent.size(); ++i) {
     auto phenom_cluster = make_cluster(phenomenal_occevent[i]);
     phenom_cluster.sort();
-    xtal::UnitCell trans = phenom_cluster[0].unitcell() - cluster[0].unitcell();
-    occ_events::OccEvent translated_occ_event = occ_event + trans;
+    xtal::UnitCell trans = cluster[0].unitcell() - phenom_cluster[0].unitcell();
+    occ_events::OccEvent translated_occ_event = occ_event - trans;
     if (translated_occ_event == phenomenal_occevent[i]) {
       Index unitcell_index = unitcell_index_converter(trans);
       Index equivalent_index = i;

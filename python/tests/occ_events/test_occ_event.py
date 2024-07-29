@@ -1,13 +1,10 @@
 import libcasm.occ_events as occ_events
 import libcasm.xtal as xtal
 import libcasm.xtal.prims as xtal_prims
-from libcasm.occ_events import (
-    OccEvent,
-)
 
 
 def test_OccEvent_construction_1():
-    occ_event = OccEvent()
+    occ_event = occ_events.OccEvent()
     assert isinstance(occ_event, occ_events.OccEvent)
     assert occ_event.size() == 0
 
@@ -81,3 +78,141 @@ def test_save_load_occevent(fcc_1NN_A_Va_event, tmpdir):
     occ_events.save_occevent(tmpdir, "name", occ_event, system)
     loaded_occ_event = occ_events.load_occevent(tmpdir, "name", system)
     assert loaded_occ_event == occ_event
+
+
+def test_get_occevent_coordinate(shared_datadir):
+    import json
+
+    import numpy as np
+
+    import libcasm.clusterography as casmclust
+    import libcasm.configuration as casmconfig
+
+    with open(shared_datadir / "ZrO" / "equivalents_info.json", "r") as f:
+        equivalents_info = json.load(f)
+    prim = casmconfig.Prim.from_dict(equivalents_info["prototype"]["prim"])
+    xtal_prim = prim.xtal_prim
+
+    occ_system = occ_events.OccSystem(xtal_prim)
+    with open(shared_datadir / "ZrO" / "event.json", "r") as f:
+        event = occ_events.OccEvent.from_dict(json.load(f), system=occ_system)
+
+    (
+        phenomenal_clusters,
+        equivalent_generating_op_indices,
+    ) = casmclust.equivalents_info_from_dict(
+        data=equivalents_info,
+        prim=xtal_prim,
+    )
+
+    assert len(phenomenal_clusters) == 2
+    assert equivalent_generating_op_indices == [0, 2]
+
+    ### Generate phenomenal OccEvent consistent with local clexulator ###
+    occevent_symgroup_rep = occ_events.make_occevent_symgroup_rep(
+        prim.factor_group.elements, xtal_prim
+    )
+    occevent_orbit = []
+    for i in equivalent_generating_op_indices:
+        tmp = (occevent_symgroup_rep[i] * event).standardize()
+        trans = tmp.cluster()[0].unitcell()
+        occevent_orbit.append(tmp - trans)
+
+    # Check that the clusters are consistent with equivalents_info, up to a translation
+    assert len(occevent_orbit) == 2
+    for i, equiv_occevent in enumerate(occevent_orbit):
+        assert equiv_occevent.cluster() == phenomenal_clusters[i]
+
+    # Make a supercell, get OccEvent coordinates within the supercell
+    supercell = casmconfig.Supercell(
+        prim=prim,
+        transformation_matrix_to_super=np.eye(3, dtype="int") * 5,
+    )
+
+    # Check OccEvent in orbit
+    unitcell_index, equivalent_index = occ_events.get_occevent_coordinate(
+        occ_event=occevent_orbit[0],
+        phenomenal_occevent=occevent_orbit,
+        unitcell_index_converter=supercell.unitcell_index_converter,
+    )
+    assert unitcell_index == 0
+    assert equivalent_index == 0
+
+    # Check OccEvent in orbit
+    unitcell_index, equivalent_index = occ_events.get_occevent_coordinate(
+        occ_event=occevent_orbit[1],
+        phenomenal_occevent=occevent_orbit,
+        unitcell_index_converter=supercell.unitcell_index_converter,
+    )
+    assert unitcell_index == 0
+    assert equivalent_index == 1
+
+    for k in range(5):
+        for j in range(5):
+            for i in range(5):
+                trans = np.array([i, j, k], dtype="int")
+                unitcell_index = (
+                    supercell.unitcell_index_converter.linear_unitcell_index(trans)
+                )
+                (
+                    e_unitcell_index,
+                    e_equivalent_index,
+                ) = occ_events.get_occevent_coordinate(
+                    occ_event=occevent_orbit[0] + trans,
+                    phenomenal_occevent=occevent_orbit,
+                    unitcell_index_converter=supercell.unitcell_index_converter,
+                )
+                print([i, j, k], unitcell_index, e_unitcell_index, e_equivalent_index)
+                assert unitcell_index == e_unitcell_index
+
+    # Check a translated OccEvent
+    unitcell_index, equivalent_index = occ_events.get_occevent_coordinate(
+        occ_event=occevent_orbit[0] + np.array([1, 0, 0], dtype="int"),
+        phenomenal_occevent=occevent_orbit,
+        unitcell_index_converter=supercell.unitcell_index_converter,
+    )
+    assert unitcell_index == supercell.unitcell_index_converter.linear_unitcell_index(
+        np.array([1, 0, 0], dtype="int")
+    )
+    assert equivalent_index == 0
+
+    # Check a translated OccEvent equivalent
+    unitcell_index, equivalent_index = occ_events.get_occevent_coordinate(
+        occ_event=occevent_orbit[1] + np.array([2, 2, 2]),
+        phenomenal_occevent=occevent_orbit,
+        unitcell_index_converter=supercell.unitcell_index_converter,
+    )
+    assert unitcell_index == supercell.unitcell_index_converter.linear_unitcell_index(
+        np.array([2, 2, 2], dtype="int")
+    )
+    assert equivalent_index == 1
+
+    # Check a translated OccEvent, where periodicity is used
+    unitcell_index, equivalent_index = occ_events.get_occevent_coordinate(
+        occ_event=occevent_orbit[0] + np.array([7, 2, 2]),
+        phenomenal_occevent=occevent_orbit,
+        unitcell_index_converter=supercell.unitcell_index_converter,
+    )
+    assert unitcell_index == supercell.unitcell_index_converter.linear_unitcell_index(
+        np.array([2, 2, 2], dtype="int")
+    )
+    assert equivalent_index == 0
+
+    # Check a translated OccEvent, where periodicity is used
+    unitcell_index, equivalent_index = occ_events.get_occevent_coordinate(
+        occ_event=occevent_orbit[1] + np.array([7, 2, 2]),
+        phenomenal_occevent=occevent_orbit,
+        unitcell_index_converter=supercell.unitcell_index_converter,
+    )
+    assert unitcell_index == supercell.unitcell_index_converter.linear_unitcell_index(
+        np.array([2, 2, 2], dtype="int")
+    )
+    assert equivalent_index == 1
+
+    # Check a transformed OccEvent: equivalent 0 -> equivalent 1
+    unitcell_index, equivalent_index = occ_events.get_occevent_coordinate(
+        occ_event=(occevent_symgroup_rep[2] * occevent_orbit[0]).standardize(),
+        phenomenal_occevent=occevent_orbit,
+        unitcell_index_converter=supercell.unitcell_index_converter,
+    )
+    assert equivalent_index == 1
