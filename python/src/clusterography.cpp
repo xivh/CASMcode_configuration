@@ -345,9 +345,11 @@ PYBIND11_MODULE(_clusterography, m) {
       .def(
           "to_dict",
           [](clust::IntegralCluster const &cluster,
-             xtal::BasicStructure const &prim) -> nlohmann::json {
+             xtal::BasicStructure const &prim,
+             std::optional<clust::IntegralCluster> phenomenal)
+              -> nlohmann::json {
             jsonParser json;
-            to_json(cluster, json, prim);
+            to_json(cluster, json, prim, phenomenal);
             return static_cast<nlohmann::json>(json);
           },
           R"pbdoc(
@@ -357,13 +359,17 @@ PYBIND11_MODULE(_clusterography, m) {
           ----------
           xtal_prim : libcasm.xtal.Prim
               The :class:`libcasm.xtal.Prim`
+          phenomenal : Optional[Cluster] = None
+              For local-clusters, the phenomenal cluster may optionally be
+              provided to include the distances from the phenomenal sites to
+              the local-cluster sites in the output.
 
           Returns
           -------
           data : dict
               The Cluster as a Python dict
           )pbdoc",
-          py::arg("xtal_prim"));
+          py::arg("xtal_prim"), py::arg("phenomenal") = std::nullopt);
 
   py::class_<clust::IntegralClusterOrbitGenerator>(m, "ClusterOrbitGenerator",
                                                    R"pbdoc(

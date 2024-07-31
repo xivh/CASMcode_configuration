@@ -6,12 +6,25 @@
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/clusterography/ClusterInvariants.hh"
-#include "casm/configuration/clusterography/IntegralCluster.hh"
 #include "casm/crystallography/BasicStructure.hh"
 #include "casm/crystallography/io/UnitCellCoordIO.hh"
 #include "casm/global/enum/json_io.hh"
 
 namespace CASM {
+
+namespace {
+
+clust::ClusterInvariants _make_cluster_invariants(
+    clust::IntegralCluster const &cluster, xtal::BasicStructure const &prim,
+    std::optional<clust::IntegralCluster> phenomenal) {
+  if (phenomenal) {
+    return clust::ClusterInvariants(cluster, *phenomenal, prim);
+  } else {
+    return clust::ClusterInvariants(cluster, prim);
+  }
+}
+
+}  // anonymous namespace
 
 /// \brief Write IntegralCluster to JSON object
 ///
@@ -27,8 +40,10 @@ namespace CASM {
 /// }
 /// \endcode
 jsonParser &to_json(clust::IntegralCluster const &clust, jsonParser &json,
-                    xtal::BasicStructure const &prim) {
-  clust::ClusterInvariants invariants{clust, prim};
+                    xtal::BasicStructure const &prim,
+                    std::optional<clust::IntegralCluster> phenomenal) {
+  clust::ClusterInvariants invariants =
+      _make_cluster_invariants(clust, prim, phenomenal);
   if (invariants.distances().size()) {
     json["min_length"] = invariants.distances().front();
     json["max_length"] = invariants.distances().back();

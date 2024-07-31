@@ -2,6 +2,9 @@
 #define CASM_IntegralCluster_json_io
 
 #include <memory>
+#include <optional>
+
+#include "casm/configuration/clusterography/IntegralCluster.hh"
 
 namespace CASM {
 
@@ -21,8 +24,10 @@ struct jsonConstructor;
 class jsonParser;
 
 /// \brief Write IntegralCluster to JSON object
-jsonParser &to_json(clust::IntegralCluster const &clust, jsonParser &json,
-                    xtal::BasicStructure const &prim);
+jsonParser &to_json(
+    clust::IntegralCluster const &clust, jsonParser &json,
+    xtal::BasicStructure const &prim,
+    std::optional<clust::IntegralCluster> phenomenal = std::nullopt);
 
 /// \brief Read from JSON
 void from_json(clust::IntegralCluster &clust, jsonParser const &json,

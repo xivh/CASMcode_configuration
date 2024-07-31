@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `libcasm.clusterography.equivalents_info_from_dict`, which was trying to read clusters from the wrong position. This method was not used to read equivalents_info.json for KMC simulations.
 - Fixed `libcasm.occ_events.get_occevent_coordinate`, which was using the reverse of the appropriate translation to get the unitcell_index.
 
+### Added
+
+- Added option to include phenomenal site to local-cluster site distances by passing the phenomenal cluster to `libcasm.clusterography.Cluster.to_dict`.
+
 
 ## [2.0a4] - 2024-07-16
 
