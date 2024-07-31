@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 from sortedcontainers import SortedList
 
@@ -154,6 +156,7 @@ def test_configuration_apply(simple_cubic_binary_prim):
     configuration.set_occ(l=0, s=1)
     configuration.set_occ(l=1, s=1)
 
+    # Test SupercellSymOp using begin & end
     rep = config.SupercellSymOp.begin(supercell)
     end = config.SupercellSymOp.end(supercell)
     i = 0
@@ -163,6 +166,59 @@ def test_configuration_apply(simple_cubic_binary_prim):
         if transformed not in equivs:
             equivs.add(transformed)
         rep.next()
+        i += 1
+    assert i == 48 * 64
+    assert len(equivs) == 192
+
+    # Test SupercellSymOp using configuration_rep
+    i = 0
+    equivs = SortedList()
+    configuration_rep = supercell.configuration_symgroup_rep()
+    assert len(configuration_rep) == 48 * 64
+    for rep in configuration_rep:
+        transformed = rep * configuration
+        if transformed not in equivs:
+            equivs.add(transformed)
+        i += 1
+    assert i == 48 * 64
+    assert len(equivs) == 192
+
+    # Test SupercellSymOp copy.deepcopy
+    configuration_rep = []
+    rep = config.SupercellSymOp.begin(supercell)
+    end = config.SupercellSymOp.end(supercell)
+    while rep != end:
+        configuration_rep.append(copy.deepcopy(rep))
+        rep.next()
+    assert len(configuration_rep) == 48 * 64
+    assert configuration_rep[0] is not configuration_rep[1]
+
+    i = 0
+    equivs = SortedList()
+    for rep in configuration_rep:
+        transformed = rep * configuration
+        if transformed not in equivs:
+            equivs.add(transformed)
+        i += 1
+    assert i == 48 * 64
+    assert len(equivs) == 192
+
+    # Test SupercellSymOp.copy
+    configuration_rep = []
+    rep = config.SupercellSymOp.begin(supercell)
+    end = config.SupercellSymOp.end(supercell)
+    while rep != end:
+        configuration_rep.append(rep.copy())
+        rep.next()
+    assert len(configuration_rep) == 48 * 64
+    assert configuration_rep[0] is not configuration_rep[1]
+
+    i = 0
+    equivs = SortedList()
+    for rep in configuration_rep:
+        transformed = rep * configuration
+        if transformed not in equivs:
+            equivs.add(transformed)
         i += 1
     assert i == 48 * 64
     assert len(equivs) == 192

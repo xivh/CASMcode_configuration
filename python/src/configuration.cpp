@@ -698,6 +698,26 @@ PYBIND11_MODULE(_configuration, m) {
 
    )pbdoc");
 
+  // SupercellSymOp -- declare class
+  py::class_<config::SupercellSymOp> pySupercellSymOp(m, "SupercellSymOp",
+                                                      R"pbdoc(
+      Symmetry representation that allows transforming the degrees of freedom
+      (DoF) values of a configuration.
+
+      SupercellSymOp represents symmetry operations consistent with a given
+      supercell, combining one pure supercell factor group and one pure
+      translation operation. SupercellSymOp can be incremented to allow
+      iteration over all symmetry operations consistent with the supercell.
+
+      Notes
+      -----
+      - When permuting sites, the factor group operation permutation is applied
+        first, then the translation operation permutation
+      - When iterating over all operations the translation operations are
+        iterated in the inner loop and factor group operations iterated in the
+        outer loop
+      )pbdoc");
+
   py::class_<config::Supercell, std::shared_ptr<config::Supercell>>(
       m, "Supercell", R"pbdoc(
       A data structure that stores the supercell transformation matrix and
@@ -900,6 +920,28 @@ PYBIND11_MODULE(_configuration, m) {
           "values. When permuting site occupants, the following convention is "
           "used, `after[l] = before[permutation[l]]`. Returns None for large "
           "supercells (n_unitcells > max_n_translation_permutations).")
+      .def(
+          "configuration_symgroup_rep",
+          [](std::shared_ptr<config::Supercell const> const &supercell) {
+            std::vector<config::SupercellSymOp> configuration_rep;
+            auto it = config::SupercellSymOp::begin(supercell);
+            auto end = config::SupercellSymOp::end(supercell);
+            for (; it != end; ++it) {
+              configuration_rep.push_back(*it);
+            }
+            return configuration_rep;
+          },
+          R"pbdoc(
+          Returns the symmetry representations for transforming configurations
+          in the supercell
+
+          Returns
+          -------
+          configuration_rep : list[libcasm.configuration.SupercellSymOp]
+              The :class:`~libcasm.configuration.SupercellSymOp` that apply
+              all combinations of supercell factor group operations and
+              unit cell translations within the supercell.
+          )pbdoc")
       .def_property_readonly(
           "n_sites",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
@@ -2094,26 +2136,6 @@ PYBIND11_MODULE(_configuration, m) {
           )pbdoc",
           py::arg("write_prim_basis") = false);
 
-  // SupercellSymOp -- declare class
-  py::class_<config::SupercellSymOp> pySupercellSymOp(m, "SupercellSymOp",
-                                                      R"pbdoc(
-      Symmetry representation that allows transforming the degrees of freedom
-      (DoF) values of a configuration.
-
-      SupercellSymOp represents symmetry operations consistent with a given
-      supercell, combining one pure supercell factor group and one pure
-      translation operation. SupercellSymOp can be incremented to allow
-      iteration over all symmetry operations consistent with the supercell.
-
-      Notes
-      -----
-      - When permuting sites, the factor group operation permutation is applied
-        first, then the translation operation permutation
-      - When iterating over all operations the translation operations are
-        iterated in the inner loop and factor group operations iterated in the
-        outer loop
-      )pbdoc");
-
   // Configuration -- declare class
   py::class_<config::Configuration> pyConfiguration(m, "Configuration", R"pbdoc(
       A data structure encapsulating configuration DoF values and all
@@ -2216,6 +2238,20 @@ PYBIND11_MODULE(_configuration, m) {
            "translation permutation")
       .def("inverse", &config::SupercellSymOp::inverse,
            "Returns the inverse operation")
+      .def(
+          "copy",
+          [](config::SupercellSymOp const &self) {
+            return config::SupercellSymOp(self);
+          },
+          "Returns a copy of the operation")
+      .def("__copy__",
+           [](config::SupercellSymOp const &self) {
+             return config::SupercellSymOp(self);
+           })
+      .def("__deepcopy__",
+           [](config::SupercellSymOp const &self, py::dict) {
+             return config::SupercellSymOp(self);
+           })
       .def(
           "__mul__",
           [](config::SupercellSymOp const &self,

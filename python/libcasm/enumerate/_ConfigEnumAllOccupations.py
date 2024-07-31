@@ -129,6 +129,7 @@ class ConfigEnumAllOccupations:
         sites: set[int],
         skip_non_primitive: bool,
         skip_non_canonical: bool,
+        use_background_invariant_group: bool,
     ):
         """Run the inner loop of enumerating occupations on sites in a background
 
@@ -147,8 +148,15 @@ class ConfigEnumAllOccupations:
             If True, enumeration skips non-primitive configurations.
         skip_non_canonical: bool
             If True, enumeration skips non-canonical configurations with respect
-            to the subgroup that leaves the background configuration invariant
-            and does not mix the given sites and other sites.
+            to either (i) the complete set of symmetry operations that leave the
+            supercell lattice vectors invariant, or (ii) the subgroup that leaves the
+            background configuration invariant and does not mix the given sites and
+            other sites.
+        use_background_invariant_group: bool
+            If True, use the subgroup that leaves the background configuration invariant
+            and does not mix the given sites and other sites; otherwise use the complete
+            set of symmetry operations that leave the supercell lattice vectors
+            invariant.
 
         Yields
         ------
@@ -166,10 +174,13 @@ class ConfigEnumAllOccupations:
             sites=sites,
         )
         if skip_non_canonical:
-            background_fg = casmconfig.make_invariant_subgroup(
-                configuration=background,
-                site_indices=sites,
-            )
+            if use_background_invariant_group:
+                canonicalization_group = casmconfig.make_invariant_subgroup(
+                    configuration=background,
+                    site_indices=sites,
+                )
+            else:
+                canonicalization_group = None
         while config_enum.is_valid():
             if skip_non_primitive and not casmconfig.is_primitive_configuration(
                 configuration=config_enum.value()
@@ -178,7 +189,7 @@ class ConfigEnumAllOccupations:
                 continue
             if skip_non_canonical and not casmconfig.is_canonical_configuration(
                 configuration=config_enum.value(),
-                subgroup=background_fg,
+                subgroup=canonicalization_group,
             ):
                 config_enum.advance()
                 continue
@@ -212,7 +223,8 @@ class ConfigEnumAllOccupations:
             included in the check for primitive configurations.
         skip_non_canonical: bool = True
             If True, enumeration skips non-canonical configurations with respect
-            to the subgroup that leaves the background configuration invariant.
+            to the symmetry operations that leave the supercell lattice vectors
+            invariant.
 
         Yields
         ------
@@ -236,6 +248,7 @@ class ConfigEnumAllOccupations:
                     sites=sites,
                     skip_non_primitive=skip_non_primitive,
                     skip_non_canonical=skip_non_canonical,
+                    use_background_invariant_group=False,
                 ):
                     yield config
 
@@ -265,7 +278,8 @@ class ConfigEnumAllOccupations:
             included in the check for primitive configurations.
         skip_non_canonical: bool = True
             If True, enumeration skips non-canonical configurations with respect
-            to the subgroup that leaves the background configuration invariant.
+            to the symmetry operations that leave the supercell lattice vectors
+            invariant.
 
         Yields
         ------
@@ -285,6 +299,7 @@ class ConfigEnumAllOccupations:
                     sites=sites,
                     skip_non_primitive=skip_non_primitive,
                     skip_non_canonical=skip_non_canonical,
+                    use_background_invariant_group=False,
                 ):
                     yield config
 
@@ -324,6 +339,7 @@ class ConfigEnumAllOccupations:
             sites=sites,
             skip_non_primitive=skip_non_primitive,
             skip_non_canonical=skip_non_canonical,
+            use_background_invariant_group=True,
         ):
             yield config
 
@@ -365,6 +381,7 @@ class ConfigEnumAllOccupations:
             sites=site_indices,
             skip_non_primitive=skip_non_primitive,
             skip_non_canonical=skip_non_canonical,
+            use_background_invariant_group=True,
         ):
             yield config
 
@@ -423,6 +440,7 @@ class ConfigEnumAllOccupations:
                     sites=sublat_sites,
                     skip_non_primitive=skip_non_primitive,
                     skip_non_canonical=skip_non_canonical,
+                    use_background_invariant_group=True,
                 ):
                     yield config
 
@@ -497,6 +515,7 @@ class ConfigEnumAllOccupations:
                         sites=cluster_sites,
                         skip_non_primitive=skip_non_primitive,
                         skip_non_canonical=skip_non_canonical,
+                        use_background_invariant_group=True,
                     ):
                         yield config
 
@@ -571,5 +590,6 @@ class ConfigEnumAllOccupations:
                         sites=cluster_sites,
                         skip_non_primitive=skip_non_primitive,
                         skip_non_canonical=skip_non_canonical,
+                        use_background_invariant_group=True,
                     ):
                         yield config

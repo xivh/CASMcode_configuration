@@ -7,6 +7,10 @@ import pytest
 import libcasm.configuration as config
 import libcasm.xtal as xtal
 
+from .functions import (
+    make_discrete_magnetic_atom,
+)
+
 
 @pytest.fixture
 def hide_available_pkg(monkeypatch):
@@ -499,5 +503,43 @@ def ZrO_prim():
         occ_dof=occ_dof,
         local_dof=local_dof,
         global_dof=global_dof,
+        occupants=occupants,
+    )
+
+
+@pytest.fixture
+def FCC_binary_discrete_Cmagspin_prim():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [0.0, 1.0 / 2.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 0.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 1.0 / 2.0, 0.0],  # a
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occupants = {
+        "A.up": make_discrete_magnetic_atom(name="A", value=1, flavor="C"),
+        "A.down": make_discrete_magnetic_atom(name="A", value=-1, flavor="C"),
+        "B.up": make_discrete_magnetic_atom(name="B", value=1, flavor="C"),
+        "B.down": make_discrete_magnetic_atom(name="B", value=-1, flavor="C"),
+    }
+    occ_dof = [["A.up", "A.down", "B.up", "B.down"]]
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
         occupants=occupants,
     )
