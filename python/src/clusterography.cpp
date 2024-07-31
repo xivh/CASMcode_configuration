@@ -1,4 +1,5 @@
 #include <pybind11/eigen.h>
+#include <pybind11/iostream.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -321,6 +322,8 @@ PYBIND11_MODULE(_clusterography, m) {
           "from_dict",
           [](const nlohmann::json &data,
              xtal::BasicStructure const &prim) -> clust::IntegralCluster {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
             jsonParser json{data};
             return jsonConstructor<clust::IntegralCluster>::from_json(json,
                                                                       prim);
@@ -402,6 +405,8 @@ PYBIND11_MODULE(_clusterography, m) {
           "from_list",
           [](const nlohmann::json &data, xtal::BasicStructure const &prim)
               -> std::vector<clust::IntegralClusterOrbitGenerator> {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
             jsonParser json{data};
             InputParser<std::vector<clust::IntegralClusterOrbitGenerator>>
                 parser(json, prim);
@@ -606,7 +611,14 @@ PYBIND11_MODULE(_clusterography, m) {
              std::shared_ptr<clust::SymGroup const> const &prim_factor_group,
              std::vector<xtal::UnitCellCoordRep> const
                  &unitcellcoord_symgroup_rep) -> clust::ClusterSpecs {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
             jsonParser json{data};
+
+            // compatibility to read CASM v1 ClusterSpecs
+            if (json.contains("params")) {
+              json = json["params"];
+            }
             InputParser<clust::ClusterSpecs> parser(
                 json, prim, prim_factor_group, unitcellcoord_symgroup_rep);
             std::runtime_error error_if_invalid{
@@ -623,8 +635,8 @@ PYBIND11_MODULE(_clusterography, m) {
 
           Parameters
           ----------
-          data : list[dict]
-              The serialized list of ClusterOrbitGenerator
+          data : dict
+              The ClusterSpecs as a Python dict
 
           xtal_prim : libcasm.xtal.Prim
               The :class:`libcasm.xtal.Prim`
@@ -993,6 +1005,9 @@ PYBIND11_MODULE(_clusterography, m) {
       "equivalents_info_from_dict",
       [](const nlohmann::json &data,
          xtal::BasicStructure const &prim) -> py::tuple {
+        // print errors and warnings to sys.stdout
+        py::scoped_ostream_redirect redirect;
+
         jsonParser json{data};
         InputParser<clust::EquivalentsInfo> parser(json, prim);
         std::runtime_error error_if_invalid{

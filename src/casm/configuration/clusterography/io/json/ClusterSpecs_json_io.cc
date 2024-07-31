@@ -189,6 +189,12 @@ void parse(
     if (!has_cutoff_radius) {
       cutoff_radius.clear();
     }
+  } else if (all_local_dof_types(*prim).size()) {
+    std::stringstream ss;
+    ss << "Warning reading ClusterSpecs from JSON: "
+       << "prim has local DoF and `orbit_branch_specs` does not exist. "
+       << "To suppress this warning, include `\"orbit_branch_specs\": {}`";
+    parser.insert_warning("orbit_branch_specs", ss.str());
   }
 
   // orbit_specs (optional)

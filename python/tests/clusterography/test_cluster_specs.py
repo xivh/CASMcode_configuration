@@ -123,6 +123,109 @@ def test_cluster_specs_from_dict_2():
     assert cluster_specs_in.cutoff_radius() == [0.0, 0.0, 5.01, 4.01]
 
 
+def test_cluster_specs_from_dict_3():
+    """Check CASM v1 compatibility."""
+    xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
+    prim_factor_group = sym_info.make_factor_group(xtal_prim)
+    integral_site_coordinate_symgroup_rep = (
+        clust.make_integral_site_coordinate_symgroup_rep(
+            group_elements=prim_factor_group.elements,
+            xtal_prim=xtal_prim,
+        )
+    )
+    data = {
+        "method": "periodic_max_length",
+        "params": {
+            "orbit_branch_specs": {
+                "2": {"max_length": 3.01},
+                "3": {"max_length": 2.01},
+            },
+            "site_filter_method": "dof_sites",
+        },
+    }
+    cluster_specs_in = clust.ClusterSpecs.from_dict(
+        data=data,
+        xtal_prim=xtal_prim,
+        prim_factor_group=prim_factor_group,
+        integral_site_coordinate_symgroup_rep=integral_site_coordinate_symgroup_rep,
+    )
+    assert cluster_specs_in.max_length() == [0.0, 0.0, 3.01, 2.01]
+
+
+def test_cluster_specs_from_dict_4():
+    """Check no orbit_branch_specs warning"""
+
+    import io
+    from contextlib import redirect_stdout
+
+    # Test 1, with local DoF -> should give a warning
+    xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
+    prim_factor_group = sym_info.make_factor_group(xtal_prim)
+    integral_site_coordinate_symgroup_rep = (
+        clust.make_integral_site_coordinate_symgroup_rep(
+            group_elements=prim_factor_group.elements,
+            xtal_prim=xtal_prim,
+        )
+    )
+    data = {}
+    f = io.StringIO()
+    with redirect_stdout(f):
+        cluster_specs_in = clust.ClusterSpecs.from_dict(
+            data=data,
+            xtal_prim=xtal_prim,
+            prim_factor_group=prim_factor_group,
+            integral_site_coordinate_symgroup_rep=integral_site_coordinate_symgroup_rep,
+        )
+    assert cluster_specs_in.max_length() == []
+    assert "Warning" in f.getvalue()
+
+    # Test 2, with local DoF and empty orbit_branch_specs -> should give no warning
+    xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
+    prim_factor_group = sym_info.make_factor_group(xtal_prim)
+    integral_site_coordinate_symgroup_rep = (
+        clust.make_integral_site_coordinate_symgroup_rep(
+            group_elements=prim_factor_group.elements,
+            xtal_prim=xtal_prim,
+        )
+    )
+    data = {
+        "orbit_branch_specs": {},
+    }
+    f = io.StringIO()
+    with redirect_stdout(f):
+        cluster_specs_in = clust.ClusterSpecs.from_dict(
+            data=data,
+            xtal_prim=xtal_prim,
+            prim_factor_group=prim_factor_group,
+            integral_site_coordinate_symgroup_rep=integral_site_coordinate_symgroup_rep,
+        )
+    assert cluster_specs_in.max_length() == []
+    assert "Warning" not in f.getvalue()
+
+    # Test 3, with global DoF only -> Should give no warning
+    xtal_prim = xtal_prims.FCC(
+        r=1.0, occ_dof=["A"], global_dof=[xtal.DoFSetBasis("Hstrain")]
+    )
+    prim_factor_group = sym_info.make_factor_group(xtal_prim)
+    integral_site_coordinate_symgroup_rep = (
+        clust.make_integral_site_coordinate_symgroup_rep(
+            group_elements=prim_factor_group.elements,
+            xtal_prim=xtal_prim,
+        )
+    )
+    data = {}
+    f = io.StringIO()
+    with redirect_stdout(f):
+        cluster_specs_in = clust.ClusterSpecs.from_dict(
+            data=data,
+            xtal_prim=xtal_prim,
+            prim_factor_group=prim_factor_group,
+            integral_site_coordinate_symgroup_rep=integral_site_coordinate_symgroup_rep,
+        )
+    assert cluster_specs_in.max_length() == []
+    assert "Warning" not in f.getvalue()
+
+
 def test_make_periodic_cluster_specs():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     cluster_specs = clust.make_periodic_cluster_specs(

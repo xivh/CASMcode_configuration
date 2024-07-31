@@ -1,4 +1,5 @@
 #include <pybind11/eigen.h>
+#include <pybind11/iostream.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -2873,6 +2874,8 @@ PYBIND11_MODULE(_configuration, m) {
           "from_dict",
           [](const nlohmann::json &data,
              std::shared_ptr<config::SupercellSet> supercells) {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
             jsonParser json{data};
             InputParser<config::Configuration> parser(json, *supercells);
             std::runtime_error error_if_invalid{
@@ -3090,6 +3093,8 @@ PYBIND11_MODULE(_configuration, m) {
           "from_dict",
           [](const nlohmann::json &data,
              std::shared_ptr<config::SupercellSet> supercells) {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
             jsonParser json{data};
             InputParser<config::ConfigurationWithProperties> parser(
                 json, *supercells);

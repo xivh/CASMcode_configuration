@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Changed the `by_supercell` and `by_supercell_list` methods of `libcasm.enumerate.ConfigEnumAllOccupations` to use the complete set of SupercellSymOp when checking canonical form instead of the subgroup that leaves the background invariant. This change allows enumerating all unique configurations when the default configuration has a smaller factor group than the prim.
+- Changed `ClusterSpecs.from_dict` to allow reading CASM v1 cluster specs JSON by checking for a "params" attribute and parsing that if it exists.
+- Changed `ClusterSpecs.from_dict` to warn if the prim has local DoF but no `"orbit_branch_specs"` attribute is present.
 
 ### Added
 

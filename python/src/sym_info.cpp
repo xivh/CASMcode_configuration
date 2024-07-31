@@ -1,4 +1,5 @@
 #include <pybind11/eigen.h>
+#include <pybind11/iostream.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -332,6 +333,8 @@ PYBIND11_MODULE(_sym_info, m) {
       .def_static(
           "from_dict",
           [](const nlohmann::json &data, xtal::Lattice const &lattice) {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
             jsonParser json{data};
             InputParser<std::shared_ptr<sym_info::SymGroup const>> parser(
                 json, lattice);

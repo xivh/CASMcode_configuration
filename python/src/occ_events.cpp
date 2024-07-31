@@ -1,4 +1,5 @@
 #include <pybind11/eigen.h>
+#include <pybind11/iostream.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -187,6 +188,8 @@ PYBIND11_MODULE(_occ_events, m) {
           [](const nlohmann::json &data,
              std::shared_ptr<xtal::BasicStructure const> const &prim)
               -> std::shared_ptr<occ_events::OccSystem> {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
             jsonParser json{data};
             InputParser<occ_events::OccSystem> event_system_parser(json, prim);
             std::runtime_error error_if_invalid{
@@ -785,6 +788,8 @@ PYBIND11_MODULE(_occ_events, m) {
          const nlohmann::json &occevent_counter_params,
          std::vector<occ_events::OccEvent> const &custom_occevents)
           -> std::vector<occ_events::OccEvent> {
+        // print errors and warnings to sys.stdout
+        py::scoped_ostream_redirect redirect;
         // get canonical clusters
         auto generating_group_unitcellcoord_symgroup_rep =
             sym_info::make_unitcellcoord_symgroup_rep(
