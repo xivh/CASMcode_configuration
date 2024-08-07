@@ -12,6 +12,9 @@ namespace config {
 class ConfigCompare {
  public:
   explicit ConfigCompare(ConfigIsEquivalent const &_eq) : m_eq(_eq) {}
+  explicit ConfigCompare(Configuration const &_config,
+                         std::set<std::string> const &_which_dofs)
+      : m_eq(_config, _which_dofs) {}
 
   template <typename... Args>
   bool operator()(Args &&...args) const {

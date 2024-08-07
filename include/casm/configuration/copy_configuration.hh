@@ -38,6 +38,18 @@ ConfigurationWithProperties copy_configuration_with_properties(
     std::shared_ptr<Supercell const> const &supercell,
     UnitCell const &origin = UnitCell(0, 0, 0));
 
+/// \brief Copy occupation and local DoF values from one configuration into
+///     another configuration
+void copy_local_dof_values(Configuration const &source,
+                           Configuration &destination, UnitCell const &position,
+                           std::set<std::string> which_dofs = {"all"});
+
+/// \brief Copy global DoF values from one configuration into
+///     another configuration
+void copy_global_dof_values(Configuration const &source,
+                            Configuration &destination,
+                            std::set<std::string> which_dofs = {"all"});
+
 /// \brief Return prim factor group indices that create tilings of motif
 ///     into supercell that are not equivalent under supercell factor group
 ///     operations

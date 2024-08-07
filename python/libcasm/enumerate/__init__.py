@@ -24,3 +24,6 @@ from ._methods import (
 from ._ScelEnum import (
     ScelEnum,
 )
+from ._SuperConfigEnum import (
+    SuperConfigEnum,
+)

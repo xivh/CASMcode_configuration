@@ -115,3 +115,52 @@ def test_cluster_rmul():
         assert isinstance(transformed_cluster, clust.Cluster)
         assert transformed_cluster.site(0) == site_rep * cluster.site(0)
         assert transformed_cluster.site(1) == site_rep * cluster.site(1)
+
+
+def test_cluster_repr():
+    import io
+    from contextlib import redirect_stdout
+
+    obj = clust.Cluster.from_list(
+        [
+            [0, 0, 0, 0],
+            [0, 1, 0, 0],
+        ]
+    )
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(obj)
+    out = f.getvalue()
+    assert "sites" in out
+
+
+def test_IntegralClusterOrbitGenerator():
+    xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
+    cluster = clust.Cluster.from_list(
+        [
+            [0, 0, 0, 0],
+            [0, 1, 0, 0],
+        ]
+    )
+    orbit_gen = clust.ClusterOrbitGenerator(
+        prototype=cluster,
+        include_subclusters=True,
+    )
+    assert isinstance(orbit_gen, clust.ClusterOrbitGenerator)
+
+    data = orbit_gen.to_dict(xtal_prim=xtal_prim)
+    assert isinstance(data, dict)
+
+    orbit_gen2 = clust.ClusterOrbitGenerator.from_list([data], prim=xtal_prim)[0]
+    assert orbit_gen2.prototype == orbit_gen.prototype
+    assert orbit_gen2.include_subclusters == orbit_gen.include_subclusters
+
+    import io
+    from contextlib import redirect_stdout
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(orbit_gen)
+    out = f.getvalue()
+    assert "sites" in out

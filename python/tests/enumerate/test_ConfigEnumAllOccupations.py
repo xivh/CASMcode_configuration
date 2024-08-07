@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 import libcasm.configuration as casmconfig
 import libcasm.enumerate as casmenum
@@ -13,18 +14,36 @@ def test_ConfigEnumAllOccupations_by_supercell_FCC_1():
     )
     prim = casmconfig.Prim(xtal_prim)
     supercell_set = casmconfig.SupercellSet(prim=prim)
+
+    # Check DeprecationWarning for `supercells` argument
+    with pytest.warns(DeprecationWarning):
+        configuration_set = casmconfig.ConfigurationSet()
+        config_enum = casmenum.ConfigEnumAllOccupations(
+            prim=prim,
+            supercell_set=supercell_set,
+        )
+        for i, configuration in enumerate(
+            config_enum.by_supercell(
+                supercells={
+                    "max": 4,
+                },
+            )
+        ):
+            configuration_set.add(configuration)
+            assert isinstance(configuration, casmconfig.Configuration)
+
+        # for i, record in enumerate(configuration_set):
+        #     print(xtal.pretty_json(record.configuration.to_dict()))
+
+        assert len(configuration_set) == 29
+
+    # Test without `supercells` argument
     configuration_set = casmconfig.ConfigurationSet()
     config_enum = casmenum.ConfigEnumAllOccupations(
         prim=prim,
         supercell_set=supercell_set,
     )
-    for i, configuration in enumerate(
-        config_enum.by_supercell(
-            supercells={
-                "max": 4,
-            },
-        )
-    ):
+    for i, configuration in enumerate(config_enum.by_supercell(max=4)):
         configuration_set.add(configuration)
         assert isinstance(configuration, casmconfig.Configuration)
 
@@ -34,7 +53,75 @@ def test_ConfigEnumAllOccupations_by_supercell_FCC_1():
     assert len(configuration_set) == 29
 
 
-# TODO: test with fixed strain state and unique occupations
+def test_ConfigEnumAllOccupations_by_supercell_with_continuous_DoF_FCC_1():
+    xtal_prim = xtal_prims.FCC(
+        r=0.5,
+        occ_dof=["A", "B"],
+        global_dof=[xtal.DoFSetBasis("Hstrain")],
+    )
+    prim = casmconfig.Prim(xtal_prim)
+    supercell_set = casmconfig.SupercellSet(prim=prim)
+    record = supercell_set.add_by_transformation_matrix_to_super(
+        transformation_matrix_to_super=np.array(
+            [
+                [-1, 1, 1],
+                [1, -1, 1],
+                [1, 1, -1],
+            ]
+        ),
+    )
+    supercell = record.supercell
+    source = casmconfig.Configuration(supercell)
+
+    config_enum = casmenum.ConfigEnumAllOccupations(
+        prim=prim,
+        supercell_set=supercell_set,
+    )
+
+    # default no strain: 5 inequivalent orderings in conventional FCC
+    configuration_set = casmconfig.ConfigurationSet()
+    config_list = []
+    for configuration in config_enum.by_supercell_with_continuous_dof(
+        source=source,
+        max=1,
+        unit_cell=source.supercell.transformation_matrix_to_super,
+        skip_non_primitive=False,
+        skip_equivalents=True,
+    ):
+        assert np.allclose(
+            configuration.global_dof_values("Hstrain"),
+            source.global_dof_values("Hstrain"),
+        )
+        assert casmconfig.is_canonical_configuration(configuration)
+        configuration_set.add(configuration)
+        config_list.append(configuration.copy())
+    assert len(configuration_set) == 5
+    assert len(config_list) == 5
+
+    # add Ezz strain -> creates two distinct configurations at A2B2
+    source.set_global_dof_values("Hstrain", [0.0, 0.0, 0.05, 0.0, 0.0, 0.0])
+    configuration_set = casmconfig.ConfigurationSet()
+    config_list = []
+    for configuration in config_enum.by_supercell_with_continuous_dof(
+        source=source,
+        max=1,
+        unit_cell=source.supercell.transformation_matrix_to_super,
+        skip_non_primitive=False,
+        skip_equivalents=True,
+    ):
+        # strain DoF remains
+        assert np.allclose(
+            configuration.global_dof_values("Hstrain"),
+            source.global_dof_values("Hstrain"),
+        )
+        # not canonical (because strain orientation is Ezz instead of Exx)
+        assert casmconfig.is_canonical_configuration(configuration) is False
+        configuration_set.add(configuration)
+        config_list.append(configuration.copy())
+
+    # skipped all equivalents: set and list have same number of configurations
+    assert len(configuration_set) == 6
+    assert len(config_list) == 6
 
 
 def test_ConfigEnumAllOccupations_by_supercell_FCC_2():
@@ -49,13 +136,7 @@ def test_ConfigEnumAllOccupations_by_supercell_FCC_2():
         prim=prim,
         supercell_set=supercell_set,
     )
-    for i, configuration in enumerate(
-        config_enum.by_supercell(
-            supercells={
-                "max": 4,
-            }
-        )
-    ):
+    for i, configuration in enumerate(config_enum.by_supercell(max=4)):
         configuration_set.add(configuration)
         assert isinstance(configuration, casmconfig.Configuration)
 
@@ -151,7 +232,9 @@ def test_ConfigEnumAllOccupations_by_sites_FCC_1():
             sites.append(converter.integral_site_coordinate(j))
 
         generator = config_enum.by_integral_site_coordinates(
-            background=background, sites=sites
+            background=background,
+            sites=sites,
+            skip_equivalents=False,
         )
 
         n_configs.append(sum(1 for config in generator))
@@ -163,7 +246,9 @@ def test_ConfigEnumAllOccupations_by_sites_FCC_1():
     for i in range(supercell.n_sites):
         sites = set(range(i))
         generator = config_enum.by_linear_site_indices(
-            background=background, sites=sites
+            background=background,
+            sites=sites,
+            skip_equivalents=False,
         )
         n_configs.append(sum(1 for config in generator))
 

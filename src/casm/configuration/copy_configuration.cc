@@ -350,6 +350,104 @@ ConfigurationWithProperties copy_configuration_with_properties(
                                      new_global_properties);
 }
 
+/// \brief Copy configuration occupation and local DoF values into another
+///     configuration
+///
+/// \param source The configuration that DoF values are copied from
+/// \param destination The destination configuration
+/// \param position The UnitCell indicating which unit cell in the destination
+///     configuraton is the starting position where the DoF values are
+///     copied to
+/// \param which_dofs A set of strings indicating which DoF values to copy
+///     into the destination configuration. If the set contains "all", all
+///     occupation and local continuous DoF values are copied. Use "occ" to
+///     specify occupation DoF values
+///
+void copy_local_dof_values(Configuration const &source,
+                           Configuration &destination, UnitCell const &position,
+                           std::set<std::string> which_dofs) {
+  if (destination.supercell->prim != source.supercell->prim) {
+    throw std::runtime_error(
+        "Error in CASM::config::copy_local_dof_values: prim mismatch.");
+  }
+
+  Index source_total_sites =
+      source.supercell->unitcellcoord_index_converter.total_sites();
+
+  // copy occupation values
+  for (Index i = 0; i < source_total_sites; i++) {
+    if (!which_dofs.count("all") && !which_dofs.count("occ")) {
+      continue;
+    }
+    // unitcellcoord of site i in source
+    UnitCellCoord unitcellcoord =
+        source.supercell->unitcellcoord_index_converter(i);
+
+    // site in destination
+    Index destination_site_index =
+        destination.supercell->unitcellcoord_index_converter(unitcellcoord +
+                                                             position);
+
+    // copy occupation value
+    destination.dof_values.occupation(destination_site_index) =
+        source.dof_values.occupation(i);
+  }
+
+  // copy local DoF values
+  for (auto const &pair : source.dof_values.local_dof_values) {
+    std::string name = pair.first;
+    if (!which_dofs.count("all") && !which_dofs.count(name)) {
+      continue;
+    }
+    Eigen::MatrixXd const &M_source = pair.second;
+    Eigen::MatrixXd &M_destination =
+        destination.dof_values.local_dof_values.at(name);
+    for (Index i = 0; i < source_total_sites; i++) {
+      // unitcellcoord of site i in soruce
+      UnitCellCoord unitcellcoord =
+          source.supercell->unitcellcoord_index_converter(i);
+
+      // equivalent site in destination
+      Index destination_site_index =
+          destination.supercell->unitcellcoord_index_converter(unitcellcoord +
+                                                               position);
+
+      // copy dof from superconfig to this:
+      M_destination.col(destination_site_index) = M_source.col(i);
+    }
+  }
+}
+
+/// \brief Copy global DoF values from one configuration into
+///     another configuration
+///
+/// \param source The configuration that DoF values are copied from
+/// \param destination The destination configuration
+/// \param which_dofs A set of strings indicating which global DoF values to
+///     copy into the destination configuration. If the set contains "all", all
+///     global continuous DoF values are copied.
+///
+void copy_global_dof_values(Configuration const &source,
+                            Configuration &destination,
+                            std::set<std::string> which_dofs) {
+  if (destination.supercell->prim != source.supercell->prim) {
+    throw std::runtime_error(
+        "Error in CASM::config::copy_global_dof_values: prim mismatch.");
+  }
+
+  // copy global DoF values
+  for (auto const &pair : source.dof_values.global_dof_values) {
+    std::string name = pair.first;
+    if (!which_dofs.count("all") && !which_dofs.count(name)) {
+      continue;
+    }
+    Eigen::VectorXd const &V_source = pair.second;
+    Eigen::VectorXd &V_destination =
+        destination.dof_values.global_dof_values.at(name);
+    V_destination = V_source;
+  }
+}
+
 /// \brief Return prim factor group indices that create tilings of motif
 ///     into supercell that are not equivalent under supercell factor group
 ///     operations

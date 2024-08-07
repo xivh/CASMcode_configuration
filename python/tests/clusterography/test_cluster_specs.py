@@ -240,6 +240,22 @@ def test_make_periodic_cluster_specs():
     assert len(orbits[2]) == 6
 
 
+def test_ClusterSpecs_repr():
+    xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
+    cluster_specs = clust.make_periodic_cluster_specs(
+        xtal_prim=xtal_prim, max_length=[0.0, 0.0, 2.01]
+    )
+
+    import io
+    from contextlib import redirect_stdout
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(cluster_specs)
+    out = f.getvalue()
+    assert "generating_group" in out
+
+
 def test_local_cluster_specs():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     prim_factor_group = sym_info.make_factor_group(xtal_prim)

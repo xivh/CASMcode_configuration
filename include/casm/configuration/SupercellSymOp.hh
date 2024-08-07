@@ -133,6 +133,14 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
   /// standard comparisons via Comparisons)
   bool operator<(SupercellSymOp const &iter) const;
 
+  void throw_invalid_if_end() const {
+    if (m_supercell_factor_group_index == m_supercell_factor_group_end_index) {
+      throw std::runtime_error(
+          "Attempting to use an invalid SupercellSymOp. (Are you using an "
+          "invalidated reference instead of making a copy?)");
+    }
+  }
+
  private:
   friend Comparisons<CRTPBase<SupercellSymOp>>;
 
@@ -153,6 +161,11 @@ class SupercellSymOp : public Comparisons<CRTPBase<SupercellSymOp>> {
   ///                           head_group_index[m_supercell_factor_group_index];
   /// \endcode
   Index m_supercell_factor_group_index;
+
+  /// \brief Supercell factor group end index
+  ///
+  /// Used to check validity before use
+  Index m_supercell_factor_group_end_index;
 
   /// \brief Lattice translation index
   ///

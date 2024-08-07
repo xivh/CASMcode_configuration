@@ -6,6 +6,7 @@
 
 // nlohmann::json binding
 #define JSON_USE_IMPLICIT_CONVERSIONS 0
+#include "casm/casm_io/container/json_io.hh"
 #include "casm/casm_io/container/stream_io.hh"
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
@@ -22,6 +23,7 @@
 #include "casm/crystallography/LinearIndexConverter.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "casm/crystallography/UnitCellCoordRep.hh"
+#include "casm/crystallography/io/UnitCellCoordIO.hh"
 #include "pybind11_json/pybind11_json.hpp"
 
 #define STRINGIFY(x) #x
@@ -310,6 +312,14 @@ PYBIND11_MODULE(_clusterography, m) {
       .def(py::self >= py::self, "Compares via lexicographical order of sites")
       .def(py::self == py::self, "True if clusters are equal")
       .def(py::self != py::self, "True if clusters are not equal")
+      .def(
+          "copy",
+          [](clust::IntegralCluster const &self) {
+            return clust::IntegralCluster(self);
+          },
+          R"pbdoc(
+          Returns a copy of the Cluster.
+          )pbdoc")
       .def("__copy__",
            [](clust::IntegralCluster const &self) {
              return clust::IntegralCluster(self);
@@ -317,6 +327,17 @@ PYBIND11_MODULE(_clusterography, m) {
       .def("__deepcopy__",
            [](clust::IntegralCluster const &self, py::dict) {
              return clust::IntegralCluster(self);
+           })
+      .def("__repr__",
+           [](clust::IntegralCluster const &self) {
+             std::stringstream ss;
+             jsonParser json;
+             json["sites"] = jsonParser::array();
+             for (auto const &site : self.elements()) {
+               json["sites"].push_back(site);
+             }
+             ss << json;
+             return ss.str();
            })
       .def_static(
           "from_dict",
@@ -401,6 +422,18 @@ PYBIND11_MODULE(_clusterography, m) {
                      R"pbdoc(
                      bool: If True, include subcluster orbits.
                      )pbdoc")
+      .def("__repr__",
+           [](clust::IntegralClusterOrbitGenerator const &self) {
+             std::stringstream ss;
+             jsonParser json;
+             json["include_subclusters"] = self.include_subclusters;
+             json["sites"] = jsonParser::array();
+             for (auto const &site : self.prototype.elements()) {
+               json["sites"].push_back(site);
+             }
+             ss << json;
+             return ss.str();
+           })
       .def_static(
           "from_list",
           [](const nlohmann::json &data, xtal::BasicStructure const &prim)
@@ -668,7 +701,14 @@ PYBIND11_MODULE(_clusterography, m) {
           -------
           data : dict
               The ClusterSpecs as a Python dict
-          )pbdoc");
+          )pbdoc")
+      .def("__repr__", [](clust::ClusterSpecs const &self) {
+        std::stringstream ss;
+        jsonParser json;
+        to_json(self, json);
+        ss << json;
+        return ss.str();
+      });
 
   m.def(
       "make_integral_site_coordinate_symgroup_rep",

@@ -1,5 +1,3 @@
-import copy
-
 import numpy as np
 
 import libcasm.configuration as casmconfig
@@ -16,8 +14,8 @@ def test_Cmagspin_enum(FCC_binary_discrete_Cmagspin_prim):
         prim=prim, supercell_set=supercell_set
     )
     config_list = []
-    for config in config_enum.by_supercell(supercells={"max": 1}):
-        config_list.append(copy.deepcopy(config))
+    for config in config_enum.by_supercell(max=1):
+        config_list.append(config.copy())
 
     for config in config_list:
         print(xtal.pretty_json(config.to_dict()))

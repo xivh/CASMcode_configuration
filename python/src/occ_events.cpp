@@ -644,6 +644,14 @@ PYBIND11_MODULE(_occ_events, m) {
       .def(py::self >= py::self, "Compares via lexicographical order of sites")
       .def(py::self == py::self, "True if events are equal")
       .def(py::self != py::self, "True if events are not equal")
+      .def(
+          "copy",
+          [](occ_events::OccEvent const &self) {
+            return occ_events::OccEvent(self);
+          },
+          R"pbdoc(
+          Returns a copy of the OccEvent.
+          )pbdoc")
       .def("__copy__",
            [](occ_events::OccEvent const &self) {
              return occ_events::OccEvent(self);

@@ -33,6 +33,8 @@ SupercellSymOp::SupercellSymOp(
     Index _supercell_factor_group_index, Index _translation_index)
     : m_supercell(_supercell),
       m_supercell_factor_group_index(_supercell_factor_group_index),
+      m_supercell_factor_group_end_index(
+          m_supercell->sym_info.factor_group_permutations.size()),
       m_translation_index(_translation_index),
       m_N_translation(m_supercell->superlattice.size()),
       m_tmp_translation_index(-1) {}
@@ -106,6 +108,7 @@ Index SupercellSymOp::supercell_factor_group_index() const {
 /// This is an index into:
 /// - supercell()->prim->sym_info.factor_group->element
 Index SupercellSymOp::prim_factor_group_index() const {
+  this->throw_invalid_if_end();
   return m_supercell->sym_info.factor_group
       ->head_group_index[m_supercell_factor_group_index];
 }
@@ -125,6 +128,7 @@ xtal::UnitCell SupercellSymOp::translation_frac() const {
 /// Permutation of configuration site dof values occurs according to:
 ///     after[i] = before[permute_index(i)]
 Index SupercellSymOp::permute_index(Index i) const {
+  this->throw_invalid_if_end();
   SupercellSymInfo const &sym_info = m_supercell->sym_info;
   auto const &fg_perm =
       sym_info.factor_group_permutations[m_supercell_factor_group_index];
@@ -184,6 +188,7 @@ SupercellSymOp SupercellSymOp::operator--(int) {
 /// factor group operation, FOLLOWED BY application of the translation
 /// operation;
 SymOp SupercellSymOp::to_symop() const {
+  this->throw_invalid_if_end();
   UnitCell translation_frac =
       this->m_supercell->unitcell_index_converter(this->m_translation_index);
 
@@ -202,6 +207,7 @@ SymOp SupercellSymOp::to_symop() const {
 
 /// Returns the translation permutation. Reference not valid after increment.
 sym_info::Permutation const &SupercellSymOp::translation_permute() const {
+  this->throw_invalid_if_end();
   if (m_supercell->sym_info.translation_permutations.has_value()) {
     return (
         *m_supercell->sym_info.translation_permutations)[m_translation_index];
@@ -218,6 +224,7 @@ sym_info::Permutation const &SupercellSymOp::translation_permute() const {
 /// Returns the combination of factor group operation permutation and
 /// translation permutation
 sym_info::Permutation SupercellSymOp::combined_permute() const {
+  this->throw_invalid_if_end();
   SupercellSymInfo const &sym_info = m_supercell->sym_info;
   auto const &fg_permute =
       sym_info.factor_group_permutations[m_supercell_factor_group_index];
@@ -228,6 +235,7 @@ sym_info::Permutation SupercellSymOp::combined_permute() const {
 
 /// \brief Returns the inverse supercell operation
 SupercellSymOp SupercellSymOp::inverse() const {
+  this->throw_invalid_if_end();
   // Copy *this, then update m_supercell_factor_group_index and
   // m_translation_index
   SupercellSymOp inverse_op(*this);
@@ -264,6 +272,9 @@ SupercellSymOp SupercellSymOp::inverse() const {
 /// \brief Returns the supercell operation equivalent to applying first RHS
 /// and then *this
 SupercellSymOp SupercellSymOp::operator*(SupercellSymOp const &RHS) const {
+  this->throw_invalid_if_end();
+  RHS.throw_invalid_if_end();
+
   // Copy *this, then update m_supercell_factor_group_index and
   // m_translation_index
   SupercellSymOp product_op(*this);
@@ -334,6 +345,7 @@ SymOp inverse(SymOp const &op) {
 /// \brief Apply a symmetry operation specified by a SupercellSymOp to
 /// ConfigDoFValues
 ConfigDoFValues &apply(SupercellSymOp const &op, ConfigDoFValues &dof_values) {
+  op.throw_invalid_if_end();
   Supercell const &supercell = *op.supercell();
   Prim const &prim = *op.supercell()->prim;
   PrimSymInfo const &prim_sym_info = prim.sym_info;
@@ -409,6 +421,7 @@ ConfigDoFValues copy_apply(SupercellSymOp const &op,
 ///     xtal::UnitCellCoord
 xtal::UnitCellCoord &apply(SupercellSymOp const &op,
                            xtal::UnitCellCoord &unitcellcoord) {
+  op.throw_invalid_if_end();
   UnitCell translation_frac =
       op.supercell()->unitcell_index_converter(op.translation_index());
 

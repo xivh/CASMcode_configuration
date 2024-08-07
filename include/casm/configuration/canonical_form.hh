@@ -56,7 +56,7 @@ SupercellSymOp from_canonical(Configuration const &configuration,
 template <typename SupercellSymOpIt>
 std::vector<SupercellSymOp> make_invariant_subgroup(
     Configuration const &configuration, SupercellSymOpIt begin,
-    SupercellSymOpIt end);
+    SupercellSymOpIt end, std::set<std::string> which_dofs = {"all"});
 
 /// \brief Return the distinct symmetrically equivalent configurations (using
 ///     operations that leave the supercell lattice invariant)
@@ -101,7 +101,8 @@ std::vector<SupercellSymOp> make_invariant_subgroup(
 template <typename SupercellSymOpIt>
 std::vector<SupercellSymOp> make_invariant_subgroup(
     Configuration const &configuration, std::set<Index> const &site_indices,
-    SupercellSymOpIt begin, SupercellSymOpIt end);
+    SupercellSymOpIt begin, SupercellSymOpIt end,
+    std::set<std::string> which_dofs = {"all"});
 
 }  // namespace config
 }  // namespace CASM
@@ -191,9 +192,9 @@ SupercellSymOp from_canonical(Configuration const &configuration,
 template <typename SupercellSymOpIt>
 std::vector<SupercellSymOp> make_invariant_subgroup(
     Configuration const &configuration, SupercellSymOpIt begin,
-    SupercellSymOpIt end) {
+    SupercellSymOpIt end, std::set<std::string> which_dofs) {
   std::vector<SupercellSymOp> subgroup;
-  ConfigIsEquivalent equal_to_f(configuration);
+  ConfigIsEquivalent equal_to_f(configuration, which_dofs);
   std::copy_if(begin, end, std::back_inserter(subgroup), equal_to_f);
   return subgroup;
 }
@@ -374,9 +375,10 @@ std::vector<SupercellSymOp> make_invariant_subgroup(
 template <typename SupercellSymOpIt>
 std::vector<SupercellSymOp> make_invariant_subgroup(
     Configuration const &configuration, std::set<Index> const &site_indices,
-    SupercellSymOpIt begin, SupercellSymOpIt end) {
+    SupercellSymOpIt begin, SupercellSymOpIt end,
+    std::set<std::string> which_dofs) {
   std::vector<SupercellSymOp> config_factor_group =
-      make_invariant_subgroup(configuration, begin, end);
+      make_invariant_subgroup(configuration, begin, end, which_dofs);
   return make_invariant_subgroup(site_indices, config_factor_group.begin(),
                                  config_factor_group.end());
 }

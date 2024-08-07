@@ -11,6 +11,7 @@ from ._enumerate import (
     make_distinct_cluster_sites,
 )
 from ._ScelEnum import ScelEnum
+from ._SuperConfigEnum import SuperConfigEnum
 
 
 def _make_sublat_sites(supercell: casmconfig.Supercell, sublats: set[int]):
@@ -123,13 +124,52 @@ class ConfigEnumAllOccupations:
             ]
         return supercell_list
 
+    def _make_super_backgrounds(
+        self,
+        background: casmconfig.Configuration,
+        supercells: Optional[dict] = None,
+    ):
+        """Fill the background configuration into enumerated supercells, maintaining
+        the orientation of the background configuration.
+
+        Parameters
+        ----------
+        background: casmconfig.Configuration
+            The background configuration to fill into enumerated supercells.
+        supercells: Optional[dict] = None
+            Parameters to forward to
+            :func:`ScelEnum.by_volume <libcasm.enumerate.ScelEnum.by_volume>`
+            to specify the supercells that the background configuration will be filled
+            into. If None, only the exact background configuration is returned.
+
+        Returns
+        -------
+        super_backgrounds: list[casmconfig.Configuration]
+            A list of :class:`~casmconfig.Configuration` objects, each a distinct
+            super configuration of the background.
+        """
+        if supercells is None:
+            return [background.copy()]
+        super_config_enum = SuperConfigEnum(
+            prim=self.prim,
+            supercell_set=self.supercell_set,
+        )
+        super_backgrounds = []
+        for config in super_config_enum.by_supercell(
+            motif=background,
+            **supercells,
+        ):
+            super_backgrounds.append(config.copy())
+        return super_backgrounds
+
     def _by_site(
         self,
         background: casmconfig.Configuration,
         sites: set[int],
         skip_non_primitive: bool,
-        skip_non_canonical: bool,
+        skip_equivalents: bool,
         use_background_invariant_group: bool,
+        which_dofs: Optional[set[str]] = None,
     ):
         """Run the inner loop of enumerating occupations on sites in a background
 
@@ -146,23 +186,30 @@ class ConfigEnumAllOccupations:
             occupations are enumerated in the current background configuration.
         skip_non_primitive: bool
             If True, enumeration skips non-primitive configurations.
-        skip_non_canonical: bool
-            If True, enumeration skips non-canonical configurations with respect
+        skip_equivalents: bool
+            If True, enumeration skips non-unique configurations with respect
             to either (i) the complete set of symmetry operations that leave the
-            supercell lattice vectors invariant, or (ii) the subgroup that leaves the
-            background configuration invariant and does not mix the given sites and
-            other sites.
+            supercell lattice vectors invariant (these are canonical configurations),
+            or (ii) the subgroup that leaves the background configuration invariant and
+            does not mix the given sites and other sites.
         use_background_invariant_group: bool
-            If True, use the subgroup that leaves the background configuration invariant
-            and does not mix the given sites and other sites; otherwise use the complete
-            set of symmetry operations that leave the supercell lattice vectors
-            invariant.
+            If True, check for uniqueness using the subgroup that leaves the background
+            configuration invariant and does not mix the given sites and other sites;
+            otherwise use the complete set of symmetry operations that leave the
+            supercell lattice vectors invariant.
+        which_dofs: Optional[set[str]] = None
+            When ``skip_equivalents is True`` and
+            ``use_background_invariant_group is True``, the names of the degrees of
+            freedom (DoF) in the background that must be invariant. The default is that
+            all DoF must be invariant.
 
         Yields
         ------
         config: casmconfig.Configuration
             A :class:`~casmconfig.Configuration`.
         """
+        if which_dofs is None:
+            which_dofs = set(["all"])
         self._background = background
         self._sites = sites
         if self._enum_index is None:
@@ -173,11 +220,12 @@ class ConfigEnumAllOccupations:
             background=background,
             sites=sites,
         )
-        if skip_non_canonical:
+        if skip_equivalents:
             if use_background_invariant_group:
                 canonicalization_group = casmconfig.make_invariant_subgroup(
                     configuration=background,
                     site_indices=sites,
+                    which_dofs=which_dofs,
                 )
             else:
                 canonicalization_group = None
@@ -187,7 +235,7 @@ class ConfigEnumAllOccupations:
             ):
                 config_enum.advance()
                 continue
-            if skip_non_canonical and not casmconfig.is_canonical_configuration(
+            if skip_equivalents and not casmconfig.is_canonical_configuration(
                 configuration=config_enum.value(),
                 subgroup=canonicalization_group,
             ):
@@ -198,7 +246,13 @@ class ConfigEnumAllOccupations:
 
     def by_supercell(
         self,
-        supercells: dict,
+        max: Optional[int] = None,
+        min: int = 1,
+        unit_cell: Optional[np.ndarray] = None,
+        dirs: str = "abc",
+        diagonal_only: bool = False,
+        fixed_shape: bool = False,
+        supercells: Optional[dict] = None,
         motif: Optional[casmconfig.Configuration] = None,
         skip_non_primitive: bool = True,
         skip_non_canonical: bool = True,
@@ -207,9 +261,39 @@ class ConfigEnumAllOccupations:
 
         Parameters
         ----------
-        supercells: dict
-            Parameters to forward to :class:`~libcasm.configuration.ScelEnum`, to
-            specify the supercells that the motif configruation will be filled into.
+        max: Optional[int] = None
+            The maximum volume superlattice to enumerate. The volume is measured
+            relative the unit cell being used to generate supercells (i.e. the
+            determinant of the `unit_cell` parameter). Is required if `supercells` is
+            None.
+        min: int = 1
+            The minimum volume superlattice to enumerate. The volume is measured
+            relative the unit cell being used to generate supercells.
+        dirs: str = "abc"
+            A string indicating which lattice vectors to enumerate over. Some
+            combination of 'a', 'b', and 'c', where 'a' indicates the first lattice
+            vector of the unit cell, 'b' the second, and 'c' the third.
+        unit_cell: Optional[np.ndarray] = None,
+            An integer shape=(3,3) transformation matrix `U` allows specifying an
+            alternative unit cell that can be used to generate superlattices of the
+            form `S = (L @ U) @ T`. If None, `U` is set to the identity matrix.
+        diagonal_only: bool = False
+            If true, restrict :math:`T` to diagonal matrices.
+        fixed_shape: bool = False
+            If true, restrict :math:`T` to diagonal matrices with diagonal coefficients
+            :math:`[m, 1, 1]` (1d), :math:`[m, m, 1]` (2d), or :math:`[m, m, m]` (3d),
+            where the dimension is determined from `len(dirs)`.
+        supercells: Optional[dict] = None
+            Parameters to forward to
+            :func:`ScelEnum.by_volume <libcasm.enumerate.ScelEnum.by_volume>` to
+            specify the supercells that the motif configuration will be filled into.
+
+            .. deprecated:: 2.0a5
+                Give the
+                :func:`ScelEnum.by_volume <libcasm.enumerate.ScelEnum.by_volume>`
+                parameters directly, or by using `**supercells`, instead of using this
+                parameter.
+
         motif: Optional[casmconfig.Configuration] = None
             The background configuration on which enumeration takes place. The motif is
             filled into each supercell using
@@ -218,6 +302,12 @@ class ConfigEnumAllOccupations:
             Providing a motif allows enumerating all occupations with other degrees of
             freedom (DoF) fixed. If None, the default configuration in the volume 1
             supercell is used.
+
+            .. deprecated:: 2.0a5
+                Use the method
+                :func:`~libcasm.enumerate.ConfigEnumAllOccupations.by_supercell_with_continuous_dof`
+                instead.
+
         skip_non_primitive: bool = True
             If True, enumeration skips non-primitive configurations. All DoF are
             included in the check for primitive configurations.
@@ -229,33 +319,87 @@ class ConfigEnumAllOccupations:
         Yields
         ------
         config: casmconfig.Configuration
-            A :class:`~casmconfig.Configuration`.
+            A :class:`~casmconfig.Configuration`. All configurations are in the
+            canonical supercell.
         """
+        import warnings
+
+        if max is None:
+            if supercells is None or "max" not in supercells:
+                raise ValueError(
+                    "Error in ConfigEnumAllOccupations.by_supercell: "
+                    "`max` is required. Could not be obtained from supercells."
+                )
+            else:
+                max = supercells["max"]
+                warnings.warn(
+                    "The `max` parameter is required. "
+                    "Obtaining max from supercells, but the 'supercells' parameter is "
+                    "deprecated. Give the ScelEnum.by_volume parameters directly, or "
+                    "by using `**supercells`, instead of using 'supercells'.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+
+        _supercells = dict(
+            max=max,
+            min=min,
+            unit_cell=unit_cell,
+            dirs=dirs,
+            diagonal_only=diagonal_only,
+            fixed_shape=fixed_shape,
+        )
+
+        if supercells is not None:
+            warnings.warn(
+                "The 'supercells' parameter is deprecated. Give the "
+                "ScelEnum.by_volume parameters directly, or by using "
+                "`**supercells`, instead of using 'supercells'.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            _supercells.update(supercells)
+
+        if motif is not None:
+            import warnings
+
+            warnings.warn(
+                "The 'motif' parameter is deprecated. Use the method "
+                "'ConfigEnumAllOccupations.by_supercell_with_continuous_dof' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            for config in self.by_supercell_with_continuous_dof(
+                source=motif,
+                **_supercells,
+                skip_non_primitive=skip_non_primitive,
+                skip_equivalents=skip_non_canonical,
+            ):
+                yield config
+            return
+
         self._begin()
-        motif = self._set_motif(motif)
         scel_enum = ScelEnum(
             prim=self.prim,
             supercell_set=self.supercell_set,
         )
-        for supercell in scel_enum.by_volume(**supercells):
+        for supercell in scel_enum.by_volume(
+            **_supercells,
+        ):
             sites = set(range(supercell.n_sites))
-            super_configurations = casmconfig.make_distinct_super_configurations(
-                motif=motif, supercell=supercell
-            )
-            for background in super_configurations:
-                for config in self._by_site(
-                    background=background,
-                    sites=sites,
-                    skip_non_primitive=skip_non_primitive,
-                    skip_non_canonical=skip_non_canonical,
-                    use_background_invariant_group=False,
-                ):
-                    yield config
+            default_config = casmconfig.Configuration(supercell)
+            for config in self._by_site(
+                background=default_config,
+                sites=sites,
+                skip_non_primitive=skip_non_primitive,
+                skip_equivalents=skip_non_canonical,
+                use_background_invariant_group=False,
+            ):
+                yield config
 
     def by_supercell_list(
         self,
         supercells: list[casmconfig.Supercell],
-        motif: Optional[casmconfig.Configuration] = None,
         skip_non_primitive: bool = True,
         skip_non_canonical: bool = True,
     ):
@@ -265,14 +409,6 @@ class ConfigEnumAllOccupations:
         ----------
         supercells: list[casmconfig.Supercell]
             An explicit list of supercells in which to perform enumeration.
-        motif: Optional[casmconfig.Configuration] = None
-            The background configuration on which enumeration takes place. The motif is
-            filled into each supercell using
-            :func:`~libcasm.configuration.make_distinct_super_configurations`. If the
-            motif does not tile exactly into a supercell that supercell is skipped.
-            Providing a motif allows enumerating all occupations with other degrees of
-            freedom (DoF) fixed. If None, the default configuration in the volume 1
-            supercell is used.
         skip_non_primitive: bool = True
             If True, enumeration skips non-primitive configurations. All DoF are
             included in the check for primitive configurations.
@@ -287,28 +423,119 @@ class ConfigEnumAllOccupations:
             A :class:`~casmconfig.Configuration`.
         """
         self._begin()
-        motif = self._set_motif(motif)
         for supercell in supercells:
+            if self.supercell_set is not None:
+                self.supercell_set.add_supercell(supercell)
             sites = set(range(supercell.n_sites))
-            super_configurations = casmconfig.make_distinct_super_configurations(
-                motif=motif, supercell=supercell
-            )
-            for background in super_configurations:
-                for config in self._by_site(
-                    background=background,
-                    sites=sites,
-                    skip_non_primitive=skip_non_primitive,
-                    skip_non_canonical=skip_non_canonical,
-                    use_background_invariant_group=False,
-                ):
-                    yield config
+            default_config = casmconfig.Configuration(supercell)
+            for config in self._by_site(
+                background=default_config,
+                sites=sites,
+                skip_non_primitive=skip_non_primitive,
+                skip_equivalents=skip_non_canonical,
+                use_background_invariant_group=False,
+            ):
+                yield config
+
+    def by_supercell_with_continuous_dof(
+        self,
+        source: casmconfig.Configuration,
+        max: int,
+        min: int = 1,
+        unit_cell: Optional[np.ndarray] = None,
+        dirs: str = "abc",
+        diagonal_only: bool = False,
+        fixed_shape: bool = False,
+        skip_non_primitive: bool = True,
+        skip_equivalents: bool = True,
+    ):
+        """Enumerate all occupations in a series of enumerated supercells, with
+        non-default continuous DoF
+
+        Parameters
+        ----------
+        source: casmconfig.Configuration
+            Any global continuous DoF from `source` are set to the same value in all
+            generated supercells. Any local continuous DoF of `source` are filled into
+            each supercell using :func:`~libcasm.configuration.copy_configuration`. If
+            `source` does not tile exactly into a supercell in its canonical form, or
+            any equivalent supercell with respect to the prim factor group, then that
+            supercell is skipped.
+        max: Optional[int] = None
+            The maximum volume superlattice to enumerate. The volume is measured
+            relative the unit cell being used to generate supercells (i.e. the
+            determinant of the `unit_cell` parameter). Is required if `supercells` is
+            None.
+        min: int = 1
+            The minimum volume superlattice to enumerate. The volume is measured
+            relative the unit cell being used to generate supercells.
+        dirs: str = "abc"
+            A string indicating which lattice vectors to enumerate over. Some
+            combination of 'a', 'b', and 'c', where 'a' indicates the first lattice
+            vector of the unit cell, 'b' the second, and 'c' the third.
+        unit_cell: Optional[np.ndarray] = None,
+            An integer shape=(3,3) transformation matrix `U` allows specifying an
+            alternative unit cell that can be used to generate superlattices of the
+            form `S = (L @ U) @ T`. If None, `U` is set to the identity matrix.
+        diagonal_only: bool = False
+            If true, restrict :math:`T` to diagonal matrices.
+        fixed_shape: bool = False
+            If true, restrict :math:`T` to diagonal matrices with diagonal coefficients
+            :math:`[m, 1, 1]` (1d), :math:`[m, m, 1]` (2d), or :math:`[m, m, m]` (3d),
+            where the dimension is determined from `len(dirs)`.
+        skip_non_primitive: bool = True
+            If True, enumeration skips non-primitive configurations. All DoF are
+            included in the check for primitive configurations.
+        skip_equivalents: bool = True
+            If True, enumeration skips non-unique configurations with respect
+            to the subgroup that leaves the supercell lattice vectors
+            and continuous DoF of the background configuration invariant.
+
+        Yields
+        ------
+        config: casmconfig.Configuration
+            A :class:`~casmconfig.Configuration`.
+        """
+        self._begin()
+        supercells = dict(
+            max=max,
+            min=min,
+            unit_cell=unit_cell,
+            dirs=dirs,
+            diagonal_only=diagonal_only,
+            fixed_shape=fixed_shape,
+        )
+        super_backgrounds = self._make_super_backgrounds(
+            background=source,
+            supercells=supercells,
+        )
+
+        # Get continuous DoF
+        which_dofs = set()
+        for _global_dof in self.prim.xtal_prim.global_dof():
+            which_dofs.add(_global_dof.dofname())
+        for _sublattice_dof in self.prim.xtal_prim.local_dof():
+            for _local_dof in _sublattice_dof:
+                which_dofs.add(_local_dof.dofname())
+
+        for super_background in super_backgrounds:
+            sites = set(range(super_background.supercell.n_sites))
+            for config in self._by_site(
+                background=super_background,
+                sites=sites,
+                skip_non_primitive=skip_non_primitive,
+                skip_equivalents=skip_equivalents,
+                use_background_invariant_group=True,
+                which_dofs=which_dofs,
+            ):
+                yield config
 
     def by_linear_site_indices(
         self,
         background: casmconfig.Configuration,
         sites: set[int],
         skip_non_primitive: bool = False,
-        skip_non_canonical: bool = False,
+        skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         specified sites
@@ -323,8 +550,8 @@ class ConfigEnumAllOccupations:
         skip_non_primitive: bool = False
             If True, enumeration skips non-primitive configurations. All DoF are
             included in the check for primitive configurations.
-        skip_non_canonical: bool = False
-            If True, enumeration skips non-canonical configurations with respect
+        skip_equivalents: bool = True
+            If True, enumeration skips equivalent configurations with respect
             to the subgroup that leaves the background configuration invariant
             and does not mix the given sites and other sites.
 
@@ -338,7 +565,7 @@ class ConfigEnumAllOccupations:
             background=background,
             sites=sites,
             skip_non_primitive=skip_non_primitive,
-            skip_non_canonical=skip_non_canonical,
+            skip_equivalents=skip_equivalents,
             use_background_invariant_group=True,
         ):
             yield config
@@ -348,7 +575,7 @@ class ConfigEnumAllOccupations:
         background: casmconfig.Configuration,
         sites: list[xtal.IntegralSiteCoordinate],
         skip_non_primitive: bool = False,
-        skip_non_canonical: bool = False,
+        skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         specified sites
@@ -363,8 +590,8 @@ class ConfigEnumAllOccupations:
         skip_non_primitive: bool = False
             If True, enumeration skips non-primitive configurations. All DoF are
             included in the check for primitive configurations.
-        skip_non_canonical: bool = False
-            If True, enumeration skips non-canonical configurations with respect
+        skip_equivalents: bool = True
+            If True, enumeration skips equivalent configurations with respect
             to the subgroup that leaves the background configuration invariant
             and does not mix the given sites and other sites.
 
@@ -380,7 +607,7 @@ class ConfigEnumAllOccupations:
             background=background,
             sites=site_indices,
             skip_non_primitive=skip_non_primitive,
-            skip_non_canonical=skip_non_canonical,
+            skip_equivalents=skip_equivalents,
             use_background_invariant_group=True,
         ):
             yield config
@@ -391,7 +618,7 @@ class ConfigEnumAllOccupations:
         sublats: set[int],
         supercells: Optional[dict] = None,
         skip_non_primitive: bool = True,
-        skip_non_canonical: bool = True,
+        skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         specified sublattices
@@ -407,14 +634,15 @@ class ConfigEnumAllOccupations:
             If not None, occupation enumeration only occurs on the specified
             sublattices.
         supercells: Optional[dict] = None
-            Parameters to forward to ScelEnum, to specify the supercells that the
-            background configuration will be filled into. If None, only the
-            exact background configuration is perturbed.
+            Parameters to forward to
+            :func:`ScelEnum.by_volume <libcasm.enumerate.ScelEnum.by_volume>`
+            to specify the supercells that the background configuration will be filled
+            into. If None, only the exact background configuration is perturbed.
         skip_non_primitive: bool = False
             If True, enumeration skips non-primitive configurations. All DoF are
             included in the check for primitive configurations.
-        skip_non_canonical: bool = False
-            If True, enumeration skips non-canonical configurations with respect
+        skip_equivalents: bool = True
+            If True, enumeration skips equivalent configurations with respect
             to the subgroup that leaves the background configuration invariant
             and does not mix the selected sublattice sites and other sites.
 
@@ -424,25 +652,20 @@ class ConfigEnumAllOccupations:
             A :class:`~casmconfig.Configuration`.
         """
         self._begin()
-        supercell_list = self._make_supercell_list(
+        super_backgrounds = self._make_super_backgrounds(
             background=background,
             supercells=supercells,
         )
-
-        for supercell in supercell_list:
-            sublat_sites = _make_sublat_sites(supercell, sublats)
-            super_backgrounds = casmconfig.make_distinct_super_configurations(
-                motif=background, supercell=supercell
-            )
-            for super_background in super_backgrounds:
-                for config in self._by_site(
-                    background=super_background,
-                    sites=sublat_sites,
-                    skip_non_primitive=skip_non_primitive,
-                    skip_non_canonical=skip_non_canonical,
-                    use_background_invariant_group=True,
-                ):
-                    yield config
+        for super_background in super_backgrounds:
+            sublat_sites = _make_sublat_sites(super_background.supercell, sublats)
+            for config in self._by_site(
+                background=super_background,
+                sites=sublat_sites,
+                skip_non_primitive=skip_non_primitive,
+                skip_equivalents=skip_equivalents,
+                use_background_invariant_group=True,
+            ):
+                yield config
 
     def by_cluster(
         self,
@@ -450,7 +673,7 @@ class ConfigEnumAllOccupations:
         cluster_specs: dict,
         supercells: Optional[dict] = None,
         skip_non_primitive: bool = False,
-        skip_non_canonical: bool = False,
+        skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         specified clusters
@@ -470,14 +693,15 @@ class ConfigEnumAllOccupations:
             generated by filling `background` into the supercells specified by the
             `supercells` parameter.
         supercells: Optional[dict] = None
-            Parameters to forward to ScelEnum, to specify the supercells that the
-            background configuration will be filled into. If None, only the exact
-            background configuration is perturbed.
+            Parameters to forward to
+            :func:`ScelEnum.by_volume <libcasm.enumerate.ScelEnum.by_volume>`
+            to specify the supercells that the background configuration will be filled
+            into. If None, only the exact background configuration is perturbed.
         skip_non_primitive: bool = False
             If True, enumeration skips non-primitive configurations. All DoF are
             included in the check for primitive configurations.
-        skip_non_canonical: bool = False
-            If True, enumeration skips non-canonical configurations with respect
+        skip_equivalents: bool = True
+            If True, enumeration skips equivalent configurations with respect
             to the subgroup that leaves the background configuration invariant
             and does not mix the cluster sites and other sites.
 
@@ -487,7 +711,7 @@ class ConfigEnumAllOccupations:
             A :class:`~casmconfig.Configuration`.
         """
         self._begin()
-        supercell_list = self._make_supercell_list(
+        super_backgrounds = self._make_super_backgrounds(
             background=background,
             supercells=supercells,
         )
@@ -500,24 +724,20 @@ class ConfigEnumAllOccupations:
         )
         orbits = cspecs.make_orbits()
 
-        for supercell in supercell_list:
-            super_backgrounds = casmconfig.make_distinct_super_configurations(
-                motif=background, supercell=supercell
+        for super_background in super_backgrounds:
+            distinct_cluster_sites = make_distinct_cluster_sites(
+                configuration=super_background,
+                orbits=orbits,
             )
-            for super_background in super_backgrounds:
-                distinct_cluster_sites = make_distinct_cluster_sites(
-                    configuration=super_background,
-                    orbits=orbits,
-                )
-                for cluster_sites in distinct_cluster_sites:
-                    for config in self._by_site(
-                        background=super_background,
-                        sites=cluster_sites,
-                        skip_non_primitive=skip_non_primitive,
-                        skip_non_canonical=skip_non_canonical,
-                        use_background_invariant_group=True,
-                    ):
-                        yield config
+            for cluster_sites in distinct_cluster_sites:
+                for config in self._by_site(
+                    background=super_background,
+                    sites=cluster_sites,
+                    skip_non_primitive=skip_non_primitive,
+                    skip_equivalents=skip_equivalents,
+                    use_background_invariant_group=True,
+                ):
+                    yield config
 
     def by_cluster_list(
         self,
@@ -525,7 +745,7 @@ class ConfigEnumAllOccupations:
         clusters: list[casmclust.Cluster],
         supercells: Optional[dict] = None,
         skip_non_primitive: bool = False,
-        skip_non_canonical: bool = False,
+        skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         an explicitly provided list of clusters
@@ -542,14 +762,15 @@ class ConfigEnumAllOccupations:
             those orbits within the background configurations generated by filling
             the supercells specified by the `supercells` parameter.
         supercells: Optional[dict] = None
-            Parameters to forward to ScelEnum, to specify the supercells that the
-            background configuration will be filled into. If None, only the exact
-            background configuration is perturbed.
+            Parameters to forward to
+            :func:`ScelEnum.by_volume <libcasm.enumerate.ScelEnum.by_volume>`
+            to specify the supercells that the background configuration will be filled
+            into. If None, only the exact background configuration is perturbed.
         skip_non_primitive: bool = False
             If True, enumeration skips non-primitive configurations. All DoF are
             included in the check for primitive configurations.
-        skip_non_canonical: bool = False
-            If True, enumeration skips non-canonical configurations with respect
+        skip_equivalents: bool = True
+            If True, enumeration skips equivalent configurations with respect
             to the subgroup that leaves the background configuration invariant
             and does not mix the cluster sites and other sites.
 
@@ -559,7 +780,7 @@ class ConfigEnumAllOccupations:
             A :class:`~casmconfig.Configuration`.
         """
         self._begin()
-        supercell_list = self._make_supercell_list(
+        super_backgrounds = self._make_super_backgrounds(
             background=background,
             supercells=supercells,
         )
@@ -575,21 +796,17 @@ class ConfigEnumAllOccupations:
                 orbit_prototypes.append(orbit[0])
                 orbits.append(orbit)
 
-        for supercell in supercell_list:
-            super_backgrounds = casmconfig.make_distinct_super_configurations(
-                motif=background, supercell=supercell
+        for super_background in super_backgrounds:
+            distinct_cluster_sites = make_distinct_cluster_sites(
+                configuration=super_background,
+                orbits=orbits,
             )
-            for super_background in super_backgrounds:
-                distinct_cluster_sites = make_distinct_cluster_sites(
-                    configuration=super_background,
-                    orbits=orbits,
-                )
-                for cluster_sites in distinct_cluster_sites:
-                    for config in self._by_site(
-                        background=super_background,
-                        sites=cluster_sites,
-                        skip_non_primitive=skip_non_primitive,
-                        skip_non_canonical=skip_non_canonical,
-                        use_background_invariant_group=True,
-                    ):
-                        yield config
+            for cluster_sites in distinct_cluster_sites:
+                for config in self._by_site(
+                    background=super_background,
+                    sites=cluster_sites,
+                    skip_non_primitive=skip_non_primitive,
+                    skip_equivalents=skip_equivalents,
+                    use_background_invariant_group=True,
+                ):
+                    yield config

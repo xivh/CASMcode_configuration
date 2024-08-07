@@ -15,16 +15,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Changed the `by_supercell` and `by_supercell_list` methods of `libcasm.enumerate.ConfigEnumAllOccupations` to use the complete set of SupercellSymOp when checking canonical form instead of the subgroup that leaves the background invariant. This change allows enumerating all unique configurations when the default configuration has a smaller factor group than the prim.
+- Changed the `by_supercell` and `by_supercell_list` methods of `libcasm.enumerate.ConfigEnumAllOccupations` to only do default continuous DoF. 
+- Changed the `skip_non_canonical` parameter of the `by_linear_site_indices`, `by_integral_site_coordinate`, `by_sublattice`, `by_cluster`, and `by_cluster_list` methods of `libcasm.enumerate.ConfigEnumAllOccupations` to `skip_equivalents`.
+- Changed `ConfigEnumAllOccupations` methods that take a `background` configuration to maintain the orientation of continuous DoF.
 - Changed `ClusterSpecs.from_dict` to allow reading CASM v1 cluster specs JSON by checking for a "params" attribute and parsing that if it exists.
 - Changed `ClusterSpecs.from_dict` to warn if the prim has local DoF but no `"orbit_branch_specs"` attribute is present.
 
 ### Added
 
 - Added option to include phenomenal site to local-cluster site distances by passing the phenomenal cluster to `libcasm.clusterography.Cluster.to_dict`.
-- Added `libcasm.configuration.Supercell.configuration_symgroup_rep`.
+- Added `libcasm.configuration.Supercell.symgroup_rep`.
 - Added copy methods for `libcasm.configuration.SupercellSymOp`.
-
+- Added `Configuration.copy`, `ConfigurationWithProperties.copy`, `SupercellRecord.copy`, `ConfigurationRecord.copy`, `Cluster.copy`, and `OccEvent.copy` methods.
+- Added `libcasm.configuration.copy_local_dof_values` and `libcasm.configuration.copy_global_dof_values`
+- Added `which_dofs` parameter to `libcasm.configuration.make_invariant_subgroup`
+- Added `libcasm.enumerate.SuperConfigEnum`
+- Added `libcasm.ConfigEnumAllOccupations.by_supercell_with_continuous_dof`
+- Added `__repr__` for `Cluster`, `ClusterOrbitGenerator`, and `ClusterSpecs`.
 
 ## [2.0a4] - 2024-07-16
 
