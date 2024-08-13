@@ -2,7 +2,6 @@ import copy
 from typing import Optional, TypeVar, Union
 
 import numpy as np
-import numpy.typing as npt
 
 import libcasm.casmglobal
 import libcasm.clexulator as casmclex
