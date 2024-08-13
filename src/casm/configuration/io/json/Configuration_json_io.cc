@@ -206,6 +206,19 @@ void _parse_properties(
   }
 }
 
+/// \brief Check if JSON-formatted Configuration DoF values are in the prim
+/// basis
+///
+/// Notes:
+/// - If "basis": "prim", DoF values are in the prim basis -> return true
+/// - If "basis": "standard", DoF values are in the standard basis -> return
+/// false
+/// - If "basis" is something else, return false and insert an error message
+/// - If "basis" is not present, assume DoF values are in the standard basis ->
+/// return false
+///
+/// \returns True, if the Configuration DoF values stored in `json` are
+///     expressed in the prim basis; return false otherwwise.
 bool get_read_prim_basis(Validator &validator, jsonParser const &json,
                          std::string what) {
   bool read_prim_basis = false;
@@ -239,7 +252,7 @@ clexulator::ConfigDoFValues read_dof_values(
                       supercell->unitcell_index_converter.total_sites(),
                       prim.basicstructure->basis().size(), prim.global_dof_info,
                       prim.local_dof_info, !read_prim_basis);
-  if (read_prim_basis) {
+  if (!read_prim_basis) {
     dof_values = clexulator::from_standard_values(
         dof_values, prim.basicstructure->basis().size(),
         supercell->unitcell_index_converter.total_sites(), prim.global_dof_info,
@@ -421,6 +434,7 @@ jsonMake<config::Configuration>::make_from_json(
 /// \param json A jsonParser
 /// \param write_prim_basis If true, write DoF values using the prim basis.
 ///     Default (false) is to write DoF values in the standard basis.
+///     DoF values in `configuration` are expected to be in the prim basis.
 ///
 jsonParser &to_json(config::Configuration const &configuration,
                     jsonParser &json, bool write_prim_basis) {
@@ -434,7 +448,13 @@ jsonParser &to_json(config::Configuration const &configuration,
   json["supercell_name"] = supercell_name;
   json["transformation_matrix_to_supercell"] =
       superlattice.transformation_matrix_to_super();
-  json["dof"] = configuration.dof_values;
+  if (write_prim_basis) {
+    json["basis"] = "prim";
+    to_json(configuration.dof_values, json["dof"]);
+  } else {
+    json["basis"] = "standard";
+    to_json(make_standard_dof_values(configuration), json["dof"]);
+  }
 
   return json;
 }
