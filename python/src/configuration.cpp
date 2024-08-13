@@ -25,6 +25,7 @@
 #include "casm/configuration/dof_space_analysis.hh"
 #include "casm/configuration/io/json/Configuration_json_io.hh"
 #include "casm/configuration/io/json/Supercell_json_io.hh"
+#include "casm/configuration/io/json/analysis_json_io.hh"
 #include "casm/configuration/irreps/VectorSpaceSymReport.hh"
 #include "casm/configuration/make_simple_structure.hh"
 #include "casm/crystallography/SimpleStructure.hh"
@@ -540,6 +541,16 @@ PYBIND11_MODULE(_configuration, m) {
               The `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_ documents the expected format.
 
           )pbdoc")
+      .def("__repr__",
+           [](std::shared_ptr<config::Prim const> const &prim) {
+             std::stringstream ss;
+             jsonParser json;
+             COORD_TYPE mode = FRAC;
+             bool include_va = false;
+             write_prim(*prim->basicstructure, json, mode, include_va);
+             ss << json;
+             return ss.str();
+           })
       .def_static("from_json", &prim_from_json,
                   R"pbdoc(
           Construct a Prim from a JSON-formatted string.
@@ -568,6 +579,48 @@ PYBIND11_MODULE(_configuration, m) {
       pySupercellSet(m, "SupercellSet",
                      R"pbdoc(
       Data structure for holding / reading / writing supercells.
+
+      Supercell objects hold the symmetry representations needed for applying symmetry
+      to :class:`~libcasm.configuration.Configuration` in that supercell. Since the
+      same symmetry representations apply to all configurations in a particular
+      supercell, a single shared :class:`~libcasm.configuration.Supercell` can be
+      used for all configurations in that supercell. The SupercellSet is a container
+      for storing and accessing these supercells, so that when a new
+      configuration is constructed in an already existing supercell, that supercell can
+      be found and shared.
+
+      The SupercellSet holds :class:`~libcasm.configuration.SupercellRecord`, each of
+      which contains a unique shared Supercell as well as its name, whether it is in
+      `canonical form <https://prisms-center.github.io/CASMcode_pydocs/libcasm/xtal/2.0/usage/lattice.html#lattice-canonical-form>`_,
+      and the name of the canonical equivalent supercell. Supercells
+      which are distinct (have different `transformation_matrix_to_super`) but
+      symmetrically equivalent (lattice points are mapped by a crystal group operation)
+      may be stored as separate SupercellRecord in the same SupercellSet.
+
+      SupercellRecord can be added directly, by the shared Supercell, by
+      transformation matrix, or by the canonical equivalent supercell name.
+      When an attempt is made to add a SupercellRecord that is already in the
+      SupercellSet, the existing SupercellRecord is returned.
+
+      .. rubric:: Special Methods
+
+      Additional methods:
+
+      - ``for record in supercell_set``: Iterate over SupercellRecord in the
+        SupercellSet
+      - ``if record in supercell_set``: Check if a
+        :class:`~libcasm.configuration.SupercellRecord` is in the SupercellSet
+      - ``if supercell in supercell_set``: Check if a
+        :class:`~libcasm.configuration.Supercell` is in the SupercellSet
+      - ``if transformation_matrix_to_super in supercell_set``: Check if a
+        :class:`~libcasm.configuration.Supercell` with `transformation_matrix_to_super`
+        (``np.ndarray[np.int[3,3]]``) is in the SupercellSet
+      - ``if canonical_supercell_name in supercell_set``: Check if a canonical
+        :class:`~libcasm.configuration.Supercell` with name
+        `canonical_supercell_name` (``str``) is in the SupercellSet.
+      - ``len(supercell_set)``: Return the number of SupercellRecord in the
+        SupercellSet
+
 
       )pbdoc");
 
@@ -743,10 +796,13 @@ PYBIND11_MODULE(_configuration, m) {
       .. rubric:: Special Methods
 
       The multiplication operator (``*``) is overloaded to apply SupercellSymOp
-      to :class:`~libcasm.configuration.Configuration`,
-      :class:`~libcasm.configuration.ConfigurationWithProperties`, and
-      :class:`~libcasm.xtal.IntegralSiteCoordinate`. The result is a new
-      object with the symmetry operation applied.
+      to:
+
+      - :class:`~libcasm.configuration.Configuration`,
+      - :class:`~libcasm.configuration.ConfigurationWithProperties`, and
+      - :class:`~libcasm.xtal.IntegralSiteCoordinate`.
+
+      The result is a new  object with the symmetry operation applied.
 
       .. code-block:: Python
 
@@ -755,17 +811,100 @@ PYBIND11_MODULE(_configuration, m) {
           assert configuration_after is not configuration_before
 
 
-      SupercellSymOp
-        - :meth:`~libcasm.configuration.SupercellSymOp.__call__`:
-          Apply the symmetry operation to a configuration
+      Additional methods:
+
+      - Sort SupercellSymOp using ``<``, ``<=``, ``>``, ``>=``, and compare
+        using ``==`` and ``!=``
+      - SupercellSymOp may be copied with
+        :func:`SupercellSymOp.copy <libcasm.configuration.SupercellSymOp.copy>`,
+        `copy.copy`, or `copy.deepcopy`.
+
       )pbdoc");
+
+  // Configuration -- declare class
+  py::class_<config::Configuration> pyConfiguration(m, "Configuration", R"pbdoc(
+      A data structure encapsulating configuration DoF values and all
+      information necessary to apply supercell factor group operations.
+
+      Notes
+      -----
+
+      - Configuration may be copied with
+        :func:`Configuration.copy <libcasm.configuration.Configuration.copy>`,
+        `copy.copy`, or `copy.deepcopy`.
+
+
+      .. rubric:: Special Methods
+
+      Configuration may be transformed by symmetry operations that leave the
+      supercell unchanged by using the :class:`SupercellSymOp` representation.
+      :class:`SupercellSymOp` can be applied with the multiplication operator
+      (``*``) or :func:`copy_apply` methods to create new transformed
+      configuration, or the :func:`apply` method to transform the configuration
+      in place:
+
+      .. code-block:: Python
+
+            from libcasm.configuration import (
+                Configuration,
+                Supercell,
+                SupercellSymOp,
+                apply,
+                copy_apply,
+            )
+
+            # config: Configuration
+
+            # Apply all combinations of:
+            # - Supercell factor group operations (the prim factor group
+                operations that leave the supercell lattice unchanged), and
+            # - Lattice translations within the supercell
+
+            for rep in config.supercell.symgroup_rep():
+                assert isinstance(rep, SupercellSymOp)
+
+                # option 1: use the multiplication operator
+                transformed_config_1 = rep * config
+                assert transformed_config_1 is not config
+
+                # option 2: use the copy_apply method
+                transformed_config_2 = copy_apply(rep, config)
+                assert transformed_config_2 is not config
+
+                # option 3: copy, then apply rep in-place
+                copied_config = config.copy()
+                assert copied_config is not config
+                transformed_config_3 = apply(rep, copied_config)
+                assert transformed_config_3 is copied_config
+
+      )pbdoc");
+
+  // ConfigurationWithProperties -- declare class
+  py::class_<config::ConfigurationWithProperties> pyConfigurationWithProperties(
+      m, "ConfigurationWithProperties", R"pbdoc(
+      A data structure encapsulating a Configuration along with associated
+      local and global continuous properties.
+
+      Notes
+      -----
+
+      - The format for local and global properties follows the format for local and
+        global continuous degrees of freedom (DoF) in the standard basis, as documented
+        for `ConfigDoFValues <https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/config_dof_values.html>`_
+      - Scalar global properties, such as energy, are stored in a vector like other
+        global properties, and can also be accessed using
+        :func:`~libcasm.configuration.ConfigurationWithProperties.scalar_property`.
+      - ConfigurationWithProperties may be copied with
+        :func:`ConfigurationWithProperties.copy <libcasm.configuration.ConfigurationWithProperties.copy>`,
+        `copy.copy`, or `copy.deepcopy`.
+
+    )pbdoc");
 
   py::class_<config::Supercell, std::shared_ptr<config::Supercell>>(
       m, "Supercell", R"pbdoc(
       A data structure that stores the supercell transformation matrix and
       the symmetry representations needed for applying symmetry to
-      `libcasm.configuration.Configuration` associated with a particular
-      supercell.
+      :class:`~libcasm.configuration.Configuration` in that supercell.
 
       )pbdoc")
       .def(py::init(&make_supercell), py::arg("prim"),
@@ -1210,7 +1349,15 @@ PYBIND11_MODULE(_configuration, m) {
           "reference "
           "<https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/"
           "Configuration/>`_ documents the expected format for Configurations "
-          "and Supercells.");
+          "and Supercells.")
+      .def("__repr__",
+           [](std::shared_ptr<config::Supercell const> const &supercell) {
+             std::stringstream ss;
+             jsonParser json;
+             to_json(supercell, json);
+             ss << json;
+             return ss.str();
+           });
 
   m.def(
       "is_canonical_supercell",
@@ -1242,8 +1389,8 @@ PYBIND11_MODULE(_configuration, m) {
         return make_equivalents(*supercell);
       },
       py::arg("supercell"),
-      "Return a list of supercells with distinct, but symmetrically equivalent "
-      "lattice vectors, using the prim crystal point group.");
+      "Return a list of the supercells with distinct, but symmetrically "
+      "equivalent lattice points, using the prim crystal point group.");
 
   // SupercellRecord -- define functions
   pySupercellRecord
@@ -1280,15 +1427,41 @@ PYBIND11_MODULE(_configuration, m) {
            [](config::SupercellRecord const &self) {
              return config::SupercellRecord(self);
            })
-      .def("__deepcopy__", [](config::SupercellRecord const &self, py::dict) {
-        return config::SupercellRecord(self);
+      .def("__deepcopy__",
+           [](config::SupercellRecord const &self, py::dict) {
+             return config::SupercellRecord(self);
+           })
+      .def("__repr__", [](config::SupercellRecord const &self) {
+        std::stringstream ss;
+        jsonParser json;
+        to_json(self.supercell, json["supercell"]);
+        to_json(self.supercell_name, json["supercell_name"]);
+        to_json(self.canonical_supercell_name,
+                json["canonical_supercell_name"]);
+        to_json(self.is_canonical, json["is_canonical"]);
+        ss << json;
+        return ss.str();
       });
 
   // ConfigurationRecord -- define functions
   pyConfigurationRecord
       .def(py::init<config::Configuration const &, std::string, std::string>(),
            py::arg("configuration"), py::arg("supercell_name"),
-           py::arg("configuration_id"), "Construct a ConfigurationRecord.")
+           py::arg("configuration_id"),
+           R"pbdoc(
+
+          .. rubric:: Constructor
+
+          Parameters
+          ----------
+          configuration: libcasm.configuration.Configuration
+              A :class:`~libcasm.configuration.Configuration`
+          supercell_name: str
+              The supercell name, as from
+              :attr:`SupercellRecord.supercell_name <libcasm.configuration.SupercellRecord.supercell_name>`.
+          configuration_id: str
+              The configuration id.
+          )pbdoc")
       .def_readonly("configuration",
                     &config::ConfigurationRecord::configuration,
                     "The :class:`~libcasm.configuration.Configuration`")
@@ -1322,7 +1495,17 @@ PYBIND11_MODULE(_configuration, m) {
       .def("__deepcopy__",
            [](config::ConfigurationRecord const &self, py::dict) {
              return config::ConfigurationRecord(self);
-           });
+           })
+      .def("__repr__", [](config::ConfigurationRecord const &self) {
+        std::stringstream ss;
+        jsonParser json;
+        to_json(self.configuration, json["configuration"]);
+        to_json(self.supercell_name, json["supercell_name"]);
+        to_json(self.configuration_id, json["configuration_id"]);
+        to_json(self.configuration_name, json["configuration_name"]);
+        ss << json;
+        return ss.str();
+      });
 
   // SupercellSet -- define functions
   pySupercellSet
@@ -2207,85 +2390,6 @@ PYBIND11_MODULE(_configuration, m) {
           )pbdoc",
           py::arg("write_prim_basis") = false);
 
-  // Configuration -- declare class
-  py::class_<config::Configuration> pyConfiguration(m, "Configuration", R"pbdoc(
-      A data structure encapsulating configuration DoF values and all
-      information necessary to apply supercell factor group operations.
-
-      Notes
-      -----
-
-      - Configuration may be copied with
-        :func:`Configuration.copy <libcasm.configuration.Configuration.copy>`,
-        `copy.copy`, or `copy.deepcopy`.
-
-
-      .. rubric:: Special Methods
-
-      Configuration may be transformed by symmetry operations that leave the
-      supercell unchanged by using the :class:`SupercellSymOp` representation.
-      :class:`SupercellSymOp` can be applied with the multiplication operator
-      (``*``) or :func:`copy_apply` methods to create new transformed
-      configuration, or the :func:`apply` method to transform the configuration
-      in place:
-
-      .. code-block:: Python
-
-            from libcasm.configuration import (
-                Configuration,
-                Supercell,
-                SupercellSymOp,
-                apply,
-                copy_apply,
-            )
-
-            # config: Configuration
-
-            # Apply all combinations of:
-            # - Supercell factor group operations (the prim factor group
-                operations that leave the supercell lattice unchanged), and
-            # - Lattice translations within the supercell
-
-            for rep in config.supercell.symgroup_rep():
-                assert isinstance(rep, SupercellSymOp)
-
-                # option 1: use the multiplication operator
-                transformed_config_1 = rep * config
-                assert transformed_config_1 is not config
-
-                # option 2: use the copy_apply method
-                transformed_config_2 = copy_apply(rep, config)
-                assert transformed_config_2 is not config
-
-                # option 3: copy, then apply rep in-place
-                copied_config = config.copy()
-                assert copied_config is not config
-                transformed_config_3 = apply(rep, copied_config)
-                assert transformed_config_3 is copied_config
-
-      )pbdoc");
-
-  // ConfigurationWithProperties -- declare class
-  py::class_<config::ConfigurationWithProperties> pyConfigurationWithProperties(
-      m, "ConfigurationWithProperties", R"pbdoc(
-      A data structure encapsulating a Configuration along with associated
-      local and global continuous properties.
-
-      Notes
-      -----
-
-      - The format for local and global properties follows the format for local and
-        global continuous degrees of freedom (DoF) in the standard basis, as documented
-        for `ConfigDoFValues <https://prisms-center.github.io/CASMcode_pydocs/libcasm/clexulator/2.0/usage/config_dof_values.html>`_
-      - Scalar global properties, such as energy, are stored in a vector like other
-        global properties, and can also be accessed using
-        :func:`~libcasm.configuration.ConfigurationWithProperties.scalar_property`.
-      - ConfigurationWithProperties may be copied with
-        :func:`ConfigurationWithProperties.copy <libcasm.configuration.ConfigurationWithProperties.copy>`,
-        `copy.copy`, or `copy.deepcopy`.
-
-    )pbdoc");
-
   // SupercellSymOp -- define functions
   pySupercellSymOp
       .def(py::init(&make_supercell_symop), py::arg("supercell"),
@@ -2524,8 +2628,37 @@ PYBIND11_MODULE(_configuration, m) {
             return configuration.dof_values.occupation;
           },
           py::return_value_policy::reference_internal,
-          "Returns the site occupation values, as indices into the allowed "
-          "occupants on the corresponding basis site, as a const reference.")
+          R"pbdoc(
+          numpy.ndarray[numpy.float64[n_sites,]]: The site occupation values, as
+          indices into the allowed occupants on the corresponding sites,
+          as a const reference.
+
+          Notes
+          -----
+
+          The :class:`libcasm.configuration.Supercell` provides methods for
+          interpreting the occupation indices and determining the associated
+          site coordinates.
+
+          For example, occupation indices for a Configuration can be converted
+          to occupant DoF names and Cartesian coordinates as specified in
+          :func:`libcasm.xtal.Prim.occ_dof <libcasm.xtal.Prim.occ_dof>` using:
+
+          .. code-block:: Python
+
+              # config: Configuration
+
+              # Get the occupant DoF names at each site
+              supercell_occ_dof = config.supercell.occ_dof()
+              occupation_dof = [
+                  supercell_occ_dof[l][s]
+                  for l, s in enumerate(config.occupation)
+              ]
+
+              # Get site Cartesian coordinate, as columns of a np.ndarray
+              coordinate_cart = config.supercell.coordinate_cart()
+
+          )pbdoc")
       .def(
           "set_occupation",
           [](config::Configuration &configuration,
@@ -2536,7 +2669,7 @@ PYBIND11_MODULE(_configuration, m) {
                   "Error in Configuration.set_occupation: occupation vector "
                   "size may not be changed");
             }
-            return configuration.dof_values.occupation = occupation;
+            configuration.dof_values.occupation = occupation;
           },
           "Sets the site occupation values. Changing the size of the "
           "occupation vector results in an exception.")
@@ -2589,7 +2722,7 @@ PYBIND11_MODULE(_configuration, m) {
               throw std::runtime_error(
                   "Error in set_global_dof_values: size may not be changed");
             }
-            return curr_dof_values = dof_values;
+            curr_dof_values = dof_values;
           },
           py::arg("key"), py::arg("dof_values"),
           "Set global DoF values of type `key`, in the prim basis, using a "
@@ -2649,7 +2782,7 @@ PYBIND11_MODULE(_configuration, m) {
                   "Error in set_local_dof_values: number of cols may not be "
                   "changed");
             }
-            return curr_dof_values = dof_values;
+            curr_dof_values = dof_values;
           },
           py::arg("key"), py::arg("dof_values"),
           "Set local DoF values of type `key`, in the prim basis, using a "
@@ -2806,15 +2939,13 @@ PYBIND11_MODULE(_configuration, m) {
 
           Returns
           -------
-          (dof_space, symmetry_report):
+          dof_space: libcasm.clexulator.DoFSpace
+              A DoFSpace for the specified DoF type. For local DoF, the
+              `transformation_matrix_to_super` of the configuration is used.
 
-              dof_space: libcasm.clexulator.DoFSpace
-                  A DoFSpace for the specified DoF type. For local DoF, the
-                  `transformation_matrix_to_super` of the configuration is used.
-
-              symmetry_report: Optional[libcasm.irreps.VectorSpaceSymReport]
-                  Holds the vector space symmetry report, if `symmetry_adapted`
-                  is True, including irreducible wedge if `calc_wedges` is True.
+          symmetry_report: Optional[libcasm.irreps.VectorSpaceSymReport]
+              Holds the vector space symmetry report, if `symmetry_adapted`
+              is True, including irreducible wedge if `calc_wedges` is True.
 
           )pbdoc",
           py::arg("dof_key"), py::arg("site_indices") = std::nullopt,
@@ -3079,6 +3210,15 @@ PYBIND11_MODULE(_configuration, m) {
               The `Configuration reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/Configuration/>`_ documents the expected format for Configurations."
           )pbdoc",
           py::arg("write_prim_basis") = false)
+      .def("__repr__",
+           [](config::Configuration const &self) {
+             std::stringstream ss;
+             jsonParser json;
+             bool write_prim_basis = true;
+             to_json(self, json, write_prim_basis);
+             ss << json;
+             return ss.str();
+           })
       .def_static(
           "from_structure",
           [](std::shared_ptr<config::Prim const> prim,
@@ -3307,6 +3447,15 @@ PYBIND11_MODULE(_configuration, m) {
               The `Configuration reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/Configuration/>`_ documents the expected format for Configurations."
           )pbdoc",
           py::arg("write_prim_basis") = false)
+      .def("__repr__",
+           [](config::ConfigurationWithProperties const &self) {
+             std::stringstream ss;
+             jsonParser json;
+             bool write_prim_basis = false;
+             to_json(self, json, write_prim_basis);
+             ss << json;
+             return ss.str();
+           })
       .def_static(
           "from_structure",
           [](std::shared_ptr<config::Prim const> prim,
@@ -3522,7 +3671,7 @@ PYBIND11_MODULE(_configuration, m) {
               std::vector<std::string>({"Va", "VA", "va"}));
 
   m.def(
-      "apply",
+      "apply_to_configuration",
       [](config::SupercellSymOp const &op, config::Configuration &configuration)
           -> config::Configuration & { return apply(op, configuration); },
       py::arg("supercell_symop"), py::arg("configuration"),
@@ -3530,7 +3679,7 @@ PYBIND11_MODULE(_configuration, m) {
       "transform the configuration's degree of freedom (DoF) values.");
 
   m.def(
-      "copy_apply",
+      "copy_apply_to_configuration",
       [](config::SupercellSymOp const &op,
          config::Configuration const &configuration) {
         return copy_apply(op, configuration);
@@ -3541,7 +3690,7 @@ PYBIND11_MODULE(_configuration, m) {
       "(DoF) values.");
 
   m.def(
-      "apply",
+      "apply_to_configuration_with_properties",
       [](config::SupercellSymOp const &op,
          config::ConfigurationWithProperties &configuration) {
         return apply(op, configuration);
@@ -3552,7 +3701,7 @@ PYBIND11_MODULE(_configuration, m) {
       "and properties.");
 
   m.def(
-      "copy_apply",
+      "copy_apply_to_configuration_with_properties",
       [](config::SupercellSymOp const &op,
          config::ConfigurationWithProperties const &configuration) {
         return copy_apply(op, configuration);
@@ -3563,7 +3712,7 @@ PYBIND11_MODULE(_configuration, m) {
       "(DoF) values and properties.");
 
   m.def(
-      "apply",
+      "apply_to_integral_site_coordinate",
       [](config::SupercellSymOp const &op,
          xtal::UnitCellCoord &integral_site_coordinate) {
         return apply(op, integral_site_coordinate);
@@ -3573,7 +3722,7 @@ PYBIND11_MODULE(_configuration, m) {
       "transform `integral_site_coordinate`.");
 
   m.def(
-      "copy_apply",
+      "copy_apply_to_integral_site_coordinate",
       [](config::SupercellSymOp const &op,
          xtal::UnitCellCoord const &integral_site_coordinate) {
         return copy_apply(op, integral_site_coordinate);
@@ -3694,33 +3843,53 @@ PYBIND11_MODULE(_configuration, m) {
 
   m.def(
       "make_invariant_subgroup",
-      [](config::Configuration const &configuration,
+      [](std::optional<std::reference_wrapper<config::Configuration const>>
+             configuration,
          std::optional<std::set<Index>> site_indices,
          std::optional<std::vector<config::SupercellSymOp>> group,
          std::set<std::string> which_dofs) {
+        if (!configuration.has_value() && !site_indices.has_value()) {
+          throw std::runtime_error(
+              "Error in make_invariant_subgroup: "
+              "`configuration`, `site_indices`, or both must be provided.");
+        }
+
+        if (!configuration.has_value()) {
+          if (group.has_value()) {
+            return make_invariant_subgroup(site_indices.value(), group->begin(),
+                                           group->end());
+          } else {
+            auto supercell = group->begin()->supercell();
+            auto begin = config::SupercellSymOp::begin(supercell);
+            auto end = config::SupercellSymOp::end(supercell);
+            return make_invariant_subgroup(site_indices.value(), begin, end);
+          }
+        }
+
         if (!site_indices.has_value()) {
           if (group.has_value()) {
-            return make_invariant_subgroup(configuration, group->begin(),
+            return make_invariant_subgroup(configuration->get(), group->begin(),
                                            group->end(), which_dofs);
           } else {
-            auto const &supercell = configuration.supercell;
+            auto const &supercell = configuration->get().supercell;
             auto begin = config::SupercellSymOp::begin(supercell);
             auto end = config::SupercellSymOp::end(supercell);
-            return make_invariant_subgroup(configuration, begin, end,
+            return make_invariant_subgroup(configuration->get(), begin, end,
                                            which_dofs);
           }
+        }
+
+        if (group.has_value()) {
+          return make_invariant_subgroup(configuration->get(),
+                                         site_indices.value(), group->begin(),
+                                         group->end(), which_dofs);
         } else {
-          if (group.has_value()) {
-            return make_invariant_subgroup(configuration, site_indices.value(),
-                                           group->begin(), group->end(),
-                                           which_dofs);
-          } else {
-            auto const &supercell = configuration.supercell;
-            auto begin = config::SupercellSymOp::begin(supercell);
-            auto end = config::SupercellSymOp::end(supercell);
-            return make_invariant_subgroup(configuration, site_indices.value(),
-                                           begin, end, which_dofs);
-          }
+          auto const &supercell = configuration->get().supercell;
+          auto begin = config::SupercellSymOp::begin(supercell);
+          auto end = config::SupercellSymOp::end(supercell);
+          return make_invariant_subgroup(configuration->get(),
+                                         site_indices.value(), begin, end,
+                                         which_dofs);
         }
       },
       py::arg("configuration"), py::arg("site_indices") = std::nullopt,
@@ -3728,14 +3897,15 @@ PYBIND11_MODULE(_configuration, m) {
       py::arg("which_dofs") = std::set<std::string>({"all"}),
       R"pbdoc(
       Return the group of :class:`~libcasm.configuration.SupercellSymOp`
-      that leaves a configuration invariant.
+      that leaves a configuration and/or sites invariant.
 
       Parameters
       ----------
-      configuration: libcasm.configuration.Configuration
-          The :class:`~libcasm.configuration.Configuration`.
+      configuration: Optional[libcasm.configuration.Configuration] = None
+          If `configuration` is provided, the subgroup is restricted such that
+          :class:`~libcasm.configuration.Configuration` is left invariant.
       site_indices: Optional[set[int]] = None
-          If `site_indices` are provided (a set of linear index of sites in the
+          If `site_indices` is provided (a set of linear index of sites in the
           supercell), the subgroup is restricted such that it does not mix the
           given sites and other sites.
       group: Optional[list[libcasm.configuration.SupercellSymOp]] = None
@@ -3751,28 +3921,6 @@ PYBIND11_MODULE(_configuration, m) {
       invariant_subgroup: list[libcasm.configuration.SupercellSymOp]
           The subgroup that leaves the configuration invariant.
       )pbdoc");
-
-  m.def(
-      "make_invariant_subgroup",
-      [](std::set<Index> site_indices,
-         std::optional<std::vector<config::SupercellSymOp>> group) {
-        if (group.has_value()) {
-          return make_invariant_subgroup(site_indices, group->begin(),
-                                         group->end());
-        } else {
-          auto supercell = group->begin()->supercell();
-          auto begin = config::SupercellSymOp::begin(supercell);
-          auto end = config::SupercellSymOp::end(supercell);
-          return make_invariant_subgroup(site_indices, begin, end);
-        }
-      },
-      py::arg("site_indices"), py::arg("group") = std::nullopt,
-      "Return the subgroup (as a List[libcasm.configuration.SupercellSymOp]) "
-      "that does not mix the given sites (a set of linear index of sites in "
-      "the supercell) and other sites. By default, the subgroup is found "
-      "with "
-      "respect to the supercell factor group. Optionally, another `group` "
-      "(itself a subgroup of the supercell factor group) may be provided.");
 
   m.def(
       "make_equivalent_configurations",
@@ -4100,7 +4248,22 @@ PYBIND11_MODULE(_configuration, m) {
           "symmetry_adapted_dof_space",
           &config::ConfigSpaceAnalysisResults::symmetry_adapted_dof_space,
           ":class:`~libcasm.clexulator.DoFSpace`: Symmetry-adapted config "
-          "space, with basis formed by eigenvectors of P.");
+          "space, with basis formed by eigenvectors of P.")
+      .def(
+          "to_dict",
+          [](config::ConfigSpaceAnalysisResults const &self) {
+            jsonParser json;
+            to_json(self, json);
+            return static_cast<nlohmann::json>(json);
+          },
+          R"pbdoc(
+          Represent the ConfigSpaceAnalysisResults as a Python dict
+
+          Returns
+          -------
+          data : json
+              The ConfigSpaceAnalysisResults as a Python dict
+          )pbdoc");
 
   m.def("config_space_analysis", &config::config_space_analysis,
         R"pbdoc(
@@ -4182,7 +4345,29 @@ PYBIND11_MODULE(_configuration, m) {
       .def_readonly("symmetry_report",
                     &config::DoFSpaceAnalysisResults::symmetry_report,
                     ":class:`~libcasm.irreps.VectorSpaceSymReport`: Holds the "
-                    "irreducible space decomposition");
+                    "irreducible space decomposition")
+      .def(
+          "to_dict",
+          [](config::DoFSpaceAnalysisResults const &self) {
+            jsonParser json;
+            to_json(self, json);
+            return static_cast<nlohmann::json>(json);
+          },
+          R"pbdoc(
+          Represent the DoFSpaceAnalysisResults as a Python dict
+
+          Returns
+          -------
+          data : json
+              The DoFSpaceAnalysisResults as a Python dict
+          )pbdoc")
+      .def("__repr__", [](config::DoFSpaceAnalysisResults const &self) {
+        std::stringstream ss;
+        jsonParser json;
+        to_json(self, json);
+        ss << json;
+        return ss.str();
+      });
 
   m.def(
       "dof_space_analysis",

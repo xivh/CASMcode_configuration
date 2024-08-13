@@ -11,9 +11,7 @@ from ._configuration import (
     SupercellRecord,
     SupercellSet,
     SupercellSymOp,
-    apply,
     config_space_analysis,
-    copy_apply,
     copy_configuration,
     copy_transformed_configuration,
     dof_space_analysis,
@@ -34,6 +32,10 @@ from ._configuration import (
     make_local_dof_matrix_rep,
     make_primitive_configuration,
     to_canonical_configuration,
+)
+from ._methods import (
+    apply,
+    copy_apply,
 )
 from ._misc import (
     equivalent_order_parameters_index,
