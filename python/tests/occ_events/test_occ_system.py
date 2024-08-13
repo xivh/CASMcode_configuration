@@ -44,3 +44,17 @@ def test_OccSystem_to_from_dict():
     assert system_in.chemical_name_list() == ["A", "B", "Va"]
     assert system_in.is_vacancy_list() == [False, False, True]
     assert system_in.orientation_name_list() == ["A", "B", "Va"]
+
+
+def test_OccSystem_repr():
+    prim = xtal_prims.FCC(a=1.0, occ_dof=["A", "B", "Va"])
+    system = OccSystem(prim)
+
+    import io
+    from contextlib import redirect_stdout
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(system)
+    out = f.getvalue()
+    assert "atom_name_list" in out

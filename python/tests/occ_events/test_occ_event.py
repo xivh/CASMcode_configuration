@@ -219,3 +219,27 @@ def test_get_occevent_coordinate(shared_datadir):
         unitcell_index_converter=supercell.unitcell_index_converter,
     )
     assert equivalent_index == 1
+
+
+def test_OccEvent_repr(fcc_1NN_A_Va_event):
+    prim, occ_event = fcc_1NN_A_Va_event
+
+    import io
+    from contextlib import redirect_stdout
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(occ_event)
+    out = f.getvalue()
+    assert "trajectories" in out
+
+    print(occ_event)
+
+    # Also test OccPosition.__repr__
+    for traj in occ_event.trajectories():
+        for pos in traj:
+            f = io.StringIO()
+            with redirect_stdout(f):
+                print(pos)
+            out = f.getvalue()
+            assert "coordinate" in out

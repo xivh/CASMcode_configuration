@@ -10,6 +10,7 @@
 
 // CASM
 #include "casm/casm_io/Log.hh"
+#include "casm/casm_io/container/json_io.hh"
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/clusterography/ClusterSpecs.hh"
@@ -224,6 +225,14 @@ PYBIND11_MODULE(_occ_events, m) {
             return static_cast<nlohmann::json>(json);
           },
           "Represent the OccSystem as a Python dict.")
+      .def("__repr__",
+           [](occ_events::OccSystem const &m) {
+             std::stringstream ss;
+             jsonParser json;
+             to_json(m, json);
+             ss << json;
+             return ss.str();
+           })
       .def(
           "get_chemical_name",
           [](occ_events::OccSystem const &self,
@@ -349,6 +358,22 @@ PYBIND11_MODULE(_occ_events, m) {
           [](occ_events::OccPosition const &pos) { return pos.occupant_index; },
           "If is_atom() is True and is_in_reservoir() is False: Index of atom "
           "position in the indicated occupant molecule.")
+      .def(
+          "copy",
+          [](occ_events::OccPosition const &self) {
+            return occ_events::OccPosition(self);
+          },
+          R"pbdoc(
+          Returns a copy of the OccPosition.
+          )pbdoc")
+      .def("__copy__",
+           [](occ_events::OccPosition const &self) {
+             return occ_events::OccPosition(self);
+           })
+      .def("__deepcopy__",
+           [](occ_events::OccPosition const &self, py::dict) {
+             return occ_events::OccPosition(self);
+           })
       .def_static(
           "from_dict",
           [](const nlohmann::json &data,
@@ -393,9 +418,16 @@ PYBIND11_MODULE(_occ_events, m) {
           Returns
           -------
           data : dict
-              The OccEvent as a Python dict
+              The OccPosition as a Python dict
           )pbdoc",
-          py::arg("system"));
+          py::arg("system"))
+      .def("__repr__", [](occ_events::OccPosition const &pos) {
+        std::stringstream ss;
+        jsonParser json;
+        to_json(pos, json, std::nullopt);
+        ss << json;
+        return ss.str();
+      });
 
   py::class_<occ_events::OccEventRep> pyOccEventRep(m, "OccEventRep",
                                                     R"pbdoc(
@@ -474,7 +506,40 @@ PYBIND11_MODULE(_occ_events, m) {
           },
           py::arg("event"),
           "Creates a copy of the OccEvent and applies the symmetry operation "
-          "represented by this OccEventRep.");
+          "represented by this OccEventRep.")
+      .def(
+          "copy",
+          [](occ_events::OccEventRep const &self) {
+            return occ_events::OccEventRep(self);
+          },
+          R"pbdoc(
+          Returns a copy of the OccEventRep.
+          )pbdoc")
+      .def("__copy__",
+           [](occ_events::OccEventRep const &self) {
+             return occ_events::OccEventRep(self);
+           })
+      .def("__deepcopy__",
+           [](occ_events::OccEventRep const &self, py::dict) {
+             return occ_events::OccEventRep(self);
+           })
+      .def("__repr__", [](occ_events::OccEventRep const &self) {
+        std::stringstream ss;
+        jsonParser json;
+        json["site_rep"]["sublattice_after"] =
+            self.unitcellcoord_rep.sublattice_index;
+        json["site_rep"]["matrix_frac"] = self.unitcellcoord_rep.point_matrix;
+        json["site_rep"]["tau_frac"] = jsonParser::array();
+        for (auto const &tau_frac : self.unitcellcoord_rep.unitcell_indices) {
+          jsonParser tjson;
+          to_json(tau_frac, tjson, jsonParser::as_array());
+          json["site_rep"]["tau_frac"].push_back(tjson);
+        }
+        json["occupant_rep"] = self.occupant_rep;
+        json["atom_position_rep"] = self.atom_position_rep;
+        ss << json;
+        return ss.str();
+      });
 
   m.def(
       "make_occevent_symgroup_rep",
@@ -534,6 +599,55 @@ PYBIND11_MODULE(_occ_events, m) {
   pyOccEvent
       .def(py::init(&make_occ_event),
            R"pbdoc(
+
+      .. rubric:: Special Methods
+
+      The multiplication operator ``X = lhs * rhs`` can be used to apply
+      :class:`libcasm.xtal.OccEventRep` to OccEvent:
+
+      - ``X=OccEvent``, ``lhs=OccEventRep``, ``rhs=OccEvent``: Copy and
+        transform the trajectories, returning the OccEvent of transformed
+        trajectories. This transforms the sites involved, and also the
+        occupation indices (for anisotropic occupants, or for sublattices with
+        different allowed occupation lists) and atom positions (for molecular
+        occupants).
+
+      Translate an OccEvent using operators ``+``, ``-``, ``+=``, ``-=``:
+
+      .. code-block:: Python
+
+          import numpy as np
+          from libcasm.occ_events import OccEvent
+
+          # event: OccEvent
+          translation = np.array([0, 0, 1])
+
+          # translate via `+=`:
+          event += translation
+
+          # translate via `-=`:
+          event -= translation
+
+          # copy & translate via `+`:
+          translated_event = event + translation
+
+          # copy & translate via `-`:
+          translated_event = event - translation
+
+
+      Additional methods:
+
+      - Sort OccEvent by lexicographical order of trajectories using ``<``, ``<=``,
+        ``>``, ``>=``, and compare using ``==`` and ``!=``
+      - ``for site in cluster``: Iterate over sites
+        (:class:`~libcasm.xtal.IntegralSiteCoordinate`) in the cluster.
+      - ``if site in cluster``: Check if a cluster contains a site.
+      - ``len(cluster)``: Get the number of sites in a cluster.
+      - ``site = cluster[i]``: Get the `i`-th site in a cluster (indices
+        start at 0).
+      - OccEvent may be copied with
+        :func:`OccEvent.copy <libcasm.occ_events.OccEvent.copy>`,
+        `copy.copy`, or `copy.deepcopy`.
 
       .. rubric:: Constructor
 
@@ -722,7 +836,18 @@ PYBIND11_MODULE(_occ_events, m) {
           )pbdoc",
           py::arg("system"), py::arg("include_cluster") = true,
           py::arg("include_cluster_occupation") = true,
-          py::arg("include_event_invariants") = true);
+          py::arg("include_event_invariants") = true)
+      .def("__repr__", [](occ_events::OccEvent const &event) {
+        std::stringstream ss;
+        occ_events::OccEventOutputOptions opt;
+        opt.include_cluster = false;
+        opt.include_cluster_occupation = true;
+        opt.include_event_invariants = false;
+        jsonParser json;
+        to_json(event, json, std::nullopt, opt);
+        ss << json;
+        return ss.str();
+      });
 
   m.def(
       "make_prim_periodic_orbit",
