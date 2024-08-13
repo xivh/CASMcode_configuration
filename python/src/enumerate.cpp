@@ -204,6 +204,7 @@ PYBIND11_MODULE(_enumerate, m) {
     )pbdoc";
   py::module::import("libcasm.xtal");
   py::module::import("libcasm.configuration");
+  py::module::import("libcasm.occ_events");
 
   py::class_<config::ConfigEnumAllOccupations>(m,
                                                "ConfigEnumAllOccupationsBase")
