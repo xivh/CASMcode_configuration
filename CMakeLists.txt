@@ -158,6 +158,7 @@ set(
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/enumeration/ConfigEnumAllOccupations.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/enumeration/ConfigurationFilter.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/io/json/Supercell_json_io.hh
+  ${PROJECT_SOURCE_DIR}/include/casm/configuration/io/json/analysis_json_io.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/io/json/Configuration_json_io.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/clusterography/ClusterSpecs.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/clusterography/ClusterInvariants.hh
@@ -229,6 +230,7 @@ set(
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/enumeration/perturbations.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/enumeration/ConfigEnumAllOccupations.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/enumeration/MakeOccEventStructures.cc
+  ${PROJECT_SOURCE_DIR}/src/casm/configuration/io/json/analysis_json_io.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/io/json/Supercell_json_io.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/io/json/Configuration_json_io.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/clusterography/impact_neighborhood.cc
@@ -332,6 +334,8 @@ install(FILES "${PROJECT_BINARY_DIR}/CASMcode_configurationConfig.cmake"
 # the C++ project to be installed, standalone, when using the standard CMake
 # build flow.
 if(DEFINED SKBUILD)
+
+  message(STATUS "Configuring Python extension modules")
 
   # call pybind11-config to obtain the root of the cmake package
   execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pybind11 --cmakedir

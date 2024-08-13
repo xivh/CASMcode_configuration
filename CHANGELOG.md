@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `libcasm.enumerate.SuperConfigEnum`
 - Added `libcasm.ConfigEnumAllOccupations.by_supercell_with_continuous_dof`
 - Added `__repr__` for `Cluster`, `ClusterOrbitGenerator`, and `ClusterSpecs`.
+- Added `to_json` methods for `config::ConfigSpaceAnalysisResults` and `config::DoFSpaceAnalysisResults`.
+
 
 ## [2.0a4] - 2024-07-16
 
