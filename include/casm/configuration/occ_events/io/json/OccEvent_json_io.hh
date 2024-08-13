@@ -1,7 +1,9 @@
 #ifndef CASM_occ_events_OccEvent_json_io
 #define CASM_occ_events_OccEvent_json_io
 
+#include <functional>
 #include <memory>
+#include <optional>
 
 #include "casm/configuration/occ_events/definitions.hh"
 #include "casm/crystallography/io/SymInfo_json_io.hh"
