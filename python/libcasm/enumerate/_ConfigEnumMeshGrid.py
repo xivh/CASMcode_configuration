@@ -1,5 +1,5 @@
 import copy
-from typing import Optional, Union
+from typing import Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -15,6 +15,8 @@ from libcasm.configuration._misc import (
 from libcasm.irreps import (
     SubWedge,
 )
+
+array_like = TypeVar("array_like")
 
 
 def _is_corner_point(
@@ -67,7 +69,7 @@ def _subwedge_counter(
 def meshgrid_points(
     background: casmconfig.Configuration,
     dof_space: casmclex.DoFSpace,
-    xi: list[npt.ArrayLike],
+    xi: list[array_like],
     skip_equivalents: bool = False,
     abs_tol: float = libcasm.casmglobal.TOL,
 ):
@@ -82,7 +84,7 @@ def meshgrid_points(
         axes on which the meshgrid is constructed and enumeration takes place.
         For local DoF, the dof_space supercell must tile the background supercell.
         Not supported for ``dof_space.dof_key == "occ"``, which raises.
-    xi : list[npt.ArrayLike]
+    xi : list[array_like]
         1-D arrays, `[x1, x2, ...]`, representing the coordinates of a grid
         generated as if by `np.meshgrid`. x1 gives the coordinates along the first
         `dof_space` basis vector, x2 along the second `dof_space` vector, etc.
@@ -311,7 +313,7 @@ class ConfigEnumMeshGrid:
         self,
         background: casmconfig.Configuration,
         dof_space: casmclex.DoFSpace,
-        xi: list[npt.ArrayLike],
+        xi: list[array_like],
         skip_equivalents: bool = False,
         abs_tol: float = libcasm.casmglobal.TOL,
     ):
@@ -327,7 +329,7 @@ class ConfigEnumMeshGrid:
             axes on which the meshgrid is constructed and enumeration takes place.
             For local DoF, the dof_space supercell must tile the background supercell.
             Not supported for ``dof_space.dof_key == "occ"``, which raises.
-        xi : list[npt.ArrayLike]
+        xi : list[array_like]
             1-D arrays, `[x1, x2, ...]`, representing the coordinates of a grid
             generated as if by `np.meshgrid`. x1 gives the coordinates along the first
             `dof_space` basis vector, x2 along the second `dof_space` vector, etc.
@@ -402,7 +404,7 @@ class ConfigEnumMeshGrid:
         self,
         background: casmconfig.Configuration,
         dof_space: casmclex.DoFSpace,
-        xi: list[npt.ArrayLike],
+        xi: list[array_like],
         skip_equivalents: bool = False,
         abs_tol: float = libcasm.casmglobal.TOL,
     ):
@@ -418,7 +420,7 @@ class ConfigEnumMeshGrid:
             axes on which the meshgrid is constructed and enumeration takes place.
             For local DoF, the dof_space supercell must tile the background supercell.
             Not supported for ``dof_space.dof_key == "occ"``, which raises.
-        xi : list[npt.ArrayLike]
+        xi : list[array_like]
             1-D arrays, `[x1, x2, ...]`, representing the coordinates of a grid
             generated as if by `np.meshgrid`. x1 gives the coordinates along the first
             `dof_space` basis vector, x2 along the second `dof_space` vector, etc.
