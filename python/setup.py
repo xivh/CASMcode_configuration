@@ -107,7 +107,7 @@ setup(
     install_requires=[
         "pybind11",
         "libcasm-global>=2.0.5",
-        "libcasm-xtal>=2.0a10",
+        "libcasm-xtal>=2.0a11",
         "libcasm-clexulator>=2.0a5",
     ],
     ext_modules=ext_modules,
