@@ -1,4 +1,5 @@
 import copy
+import math
 
 import numpy as np
 from sortedcontainers import SortedList
@@ -73,6 +74,13 @@ def test_configuration_occupation(simple_cubic_binary_prim):
     configuration.set_occupation(occupation)
     assert (configuration.occupation == np.array([1] * 3 + [0] * 61)).all()
     assert configuration.occupation.shape == (64,)
+
+    supercell_occ_dof = configuration.supercell.occ_dof()
+    occupation_dof = [
+        supercell_occ_dof[site_index][s]
+        for site_index, s in enumerate(configuration.occupation)
+    ]
+    assert occupation_dof == ["B"] * 3 + ["A"] * 61
 
 
 def test_canonical_configuration_occupation(simple_cubic_binary_prim):
@@ -266,6 +274,19 @@ def test_configuration_apply_2(simple_cubic_binary_prim):
     assert i == 48 * 64
     assert len(equivs) == 192
 
+    # Test SupercellSymOp.__rep__
+    import io
+    from contextlib import redirect_stdout
+
+    for rep in supercell.symgroup_rep():
+        f = io.StringIO()
+        with redirect_stdout(f):
+            print(rep)
+        out = f.getvalue()
+        assert "combined_op" in out
+        assert "supercell_factor_group_index" in out
+        assert "translation_index" in out
+
 
 def test_copy_configuration(simple_cubic_binary_prim):
     import copy
@@ -288,3 +309,124 @@ def test_copy_configuration(simple_cubic_binary_prim):
     assert isinstance(configuration3, casmconfig.Configuration)
     assert configuration2 is not configuration1
     assert configuration3 is not configuration1
+
+
+def test_configuration_to_from_dict(FCC_binary_Hstrain_noshear_disp_nodz_prim):
+    import io
+    from contextlib import redirect_stdout
+
+    prim = casmconfig.Prim(FCC_binary_Hstrain_noshear_disp_nodz_prim)
+    T = np.array(
+        [
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ],
+        dtype="int",
+    )
+    supercell = casmconfig.make_canonical_supercell(casmconfig.Supercell(prim, T))
+
+    disp_init_prim = np.array(
+        [
+            [0.01, 0.05],
+            [0.02, 0.06],
+            [0.03, 0.07],
+            [0.04, 0.08],
+        ]
+    ).transpose()
+    disp_init_standard = np.array(
+        [
+            [0.01, 0.05, 0.0],
+            [0.02, 0.06, 0.0],
+            [0.03, 0.07, 0.0],
+            [0.04, 0.08, 0.0],
+        ]
+    ).transpose()
+    Hstrain_init_prim = np.array([0.1, 0.0, 0.0])
+    Hstrain_init_standard = np.array(
+        [
+            0.1 / math.sqrt(3.0),
+            0.1 / math.sqrt(3.0),
+            0.1 / math.sqrt(3.0),
+            0.0,
+            0.0,
+            0.0,
+        ]
+    )
+
+    configuration = casmconfig.Configuration(supercell)
+    configuration.set_local_dof_values(
+        key="disp",
+        dof_values=disp_init_prim,
+    )
+    configuration.set_global_dof_values(key="Hstrain", dof_values=Hstrain_init_prim)
+
+    # default: write DoF values in standard basis
+    data = configuration.to_dict()
+    assert isinstance(data, dict)
+    assert "basis" in data and data["basis"] == "standard"
+    assert np.allclose(
+        data["dof"]["global_dofs"]["Hstrain"]["values"],
+        Hstrain_init_standard,
+    )
+    assert np.allclose(
+        data["dof"]["local_dofs"]["disp"]["values"],
+        disp_init_standard.transpose(),
+    )
+
+    # read back in
+    supercell_set = casmconfig.SupercellSet(prim)
+    configuration_in_1 = casmconfig.Configuration.from_dict(
+        data=data, supercells=supercell_set
+    )
+    assert isinstance(configuration_in_1, casmconfig.Configuration)
+    assert (configuration_in_1.supercell.transformation_matrix_to_super == T).all()
+    assert len(supercell_set) == 1
+    assert np.allclose(
+        configuration_in_1.global_dof_values("Hstrain"),
+        Hstrain_init_prim,
+    )
+    assert np.allclose(
+        configuration_in_1.local_dof_values("disp"),
+        disp_init_prim,
+    )
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(configuration_in_1)
+    out = f.getvalue()
+    assert "dof" in out
+
+    # write DoF values in prim basis
+    data = configuration.to_dict(write_prim_basis=True)
+    assert isinstance(data, dict)
+    assert "basis" in data and data["basis"] == "prim"
+    assert np.allclose(
+        data["dof"]["global_dofs"]["Hstrain"]["values"],
+        Hstrain_init_prim,
+    )
+    assert np.allclose(
+        data["dof"]["local_dofs"]["disp"]["values"],
+        disp_init_prim.transpose(),
+    )
+
+    # read back in
+    supercell_set = casmconfig.SupercellSet(prim)
+    configuration_in_2 = casmconfig.Configuration.from_dict(
+        data=data, supercells=supercell_set
+    )
+    assert isinstance(configuration_in_2, casmconfig.Configuration)
+    assert (configuration_in_2.supercell.transformation_matrix_to_super == T).all()
+    assert len(supercell_set) == 1
+    assert np.allclose(
+        configuration_in_1.global_dof_values("Hstrain"),
+        Hstrain_init_prim,
+    )
+    assert np.allclose(
+        configuration_in_1.local_dof_values("disp"),
+        disp_init_prim,
+    )
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(configuration_in_2)
+    out = f.getvalue()
+    assert "dof" in out

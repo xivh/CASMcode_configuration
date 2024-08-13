@@ -182,7 +182,8 @@ def test_dof_space_analysis_2(FCC_binary_prim):
     data = sym_report.to_dict()
     assert isinstance(data, dict)
 
-    # print(xtal.pretty_json(data))
+    data = results.to_dict()
+    assert isinstance(data, dict)
 
 
 def test_dof_space_analysis_2_generic(FCC_binary_prim):

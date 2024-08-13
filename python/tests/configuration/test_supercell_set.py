@@ -252,3 +252,38 @@ def test_SupercellSet_from_dict_v1_1(simple_cubic_binary_prim):
     supercells = config.SupercellSet.from_dict(data, prim)
     assert isinstance(supercells, config.SupercellSet)
     assert len(supercells) == 1
+
+
+def test_SupercellRecord_repr(simple_cubic_binary_prim):
+    import libcasm.xtal as xtal
+
+    prim = config.Prim(simple_cubic_binary_prim)
+
+    # Add supercells
+    supercell_set = config.SupercellSet(prim)
+    for superlat in xtal.enumerate_superlattices(
+        unit_lattice=prim.xtal_prim.lattice(),
+        point_group=prim.crystal_point_group.elements,
+        max_volume=4,
+    ):
+        is_superlattice_of, T_float = superlat.is_superlattice_of(
+            prim.xtal_prim.lattice()
+        )
+        supercell_set.add_by_transformation_matrix_to_super(
+            np.rint(T_float).astype(int)
+        )
+
+    # Test print ConfigurationRecord
+    import io
+    from contextlib import redirect_stdout
+
+    for record in supercell_set:
+        assert isinstance(record, config.SupercellRecord)
+        f = io.StringIO()
+        with redirect_stdout(f):
+            print(record)
+        out = f.getvalue()
+        assert "supercell" in out
+        assert "supercell_name" in out
+        assert "canonical_supercell_name" in out
+        assert "is_canonical" in out

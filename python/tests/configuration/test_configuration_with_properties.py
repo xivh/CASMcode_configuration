@@ -332,3 +332,90 @@ def test_config_with_props_spglib_io_2(FCC_binary_prim):
 
     symmetry_dataset = spglib_io.get_symmetry_dataset(config_w_props)
     check_symmetry_dataset(symmetry_dataset, number=225, n_rotations=4 * 48)
+
+
+def test_configuration_with_properties_io(FCC_binary_prim):
+    """Apply SupercellSymOp"""
+    import io
+    from contextlib import redirect_stdout
+
+    xtal_prim = FCC_binary_prim
+    prim = casmconfig.Prim(xtal_prim)
+
+    # T_prim = np.eye(3, dtype=int)
+    T_conventional = np.array(
+        [  # conventional FCC cubic cell
+            [-1, 1, 1],
+            [1, -1, 1],
+            [1, 1, -1],
+        ],
+        dtype=int,
+    )
+
+    supercell = casmconfig.make_canonical_supercell(
+        casmconfig.Supercell(prim, T_conventional)
+    )
+    config_init = casmconfig.Configuration(
+        supercell=supercell,
+    )
+
+    occupation_init = np.array([1, 1, 0, 0], dtype=int)
+    config_init.set_occupation(occupation_init)
+
+    disp_init = np.array(
+        [
+            [0.01, 0.05, 0.09],
+            [0.02, 0.06, 0.10],
+            [0.03, 0.07, 0.11],
+            [0.04, 0.08, 0.12],
+        ]
+    ).transpose()
+    local_properties_init = {
+        "disp": disp_init,
+    }
+    energy_init = np.array([[0.1]]).transpose()
+    Hstrain_init = np.array([[0.01, 0.02, 0.03, 0.04, 0.05, 0.06]]).transpose()
+    global_properties_init = {
+        "energy": energy_init,
+        "Hstrain": Hstrain_init,
+    }
+    config_w_props = casmconfig.ConfigurationWithProperties(
+        configuration=config_init,
+        local_properties=local_properties_init,
+        global_properties=global_properties_init,
+    )
+
+    # Test to_dict (standard basis)
+    data = config_w_props.to_dict()
+    assert isinstance(data, dict)
+
+    # Test from_dict (standard basis)
+    supercell_set = casmconfig.SupercellSet(prim)
+    config_w_props_in = casmconfig.ConfigurationWithProperties.from_dict(
+        data=data, supercells=supercell_set
+    )
+    assert isinstance(config_w_props_in, casmconfig.ConfigurationWithProperties)
+    assert len(supercell_set) == 1
+    assert config_w_props_in.configuration == config_w_props.configuration
+    assert np.allclose(
+        config_w_props_in.local_properties["disp"],
+        config_w_props.local_properties["disp"],
+    )
+    assert np.allclose(
+        config_w_props_in.global_properties["energy"],
+        config_w_props.global_properties["energy"],
+    )
+    assert np.allclose(
+        config_w_props_in.global_properties["Hstrain"],
+        config_w_props.global_properties["Hstrain"],
+    )
+
+    # Test print
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(config_w_props)
+    out = f.getvalue()
+    assert "configuration" in out
+    assert "global_properties" in out
+    assert "local_properties" in out

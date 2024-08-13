@@ -140,3 +140,37 @@ def test_simple_cubic_binary_supercell_compare(simple_cubic_binary_prim):
     for scel in equivalent_supercells:
         print(scel.superlattice.column_vector_matrix())
     assert len(equivalent_supercells) == 3
+
+
+def test_supercell_io(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    T1 = np.array(
+        [
+            [2, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+        ]
+    )
+    supercell1 = config.Supercell(prim, T1)
+
+    # Test to_dict
+    data = supercell1.to_dict()
+    assert isinstance(data, dict)
+    assert (data["transformation_matrix_to_supercell"] == T1).all()
+
+    # Test from_dict
+    supercell_set = config.SupercellSet(prim)
+    supercell1_in = config.Supercell.from_dict(data=data, supercells=supercell_set)
+    assert isinstance(supercell1_in, config.Supercell)
+    assert supercell1_in == supercell1
+    assert len(supercell_set) == 1
+
+    # Test print
+    import io
+    from contextlib import redirect_stdout
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(supercell1)
+    out = f.getvalue()
+    assert "transformation_matrix_to_super" in out

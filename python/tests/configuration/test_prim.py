@@ -1,6 +1,7 @@
 import json
 
 import numpy as np
+import pytest
 
 import libcasm.configuration as config
 import libcasm.configuration.io as config_io
@@ -33,6 +34,94 @@ def test_simple_cubic_binary_factor_group(simple_cubic_binary_prim):
     for op in prim.factor_group.elements:
         syminfo = xtal.SymInfo(op, lattice)
         print(xtal.pretty_json(syminfo.to_dict()))
+
+
+@pytest.mark.xfail(reason="known tolerance issue")
+def test_symop_prec():
+    # Relates to libcasm-xtal commit 28f1140
+
+    # This tests whether symmetry operation matrices
+    # have exact zeros instead of very small numbers.
+    # It is not a failure, just normal floating point error
+    # - but it would be easier to read output if the elements
+    # that should be exactly zero are exactly zero,
+    # and may be addressed in a future change.
+
+    import libcasm.xtal.lattices as xtal_lattices
+    import libcasm.xtal.prims as xtal_prims
+
+    tetragonal_prim = xtal.Prim(
+        lattice=xtal_lattices.tetragonal(a=1.0, c=1.5),
+        coordinate_frac=np.zeros((3, 1)),
+        occ_dof=[["A", "B"]],
+        title="tetragonal",
+    )
+
+    rhombohedral_prim = xtal.Prim(
+        lattice=xtal_lattices.rhombohedral(a=1.0, alpha=70.0),
+        coordinate_frac=np.zeros((3, 1)),
+        occ_dof=[["A", "B"]],
+        title="tetragonal",
+    )
+
+    monoclinic_prim = xtal.Prim(
+        lattice=xtal_lattices.monoclinic(
+            a=1.0,
+            b=1.2,
+            c=1.5,
+            beta=82.0,
+        ),
+        coordinate_frac=np.zeros((3, 1)),
+        occ_dof=[["A", "B"]],
+        title="monoclinic",
+    )
+
+    triclinic_prim = xtal.Prim(
+        lattice=xtal_lattices.triclinic(
+            a=1.0, b=1.2, c=1.5, alpha=73.0, beta=82.0, gamma=105.0
+        ),
+        coordinate_frac=np.zeros((3, 1)),
+        occ_dof=[["A", "B"]],
+        title="triclinic",
+    )
+
+    test_prims = [
+        ("cubic", xtal_prims.cubic(a=1.0)),
+        ("FCC-a", xtal_prims.FCC(a=1.0)),
+        ("FCC-b", xtal_prims.FCC(r=0.5)),  # -> fails with libcasm-xtal 2.0a11
+        ("FCC-c", xtal_prims.FCC(r=1.0)),  # -> fails
+        ("BCC-a", xtal_prims.BCC(a=1.0)),
+        ("BCC-b", xtal_prims.BCC(r=0.5)),  # -> fails
+        ("BCC-c", xtal_prims.BCC(r=1.0)),  # -> fails
+        ("HCP-a", xtal_prims.HCP(r=0.6)),
+        ("HCP-a", xtal_prims.HCP(r=1.0)),
+        ("HCP-b", xtal_prims.HCP(a=1.0, c=1.64)),
+        ("tetragonal", tetragonal_prim),
+        ("rhombohedral", rhombohedral_prim),  # -> fails
+        ("monoclinic", monoclinic_prim),  # -> fails
+        ("triclinic", triclinic_prim),  # -> fails
+    ]
+
+    for prim_type, x in test_prims:
+        # print(f"prim_type: {prim_type}")
+        # print("lattice:\n", x.lattice().column_vector_matrix())
+        # print(np.linalg.inv(x.lattice().column_vector_matrix()))
+        # for i, op in enumerate(prim.factor_group.elements):
+        #     print(f"operation {i}")
+        #     print(op.matrix())
+        #     print(op.translation())
+        #     print()
+
+        prim = config.Prim(x)
+        for i, op in enumerate(prim.factor_group.elements):
+            R = op.matrix()
+            tau = op.translation()
+            assert (
+                (R == 0.0) | (np.abs(R) > 1e-10)
+            ).all(), f"prim_type: {prim_type}, operation {i}, matrix:\n{R}"
+            assert (
+                (tau == 0.0) | (np.abs(tau) > 1e-10)
+            ).all(), f"prim_type: {prim_type}, operation {i}, translation:\n{tau}"
 
 
 def test_simple_cubic_binary_conjugacy_classes(simple_cubic_binary_prim):
@@ -103,6 +192,24 @@ def test_from_dict():
     prim = config.Prim.from_dict(prim_data)
     assert prim.xtal_prim.coordinate_frac().shape == (3, 1)
     assert len(prim.factor_group.elements) == 48
+
+
+def test_simple_cubic_binary_repr(simple_cubic_binary_prim):
+    xtal_prim = simple_cubic_binary_prim
+    prim = config.Prim(xtal_prim)
+
+    # Test print
+    import io
+    from contextlib import redirect_stdout
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print(prim)
+    out = f.getvalue()
+
+    assert "basis" in out
+    assert "coordinate_mode" in out
+    assert "lattice_vectors" in out
 
 
 def test_symgroup_brief(simple_cubic_binary_prim):

@@ -290,3 +290,23 @@ def test_config_space_analysis_4(FCC_binary_prim):
     ).transpose()
 
     expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
+
+
+def test_config_space_analysis_1_to_dict(FCC_binary_prim):
+    prim = casmconfig.Prim(FCC_binary_prim)
+
+    # Perform DoF space analysis
+    results = casmconfig.config_space_analysis(
+        configurations=build_configurations_1(prim),
+    )
+    assert len(results) == 1
+
+    data = {key: value.to_dict() for key, value in results.items()}
+    assert len(data) == 1
+    assert "occ" in data
+    assert "eigenvalues" in data["occ"]
+    assert "equivalent_configurations" in data["occ"]
+    assert "equivalent_dof_values" in data["occ"]
+    assert "projector" in data["occ"]
+    assert "standard_dof_space" in data["occ"]
+    assert "symmetry_adapted_dof_space" in data["occ"]

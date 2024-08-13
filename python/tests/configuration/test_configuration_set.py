@@ -144,3 +144,40 @@ def test_ConfigurationSet_to_dict_2(FCC_binary_Hstrain_noshear_prim):
         x.set_occ(i, 1)
         configurations.add(config.make_canonical_configuration(x))
     assert len(configurations) == 1
+
+
+def test_ConfigurationRecord_repr(simple_cubic_binary_prim):
+    prim = config.Prim(simple_cubic_binary_prim)
+    configurations = config.ConfigurationSet()
+
+    T = np.array(
+        [
+            [2, 0, 0],
+            [0, 2, 0],
+            [0, 0, 1],
+        ]
+    )
+    supercell = config.make_canonical_supercell(config.Supercell(prim, T))
+    configuration = config.Configuration(supercell)
+
+    # add configurations
+    for i in range(supercell.n_unitcells):
+        x = configuration.copy()
+        x.set_occ(i, 1)
+        configurations.add(x)
+    assert len(configurations) == 4
+
+    # Test print ConfigurationRecord
+    import io
+    from contextlib import redirect_stdout
+
+    for record in configurations:
+        assert isinstance(record, config.ConfigurationRecord)
+        f = io.StringIO()
+        with redirect_stdout(f):
+            print(record)
+        out = f.getvalue()
+        assert "configuration" in out
+        assert "supercell_name" in out
+        assert "configuration_id" in out
+        assert "configuration_name" in out
