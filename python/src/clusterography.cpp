@@ -201,6 +201,17 @@ PYBIND11_MODULE(_clusterography, m) {
           assert B == B
           assert A != B
 
+      Additional methods:
+
+      - ``for site in cluster``: Iterate over sites
+        (:class:`~libcasm.xtal.IntegralSiteCoordinate`) in the cluster.
+      - ``if site in cluster``: Check if a cluster contains a site.
+      - ``len(cluster)``: Get the number of sites in a cluster.
+      - ``site = cluster[i]``: Get the `i`-th site in a cluster (indices
+        start at 0).
+      - Cluster may be copied with
+        :func:`Cluster.copy <libcasm.clusterography.Cluster.copy>`,
+        `copy.copy`, or `copy.deepcopy`.
 
       .. rubric:: Constructor
 

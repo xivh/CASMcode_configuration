@@ -2,6 +2,7 @@ import numpy as np
 
 import libcasm.clusterography as clust
 import libcasm.sym_info as sym_info
+import libcasm.xtal as xtal
 import libcasm.xtal.prims as xtal_prims
 
 
@@ -94,6 +95,19 @@ def test_cluster_compare():
     assert A == A
     assert B == B
     assert A != B
+
+
+def test_cluster_iter():
+    # construct Cluster
+    A = clust.Cluster.from_list(
+        [
+            [0, 0, 0, 0],  # [b, i, j, k]
+            [0, 0, 1, 0],
+        ]
+    )
+    for site in A:
+        assert isinstance(site, xtal.IntegralSiteCoordinate)
+        assert (site in A) is True
 
 
 def test_cluster_rmul():
