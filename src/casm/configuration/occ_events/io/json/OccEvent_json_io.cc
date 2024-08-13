@@ -92,30 +92,41 @@ void parse_non_reservoir_position(InputParser<occ_events::OccPosition> &parser,
 
 // OccPosition
 
-jsonParser &to_json(occ_events::OccPosition const &pos, jsonParser &json,
-                    occ_events::OccSystem const &system) {
+jsonParser &to_json(
+    occ_events::OccPosition const &pos, jsonParser &json,
+    std::optional<std::reference_wrapper<occ_events::OccSystem const>> system) {
   json.put_obj();
   if (pos.is_in_reservoir) {
     json["is_in_reservoir"] = true;
     json["occupant_index"] = pos.occupant_index;
-    json["chemical_name"] = system.get_chemical_name(pos);
+    if (system.has_value()) {
+      json["chemical_name"] = system->get().get_chemical_name(pos);
+    }
   } else {
     json["coordinate"] = pos.integral_site_coordinate;
     json["occupant_index"] = pos.occupant_index;
-    std::string chemical_name = system.get_chemical_name(pos);
-    json["chemical_name"] = system.get_chemical_name(pos);
-    std::string orientation_name = system.get_orientation_name(pos);
-    if (chemical_name != orientation_name) {
-      json["orientation_name"] = orientation_name;
-    }
-    Index b = pos.integral_site_coordinate.sublattice();
-    Index mol_size =
-        system.atom_position_to_name_index[b][pos.occupant_index].size();
     if (!pos.is_atom) {
       json["molecule"] = true;
-    } else if (mol_size > 1) {
+    } else {
       json["atom_position_index"] = pos.atom_position_index;
-      json["atom_name"] = system.get_atom_name(pos);
+    }
+
+    if (system.has_value()) {
+      std::string chemical_name = system->get().get_chemical_name(pos);
+      json["chemical_name"] = system->get().get_chemical_name(pos);
+      std::string orientation_name = system->get().get_orientation_name(pos);
+      if (chemical_name != orientation_name) {
+        json["orientation_name"] = orientation_name;
+      }
+      if (!pos.is_atom) {
+        Index b = pos.integral_site_coordinate.sublattice();
+        Index mol_size = system->get()
+                             .atom_position_to_name_index[b][pos.occupant_index]
+                             .size();
+        if (mol_size > 1) {
+          json["atom_name"] = system->get().get_atom_name(pos);
+        }
+      }
     }
   }
   return json;
@@ -150,8 +161,9 @@ void parse(InputParser<occ_events::OccPosition> &parser,
 
 // OccTrajectory
 
-jsonParser &to_json(occ_events::OccTrajectory const &traj, jsonParser &json,
-                    occ_events::OccSystem const &system) {
+jsonParser &to_json(
+    occ_events::OccTrajectory const &traj, jsonParser &json,
+    std::optional<std::reference_wrapper<occ_events::OccSystem const>> system) {
   json.put_array();
   for (auto const &pos : traj.position) {
     json.push_back(pos, system);
@@ -196,9 +208,10 @@ void parse(InputParser<occ_events::OccTrajectory> &parser,
 
 // OccEvent
 
-jsonParser &to_json(occ_events::OccEvent const &event, jsonParser &json,
-                    occ_events::OccSystem const &system,
-                    occ_events::OccEventOutputOptions const &options) {
+jsonParser &to_json(
+    occ_events::OccEvent const &event, jsonParser &json,
+    std::optional<std::reference_wrapper<occ_events::OccSystem const>> system,
+    occ_events::OccEventOutputOptions const &options) {
   json["trajectories"].put_array();
   for (auto const &traj : event) {
     json["trajectories"].push_back(traj, system);
@@ -209,35 +222,43 @@ jsonParser &to_json(occ_events::OccEvent const &event, jsonParser &json,
   if (options.include_cluster_occupation) {
     try {
       auto cluster_occupation = make_cluster_occupation(event);
-      to_json(clust, json["cluster"], *system.prim);
-
       json["occupation"]["index"]["initial"] = cluster_occupation.second[0];
       json["occupation"]["index"]["final"] = cluster_occupation.second[1];
 
-      auto _names = [&](std::vector<int> const &occ) {
-        std::vector<std::string> n;
-        Index i = 0;
-        for (auto const &site : clust) {
-          n.push_back(system.get_orientation_name(site, occ[i]));
-          ++i;
-        }
-        return n;
-      };
-      json["occupation"]["name"]["initial"] =
-          _names(cluster_occupation.second[0]);
-      json["occupation"]["name"]["final"] =
-          _names(cluster_occupation.second[1]);
+      if (system.has_value()) {
+        to_json(clust, json["cluster"], *system->get().prim);
+
+        auto _names = [&](std::vector<int> const &occ) {
+          std::vector<std::string> n;
+          Index i = 0;
+          for (auto const &site : clust) {
+            n.push_back(system->get().get_orientation_name(site, occ[i]));
+            ++i;
+          }
+          return n;
+        };
+        json["occupation"]["name"]["initial"] =
+            _names(cluster_occupation.second[0]);
+        json["occupation"]["name"]["final"] =
+            _names(cluster_occupation.second[1]);
+      }
     } catch (std::exception &e) {
-      clust::IntegralCluster clust = make_cluster(event);
-      to_json(clust, json["cluster"], *system.prim);
+      if (system.has_value()) {
+        clust::IntegralCluster clust = make_cluster(event);
+        to_json(clust, json["cluster"], *system->get().prim);
+      }
       json["occupation"]["error"] = "inconsistent occupanacies";
     }
   } else if (options.include_cluster) {
-    to_json(clust, json["cluster"], *system.prim);
+    if (system.has_value()) {
+      to_json(clust, json["cluster"], *system->get().prim);
+    }
   }
   if (options.include_event_invariants) {
-    occ_events::OccEventInvariants invariants(event, system);
-    to_json(invariants, json["event_invariants"]);
+    if (system.has_value()) {
+      occ_events::OccEventInvariants invariants(event, system->get());
+      to_json(invariants, json["event_invariants"]);
+    }
   }
   return json;
 }
@@ -245,7 +266,7 @@ jsonParser &to_json(occ_events::OccEvent const &event, jsonParser &json,
 /// \brief OccEvent orbit printing
 jsonParser &to_json(
     std::set<occ_events::OccEvent> const &orbit, jsonParser &json,
-    occ_events::OccSystem const &system,
+    std::optional<std::reference_wrapper<occ_events::OccSystem const>> system,
     std::shared_ptr<occ_events::SymGroup const> const &factor_group,
     std::vector<occ_events::OccEventRep> const &occevent_symgroup_rep,
     occ_events::OccEventOutputOptions const &options) {
@@ -273,17 +294,18 @@ jsonParser &to_json(
                        jsonParser &j) {
     j.put_array();
     for (Index i : factor_group_indices) {
-      xtal::SymInfo syminfo{factor_group->element[i], system.prim->lattice()};
+      xtal::SymInfo syminfo{factor_group->element[i],
+                            system->get().prim->lattice()};
       j.push_back(to_brief_unicode(syminfo, options.sym_info_options));
     }
     j.set_multiline_array();
   };
 
   // --- invariant_group ---
-  if (options.include_invariant_group) {
+  if (options.include_invariant_group && system.has_value()) {
     std::vector<std::shared_ptr<occ_events::SymGroup const>> g =
         make_occevent_groups(orbit, factor_group,
-                             system.prim->lattice().lat_column_mat(),
+                             system->get().prim->lattice().lat_column_mat(),
                              occevent_symgroup_rep);
 
     to_json(g[0]->head_group_index, json["prototype"]["invariant_group"]);
@@ -300,7 +322,7 @@ jsonParser &to_json(
   }
 
   // --- equivalence_map ---
-  if (options.include_equivalence_map) {
+  if (options.include_equivalence_map && system.has_value()) {
     std::vector<std::vector<Index>> eq_map = group::make_equivalence_map(
         orbit, occevent_symgroup_rep.begin(), occevent_symgroup_rep.end(),
         occ_events::prim_periodic_occevent_copy_apply);

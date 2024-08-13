@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed `ConfigEnumAllOccupations` methods that take a `background` configuration to maintain the orientation of continuous DoF.
 - Changed `ClusterSpecs.from_dict` to allow reading CASM v1 cluster specs JSON by checking for a "params" attribute and parsing that if it exists.
 - Changed `ClusterSpecs.from_dict` to warn if the prim has local DoF but no `"orbit_branch_specs"` attribute is present.
+- Changed occ_events `to_json` methods for `occ_events::OccPosition`, `occ_events::OccTrajectory`, and `occ_events::OccEvent` to optionally accept occ_events::OccSystem.
 
 ### Added
 

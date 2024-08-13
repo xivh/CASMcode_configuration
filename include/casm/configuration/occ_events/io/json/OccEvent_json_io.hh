@@ -35,8 +35,9 @@ struct OccEventOutputOptions {
 
 // OccPosition
 
-jsonParser &to_json(occ_events::OccPosition const &pos, jsonParser &json,
-                    occ_events::OccSystem const &system);
+jsonParser &to_json(
+    occ_events::OccPosition const &pos, jsonParser &json,
+    std::optional<std::reference_wrapper<occ_events::OccSystem const>> systemm);
 
 void from_json(occ_events::OccPosition &pos, jsonParser const &json,
                occ_events::OccSystem const &system);
@@ -52,8 +53,9 @@ void parse(InputParser<occ_events::OccPosition> &parser,
 
 // OccTrajectory
 
-jsonParser &to_json(occ_events::OccTrajectory const &traj, jsonParser &json,
-                    occ_events::OccSystem const &system);
+jsonParser &to_json(
+    occ_events::OccTrajectory const &traj, jsonParser &json,
+    std::optional<std::reference_wrapper<occ_events::OccSystem const>> system);
 
 void from_json(occ_events::OccTrajectory &traj, jsonParser const &json,
                occ_events::OccSystem const &system);
@@ -69,15 +71,16 @@ void parse(InputParser<occ_events::OccTrajectory> &parser,
 
 // OccEvent
 
-jsonParser &to_json(occ_events::OccEvent const &event, jsonParser &json,
-                    occ_events::OccSystem const &system,
-                    occ_events::OccEventOutputOptions const &options =
-                        occ_events::OccEventOutputOptions());
+jsonParser &to_json(
+    occ_events::OccEvent const &event, jsonParser &json,
+    std::optional<std::reference_wrapper<occ_events::OccSystem const>> system,
+    occ_events::OccEventOutputOptions const &options =
+        occ_events::OccEventOutputOptions());
 
 /// \brief OccEvent orbit printing
 jsonParser &to_json(
     std::set<occ_events::OccEvent> const &orbit, jsonParser &json,
-    occ_events::OccSystem const &system,
+    std::optional<std::reference_wrapper<occ_events::OccSystem const>> system,
     std::shared_ptr<occ_events::SymGroup const> const &factor_group,
     std::vector<occ_events::OccEventRep> const &occevent_symgroup_rep,
     occ_events::OccEventOutputOptions const &options =
