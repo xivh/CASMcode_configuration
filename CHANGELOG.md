@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `libcasm.clusterography.make_custom_cluster_specs`, which takes a custom site filter function to generate a ClusterSpecs with custom_generators generated with the custom site filter. This approach allows creating a ClusterSpecs that is customized, as with a custom site filter, but still works to save/load without to_dict/from_dict needing the custom filter. 
 
+### Changed
+
+- Changed `libcasm.clusterography.make_cluster_group` documentation to state how the head group of the cluster group is set.
+- Changed `libcasm.occ_events.make_occevent_group` to set the head group of the occ_event group to the head group of the group used to generate the occ_event group. In typical use this means the head group of the occ_event group is the prim factor group rather than a subgroup, even if a subgroup was used to generate the occ_event group.
+
 
 ## [2.0a5] - 2024-08-13
 

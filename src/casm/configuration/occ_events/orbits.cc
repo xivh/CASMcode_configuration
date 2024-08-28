@@ -112,19 +112,28 @@ std::vector<OccEvent> make_phenomenal_occevent(
 /// \brief Make groups that leave OccEvent orbit elements invariant
 ///
 /// \param orbit An OccEvent orbit
-/// \param factor_group The factor group used to generate the orbit.
+/// \param symgroup The symmetry group used to generate the orbit.
 /// \param lat_column_mat The 3x3 matrix whose columns are the lattice vectors.
 /// \param occevent_symgroup_rep Symmetry group representation (as
-///     OccEventRep) of the factor group.
+///     OccEventRep) of `symgroup`.
 ///
 /// \returns OccEvent invariant groups, where occevent_groups[i] is
 ///     the SymGroup whose operations leave the sites of the i-th OccEvent in
-///     the orbit invariant (up to a permutation/reversal).
+///     the orbit invariant (up to a permutation/reversal). The head group of
+///     the invariant groups is set to be the head group of `symgroup`, which
+///     may be `symgroup` itself.
 std::vector<std::shared_ptr<SymGroup const>> make_occevent_groups(
     std::set<OccEvent> const &orbit,
-    std::shared_ptr<SymGroup const> const &factor_group,
+    std::shared_ptr<SymGroup const> const &symgroup,
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<OccEventRep> const &occevent_symgroup_rep) {
+  std::shared_ptr<SymGroup const> head_group;
+  if (!symgroup->head_group) {
+    head_group = symgroup;
+  } else {
+    head_group = symgroup->head_group;
+  }
+
   // The indices eq_map[i] are the indices of the group
   // elements transform the first element in the orbit into the
   // i-th element in the orbit.
@@ -135,7 +144,7 @@ std::vector<std::shared_ptr<SymGroup const>> make_occevent_groups(
   // The indices subgroup_indices[i] are the indices of the group
   // elements which leave orbit element i invariant (up to a translation).
   std::vector<group::SubgroupIndices> subgroup_indices =
-      group::make_invariant_subgroups(eq_map, *factor_group);
+      group::make_invariant_subgroups(eq_map, *symgroup);
 
   // The group occevent_groups[i] contains the SymOp corresponding to
   // subgroup_indices[i] and including the translation which keeps
@@ -149,11 +158,11 @@ std::vector<std::shared_ptr<SymGroup const>> make_occevent_groups(
     std::vector<xtal::SymOp> occevent_group_elements;
     for (Index j : *subgroup_indices_it) {
       occevent_group_elements.push_back(clust::make_cluster_group_element(
-          make_cluster(*orbit_it), lat_column_mat, factor_group->element[j],
+          make_cluster(*orbit_it), lat_column_mat, symgroup->element[j],
           occevent_symgroup_rep[j].unitcellcoord_rep));
     }
     occevent_groups.emplace_back(std::make_shared<SymGroup>(
-        factor_group, occevent_group_elements, *subgroup_indices_it));
+        head_group, occevent_group_elements, *subgroup_indices_it));
     ++subgroup_indices_it;
     ++orbit_it;
   }
@@ -161,12 +170,33 @@ std::vector<std::shared_ptr<SymGroup const>> make_occevent_groups(
 }
 
 /// \brief Make the group which leaves an OccEvent invariant
+///
+/// \param occ_event The OccEvent
+/// \param symgroup The super group of the occevent group.
+/// \param lat_column_mat The 3x3 matrix whose columns are the lattice vectors.
+/// \param occevent_symgroup_rep Symmetry group representation (as
+///     OccEventRep) of `symgroup`.
+///
+/// \returns OccEvent invariant group whose operations leave the event
+///     invariant (up to a permutation/reversal). The head group of
+///     the occevent group is set to be the head group of `symgroup`, which may
+///     be `symgroup` itself.
 std::shared_ptr<SymGroup const> make_occevent_group(
-    OccEvent occ_event, std::shared_ptr<SymGroup const> const &factor_group,
+    OccEvent occ_event, std::shared_ptr<SymGroup const> const &symgroup,
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<OccEventRep> const &occevent_symgroup_rep) {
+  std::shared_ptr<SymGroup const> head_group;
+  if (!symgroup->head_group) {
+    head_group = symgroup;
+  } else {
+    head_group = symgroup->head_group;
+  }
+
   if (!occ_event.size()) {
-    return factor_group;
+    return std::make_shared<SymGroup>(
+        head_group, symgroup->element,
+        std::set<Index>(symgroup->head_group_index.begin(),
+                        symgroup->head_group_index.end()));
   }
 
   standardize(occ_event);
@@ -174,7 +204,7 @@ std::shared_ptr<SymGroup const> make_occevent_group(
 
   std::vector<xtal::SymOp> elements;
   std::set<Index> indices;
-  for (Index i = 0; i < factor_group->element.size(); ++i) {
+  for (Index i = 0; i < symgroup->element.size(); ++i) {
     OccEvent tocc_event = copy_apply(occevent_symgroup_rep[i], occ_event);
     clust::IntegralCluster tcluster = make_cluster(tocc_event);
     xtal::UnitCell frac_trans = cluster[0].unitcell() - tcluster[0].unitcell();
@@ -184,11 +214,11 @@ std::shared_ptr<SymGroup const> make_occevent_group(
     if (tocc_event == occ_event) {
       xtal::SymOp cart_trans(Eigen::Matrix3d::Identity(),
                              lat_column_mat * frac_trans.cast<double>(), false);
-      elements.push_back(cart_trans * factor_group->element[i]);
+      elements.push_back(cart_trans * symgroup->element[i]);
       indices.insert(i);
     }
   }
-  return std::make_shared<SymGroup>(factor_group, elements, indices);
+  return std::make_shared<SymGroup>(head_group, elements, indices);
 }
 
 /// \brief Make prototypes of distinct orbits of OccEvent, with periodic

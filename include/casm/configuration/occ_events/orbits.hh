@@ -36,13 +36,13 @@ std::vector<OccEvent> make_phenomenal_occevent(
 /// \brief Make groups that leave OccEvent orbit elements invariant
 std::vector<std::shared_ptr<SymGroup const>> make_occevent_groups(
     std::set<OccEvent> const &orbit,
-    std::shared_ptr<SymGroup const> const &factor_group,
+    std::shared_ptr<SymGroup const> const &symgroup,
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<OccEventRep> const &occevent_symgroup_rep);
 
 /// \brief Make the group which leaves an OccEvent invariant
 std::shared_ptr<SymGroup const> make_occevent_group(
-    OccEvent occ_event, std::shared_ptr<SymGroup const> const &factor_group,
+    OccEvent occ_event, std::shared_ptr<SymGroup const> const &symgroup,
     Eigen::Matrix3d const &lat_column_mat,
     std::vector<OccEventRep> const &occevent_symgroup_rep);
 

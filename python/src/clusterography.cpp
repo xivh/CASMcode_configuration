@@ -1019,7 +1019,8 @@ PYBIND11_MODULE(_clusterography, m) {
       cluster_group : libcasm.sym_info.SymGroup
           The subgroup which leaves the cluster invariant. Elements may differ
           from elements of `group` by a translation. The head group of
-          `cluster_group` is set to `group`.
+          `cluster_group` is set to be the head group of `group`, which may be
+          `group` itself.
       )pbdoc",
       py::arg("cluster"), py::arg("group"), py::arg("lattice"),
       py::arg("integral_site_coordinate_symgroup_rep"));

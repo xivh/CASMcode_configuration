@@ -313,11 +313,10 @@ std::vector<std::shared_ptr<SymGroup const>> make_cluster_groups(
 /// \param unitcellcoord_symgroup_rep Symmetry group representation (as
 ///     xtal::UnitCellCoordRep) of `symgroup`.
 ///
-/// \returns Cluster invariant groups, where cluster_groups[i] is
-///     the SymGroup whose operations leave the sites of the i-th cluster in the
-///     orbit invariant (up to a permutation). The head group of the cluster
-///     group is set to be the head group of `symgroup`, which may be
-///     `symgroup` itself.
+/// \returns Cluster invariant group whose operations leave the sites of the
+///     cluster in the orbit invariant (up to a permutation). The head group of
+///     the cluster group is set to be the head group of `symgroup`, which may
+///     be `symgroup` itself.
 std::shared_ptr<SymGroup const> make_cluster_group(
     IntegralCluster cluster, std::shared_ptr<SymGroup const> const &symgroup,
     Eigen::Matrix3d const &lat_column_mat,

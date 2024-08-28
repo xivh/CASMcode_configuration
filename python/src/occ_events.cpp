@@ -908,8 +908,10 @@ PYBIND11_MODULE(_occ_events, m) {
 
       Returns
       -------
-      subgroup : libcasm.sym_info.SymGroup
-          The subgroup which leaves the event invariant
+      occevent_group : libcasm.sym_info.SymGroup
+          The subgroup which leaves the event invariant. The head group of
+          `occevent_group` is set to be the head group of `group`, which may be
+          `group` itself.
       )pbdoc",
       py::arg("occ_event"), py::arg("group"), py::arg("lattice"),
       py::arg("occevent_symgroup_rep"));
