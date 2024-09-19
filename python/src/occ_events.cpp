@@ -722,7 +722,7 @@ PYBIND11_MODULE(_occ_events, m) {
           "Reverse event trajectories")
       .def(
           "copy_reverse",
-          [](occ_events::OccEvent const &event) { return copy_sort(event); },
+          [](occ_events::OccEvent const &event) { return copy_reverse(event); },
           "Return a copy of the event with reversed trajectories")
       .def(
           "standardize",

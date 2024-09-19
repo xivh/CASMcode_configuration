@@ -16,6 +16,23 @@ def test_OccEvent_construction_2(fcc_1NN_A_Va_event):
     assert occ_event.size() == 2
 
 
+def test_OccEvent_reverse(fcc_1NN_A_Va_event):
+    prim, occ_event = fcc_1NN_A_Va_event
+
+    assert occ_event.initial_occupation() == [0, 2]
+    assert occ_event.final_occupation() == [2, 0]
+
+    reversed_occ_event = occ_event.copy_reverse()
+    assert reversed_occ_event.initial_occupation() == [2, 0]
+    assert reversed_occ_event.final_occupation() == [0, 2]
+
+    occ_event.reverse()
+    assert occ_event.initial_occupation() == [2, 0]
+    assert occ_event.final_occupation() == [0, 2]
+
+    assert reversed_occ_event == occ_event
+
+
 def test_OccEvent_to_from_dict():
     data = {
         "trajectories": [

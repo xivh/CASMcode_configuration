@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed `libcasm.clusterography.make_cluster_group` documentation to state how the head group of the cluster group is set.
 - Changed `libcasm.occ_events.make_occevent_group` to set the head group of the occ_event group to the head group of the group used to generate the occ_event group. In typical use this means the head group of the occ_event group is the prim factor group rather than a subgroup, even if a subgroup was used to generate the occ_event group.
 
+### Fixed
+
+- Fixed `libcasm.occ_events.OccEvent.copy_reverse`, which was doing `copy_sort` instead.
+
 
 ## [2.0a5] - 2024-08-13
 
