@@ -3,7 +3,7 @@ import os
 # -- package specific configuration --
 project = "libcasm-configuration"
 version = "2.0"  # The short X.Y version.
-release = "2.0a5"  # The full version, including alpha/beta/rc tags.
+release = "2.0a6"  # The full version, including alpha/beta/rc tags.
 project_desc = "CASM configuration comparison and enumeration"
 logo_text = "libcasm-configuration"
 github_url = "https://github.com/prisms-center/CASMcode_configuration/"
