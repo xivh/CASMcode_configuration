@@ -6,11 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.0a6] - 2024-10-11
+## [2.0a6] - Unreleased
 
 ### Added
 
 - Added `libcasm.clusterography.make_custom_cluster_specs`, which takes a custom site filter function to generate a ClusterSpecs with custom_generators generated with the custom site filter. This approach allows creating a ClusterSpecs that is customized, as with a custom site filter, but still works to save/load without to_dict/from_dict needing the custom filter. 
+- Added `make_canonical_local_configuration`, `make_distinct_local_cluster_sites`, and `make_distinct_local_perturbations` to `libcasm.enumerate`.
+- Added `local_symgroup_rep` to `libcasm.configuration.Supercell`.
 
 ### Changed
 

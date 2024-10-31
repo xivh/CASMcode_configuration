@@ -19,6 +19,7 @@
 #include "casm/configuration/enumeration/ConfigEnumAllOccupations.hh"
 #include "casm/configuration/enumeration/MakeOccEventStructures.hh"
 #include "casm/configuration/enumeration/OccEventInfo.hh"
+#include "casm/configuration/enumeration/background_configuration.hh"
 #include "casm/configuration/enumeration/perturbations.hh"
 #include "casm/configuration/occ_events/OccSystem.hh"
 #include "casm/configuration/occ_events/orbits.hh"
@@ -394,6 +395,197 @@ PYBIND11_MODULE(_enumerate, m) {
       )pbdoc",
         py::arg("occ_event"), py::arg("phenomenal_occevent"),
         py::arg("supercell"));
+
+  m.def(
+      "make_canonical_local_configuration",
+      [](config::Configuration const &configuration,
+         occ_events::OccEvent const &occ_event,
+         std::vector<config::SupercellSymOp> const &event_group) {
+        /// \brief Make {cluster, {occ_init, occ_final}} from OccEvent
+
+        auto supercell = configuration.supercell;
+        auto cluster_occupation =
+            occ_events::make_cluster_occupation(occ_event);
+        std::vector<Index> const &event_sites = to_index_vector(
+            cluster_occupation.first, supercell->unitcellcoord_index_converter);
+        std::vector<int> const &occ_init = cluster_occupation.second[0];
+        std::vector<int> const &occ_final = cluster_occupation.second[1];
+        return make_canonical_form(configuration, event_sites, occ_init,
+                                   occ_final, event_group);
+      },
+      R"pbdoc(
+      Return the canonical form of a configuration in the context of an OccEvent
+
+      Parameters
+      ----------
+      local_configuration : libcasm.configuration.Configuration
+          The configuration. The occupation on the sites involved in the
+          event are not significant - they will be set to either the initial
+          or final event occupation.
+      occ_event : libcasm.occ_events.OccEvent
+          The event.
+      event_group : list[libcasm.configuration.SupercellSymOp]
+          The subset of the supercell symmetry group that leaves the event
+          invariant.
+
+      Returns
+      -------
+      canonical_local_configuration : libcasm.configuration.Configuration
+          The canonical form of the configuration in the context of the event;
+          determined by setting the occupation on the sites involved in the
+          event to both the initial and final occupation, applying operations
+          in the `event_group`, and returning the configuration that compares
+          greatest overall.
+
+      )pbdoc",
+      py::arg("configuration"), py::arg("event"), py::arg("event_group"));
+
+  m.def(
+      "make_distinct_local_cluster_sites",
+      [](config::Configuration const &configuration,
+         occ_events::OccEvent const &occ_event,
+         std::vector<config::SupercellSymOp> const &event_group,
+         std::vector<std::vector<clust::IntegralCluster>> const
+             &_local_orbits) {
+        /// \brief Make {cluster, {occ_init, occ_final}} from OccEvent
+
+        auto supercell = configuration.supercell;
+        auto cluster_occupation =
+            occ_events::make_cluster_occupation(occ_event);
+        std::vector<Index> const &event_sites = to_index_vector(
+            cluster_occupation.first, supercell->unitcellcoord_index_converter);
+        std::vector<int> const &occ_init = cluster_occupation.second[0];
+        std::vector<int> const &occ_final = cluster_occupation.second[1];
+
+        // copy vector<vector<IntegralCluster>> -> vector<set<IntegralCluster>>
+        std::vector<std::set<clust::IntegralCluster>> local_orbits;
+        for (auto const &_local_orbit : _local_orbits) {
+          local_orbits.emplace_back(_local_orbit.begin(), _local_orbit.end());
+        }
+        // convert to linear site indices
+        xtal::UnitCellCoordIndexConverter const &converter =
+            supercell->unitcellcoord_index_converter;
+        std::vector<std::set<std::set<Index>>> local_orbits_as_indices =
+            clust::make_orbits_as_indices(local_orbits, converter);
+
+        std::set<std::set<Index>> _distinct_local_cluster_sites =
+            config::make_distinct_local_cluster_sites(
+                configuration, event_sites, occ_init, occ_final, event_group,
+                local_orbits_as_indices);
+
+        // copy set<set<Index>> -> vector<set<Index>>
+        std::vector<std::set<Index>> distinct_local_cluster_sites;
+        for (auto const &x : _distinct_local_cluster_sites) {
+          distinct_local_cluster_sites.emplace_back(x);
+        }
+        return distinct_local_cluster_sites;
+      },
+      R"pbdoc(
+      Given orbits of local-clusters in the infinite crystal, make the distinct
+      local-clusters around an event in a particular configuration, as linear
+      site indices
+
+      Parameters
+      ----------
+      configuration : libcasm.configuration.Configuration
+          The background configuration in which distinct clusters will be found.
+      occ_event : libcasm.occ_events.OccEvent
+          The event.
+      event_group : list[libcasm.configuration.SupercellSymOp]
+          The subset of the supercell symmetry group that leaves the event
+          invariant.
+      local_orbits: list[list[Cluster]]
+          The local orbits in the infinite crystal.
+
+      Returns
+      -------
+      distinct_local_cluster_sites: list[set[int]]
+          The symmetrically distinct local-clusters in the background
+          configuration, where ``distinct_local_cluster_sites[i]`` is the
+          `i`-th distinct cluster, represented as a set of linear site indices
+          in the supercell.
+      )pbdoc",
+      py::arg("configuration"), py::arg("event"), py::arg("event_group"),
+      py::arg("local_orbits"));
+
+  m.def(
+      "make_distinct_local_perturbations",
+      [](config::Configuration const &background,
+         occ_events::OccEvent const &occ_event,
+         std::vector<config::SupercellSymOp> const &event_group,
+         std::vector<std::set<Index>> const &distinct_local_cluster_sites) {
+        /// \brief Make {cluster, {occ_init, occ_final}} from OccEvent
+
+        auto supercell = background.supercell;
+        auto cluster_occupation =
+            occ_events::make_cluster_occupation(occ_event);
+        std::vector<Index> const &event_sites = to_index_vector(
+            cluster_occupation.first, supercell->unitcellcoord_index_converter);
+        std::vector<int> const &occ_init = cluster_occupation.second[0];
+        std::vector<int> const &occ_final = cluster_occupation.second[1];
+
+        // make distinct local perturbations, with clusters that
+        std::set<config::Configuration> distinct_local_perturbations;
+
+        typedef std::tuple<std::set<Index>, config::Configuration,
+                           config::Configuration>
+            tuple_type;
+        std::vector<tuple_type> results;
+        for (auto const &local_cluster_sites : distinct_local_cluster_sites) {
+          config::ConfigEnumAllOccupations enumerator(background,
+                                                      local_cluster_sites);
+          while (enumerator.is_valid()) {
+            auto result = distinct_local_perturbations.emplace(
+                make_canonical_form(enumerator.value(), event_sites, occ_init,
+                                    occ_final, event_group));
+            if (result.second) {
+              results.push_back(std::make_tuple(
+                  local_cluster_sites, enumerator.value(), *result.first));
+            }
+            enumerator.advance();
+          }
+        }
+        return results;
+      },
+      R"pbdoc(
+      Given orbits of local-clusters in the infinite crystal, make the distinct
+      local-clusters around an event in a particular configuration, as linear
+      site indices
+
+      Parameters
+      ----------
+      background : libcasm.configuration.Configuration
+          The background configuration in which distinct clusters will be found.
+      occ_event : libcasm.occ_events.OccEvent
+          The event.
+      event_group : list[libcasm.configuration.SupercellSymOp]
+          The subset of the supercell symmetry group that leaves the event
+          invariant.
+      distinct_local_cluster_sites: list[set[int]]
+          Local-clusters in the background configuration where perturbations
+          should be tried, where ``distinct_local_cluster_sites[i]`` is the
+          `i`-th distinct cluster, represented as a set of linear site indices
+          in the supercell.
+
+      Returns
+      -------
+      results : list[tuple[set[int], libcasm.configuration.Configuration, libcasm.configuration.Configuration]]
+          A list of resulting distinct perturbation configurations, as a list
+          tuples `(background_index, cluster_sites, config, canonical_config)`,
+          where:
+
+          - `cluster_sites`: set[int], The linear site indices for the cluster
+            of sites on which the perturbation was applied.
+          - `config`: :class:`~libcasm.configuration.Configuration`, The
+            configuration with perturbation as applied.
+          - `canonical_config`: :class:`~libcasm.configuration.Configuration`,
+            The canonical form of the perturbed configuration, as determined by
+            application of `event_group`, which is used to find distinct
+            configurations.
+
+      )pbdoc",
+      py::arg("configuration"), py::arg("event"), py::arg("event_group"),
+      py::arg("distinct_local_cluster_sites"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

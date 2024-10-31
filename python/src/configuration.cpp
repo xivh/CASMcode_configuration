@@ -1136,6 +1136,31 @@ PYBIND11_MODULE(_configuration, m) {
               All combinations of supercell factor group operations and
               unit cell translations within the supercell.
           )pbdoc")
+      .def(
+          "local_symgroup_rep",
+          [](std::shared_ptr<config::Supercell const> const &supercell,
+             std::shared_ptr<sym_info::SymGroup const> const
+                 &local_prim_subgroup) {
+            return config::make_local_supercell_symgroup_rep(
+                local_prim_subgroup, supercell);
+          },
+          R"pbdoc(
+          Make SupercellSymOp group rep for local property symmetry in a
+          supercell
+
+          Parameters
+          ----------
+          local_prim_subgroup : libcasm.sym_info.SymGroup
+              A subgroup of prim factor group. Must be a local property group,
+              in which each prim factor group operation only appears once
+              (may have non-zero translations).
+
+          Returns
+          -------
+          local_symgroup_rep: list[libcasm.configuration.SupercellSymOp]
+              The SupercellSymOp consistent with both the supercell and the
+              `local_prim_subgroup`.
+          )pbdoc")
       .def_property_readonly(
           "n_sites",
           [](std::shared_ptr<config::Supercell const> const &supercell) {

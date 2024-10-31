@@ -12,7 +12,10 @@ from ._ConfigEnumMeshGrid import (
 )
 from ._enumerate import (
     get_occevent_coordinate,
+    make_canonical_local_configuration,
     make_distinct_cluster_sites,
+    make_distinct_local_cluster_sites,
+    make_distinct_local_perturbations,
     make_occevent_simple_structures,
     make_phenomenal_occevent,
 )
