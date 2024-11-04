@@ -166,7 +166,7 @@ def test_IntegralClusterOrbitGenerator():
     data = orbit_gen.to_dict(xtal_prim=xtal_prim)
     assert isinstance(data, dict)
 
-    orbit_gen2 = clust.ClusterOrbitGenerator.from_list([data], prim=xtal_prim)[0]
+    orbit_gen2 = clust.ClusterOrbitGenerator.from_list([data], xtal_prim=xtal_prim)[0]
     assert orbit_gen2.prototype == orbit_gen.prototype
     assert orbit_gen2.include_subclusters == orbit_gen.include_subclusters
 

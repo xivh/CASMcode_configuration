@@ -472,7 +472,7 @@ PYBIND11_MODULE(_clusterography, m) {
           cluster : libcasm.clusterography.Cluster
               The Cluster
           )pbdoc",
-          py::arg("data"), py::arg("prim"))
+          py::arg("data"), py::arg("xtal_prim"))
       .def(
           "to_dict",
           [](clust::IntegralCluster const &cluster,
@@ -565,14 +565,14 @@ PYBIND11_MODULE(_clusterography, m) {
               The serialized list of ClusterOrbitGenerator
 
           xtal_prim : libcasm.xtal.Prim
-              The :class:`libcasm.xtal.Prim`
+              The :class:`libcasm.xtal.Prim`.
 
           Returns
           -------
           orbit_generators : list[ClusterOrbitGenerator]
               The orbit generators
           )pbdoc",
-          py::arg("data"), py::arg("prim"))
+          py::arg("data"), py::arg("xtal_prim"))
       .def(
           "to_dict",
           [](clust::IntegralClusterOrbitGenerator const &orbit_generator,
@@ -1224,7 +1224,7 @@ PYBIND11_MODULE(_clusterography, m) {
             prototype.
 
     )pbdoc",
-      py::arg("data"), py::arg("prim"));
+      py::arg("data"), py::arg("xtal_prim"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

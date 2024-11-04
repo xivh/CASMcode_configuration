@@ -15,7 +15,7 @@ def test_equivalents_info_from_dict_ZrO(shared_datadir):
         equivalent_generating_op_indices,
     ) = casmclust.equivalents_info_from_dict(
         data=equivalents_info,
-        prim=xtal_prim,
+        xtal_prim=xtal_prim,
     )
 
     assert len(phenomenal_clusters) == 2

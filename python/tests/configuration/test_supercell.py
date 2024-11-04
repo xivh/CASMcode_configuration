@@ -141,6 +141,20 @@ def test_simple_cubic_binary_supercell_compare(simple_cubic_binary_prim):
         print(scel.superlattice.column_vector_matrix())
     assert len(equivalent_supercells) == 3
 
+    data = dict()
+    data[supercell1] = "supercell1"
+    assert len(data) == 1
+    assert supercell1 in data
+    assert data[supercell1] == "supercell1"
+    assert supercell1b in data
+    assert data[supercell1b] == "supercell1"
+    assert supercell2 not in data
+
+    data[supercell2] = "supercell2"
+    assert len(data) == 2
+    assert supercell2 in data
+    assert data[supercell2] == "supercell2"
+
 
 def test_supercell_io(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)

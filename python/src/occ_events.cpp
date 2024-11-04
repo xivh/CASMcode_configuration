@@ -208,7 +208,7 @@ PYBIND11_MODULE(_occ_events, m) {
           data : dict
               The serialized OccSystem
 
-          prim : libcasm.xtal.Prim
+          xtal_prim : libcasm.xtal.Prim
               A :class:`libcasm.xtal.Prim`
 
           Returns
@@ -216,7 +216,7 @@ PYBIND11_MODULE(_occ_events, m) {
           system : libcasm.occ_events.OccSystem
               The OccSystem
           )pbdoc",
-          py::arg("data"), py::arg("prim"))
+          py::arg("data"), py::arg("xtal_prim"))
       .def(
           "to_dict",
           [](occ_events::OccSystem const &m) -> nlohmann::json {

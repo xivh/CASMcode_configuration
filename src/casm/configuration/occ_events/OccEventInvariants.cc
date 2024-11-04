@@ -6,6 +6,9 @@
 #include "casm/crystallography/BasicStructure.hh"
 #include "casm/misc/CASM_math.hh"
 
+// debug
+#include "casm/casm_io/container/stream_io.hh"
+
 namespace CASM {
 namespace occ_events {
 
@@ -105,14 +108,6 @@ bool compare(OccEventInvariants const &A, OccEventInvariants const &B,
   if (A.size() != B.size()) {
     return A.size() < B.size();
   }
-  if (A.molecule_count() != B.molecule_count()) {
-    // return A.molecule_count() < B.molecule_count();
-    return std::lexicographical_compare(
-        A.molecule_count().begin(), A.molecule_count().end(),
-        B.molecule_count().begin(), B.molecule_count().end(),
-        LexicographicalCompare());
-  }
-
   // all distances
   for (int i = A.distances().size() - 1; i >= 0; i--) {
     if (CASM::almost_equal(A.distances()[i], B.distances()[i], tol)) {
@@ -124,6 +119,23 @@ bool compare(OccEventInvariants const &A, OccEventInvariants const &B,
     if (A.distances()[i] > B.distances()[i]) {
       return false;
     }
+  }
+  if (A.molecule_count() != B.molecule_count()) {
+    for (auto const &x : A.molecule_count()) {
+      std::cout << "A: " << x.transpose() << std::endl;
+    }
+
+    for (auto const &x : B.molecule_count()) {
+      std::cout << "B: " << x.transpose() << std::endl;
+    }
+
+    std::cout << std::endl;
+
+    // return A.molecule_count() < B.molecule_count();
+    return !std::lexicographical_compare(
+        A.molecule_count().begin(), A.molecule_count().end(),
+        B.molecule_count().begin(), B.molecule_count().end(),
+        LexicographicalCompare());
   }
   return false;
 }

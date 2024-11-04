@@ -1382,6 +1382,17 @@ PYBIND11_MODULE(_configuration, m) {
              to_json(supercell, json);
              ss << json;
              return ss.str();
+           })
+      .def("__hash__",
+           [](std::shared_ptr<config::Supercell const> const &supercell) {
+             Eigen::Matrix3l const &T =
+                 supercell->superlattice.transformation_matrix_to_super();
+             std::stringstream ss;
+             for (auto const &v : T.reshaped()) {
+               ss << "_" << v;
+             }
+             std::hash<std::string> hasher;
+             return hasher(ss.str());
            });
 
   m.def(
