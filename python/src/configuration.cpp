@@ -693,8 +693,8 @@ PYBIND11_MODULE(_configuration, m) {
             configurationset = ConfigurationSet()
 
             # add Configuration
-            configruationset.add(Configuration(...))
-            configruationset.add(Configuration(...))
+            configurationset.add(Configuration(...))
+            configurationset.add(Configuration(...))
 
 
         Only :class:`~libcasm.configuration.Configuration` with degrees of
