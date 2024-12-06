@@ -11,6 +11,7 @@
 #include "casm/casm_io/container/stream_io.hh"
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
+#include "casm/configuration/clusterography/ClusterInvariants.hh"
 #include "casm/configuration/clusterography/ClusterSpecs.hh"
 #include "casm/configuration/clusterography/IntegralCluster.hh"
 #include "casm/configuration/clusterography/io/json/ClusterSpecs_json_io.hh"
@@ -364,6 +365,51 @@ PYBIND11_MODULE(_clusterography, m) {
            "Return a copy of the cluster with sites sorted")
       .def("is_sorted", &clust::IntegralCluster::is_sorted,
            "Return True if the cluster sites are sorted; False otherwise.")
+      .def(
+          "distances",
+          [](clust::IntegralCluster const &cluster,
+             xtal::BasicStructure const &xtal_prim) {
+            return clust::ClusterInvariants(cluster, xtal_prim).distances();
+          },
+          R"pbdoc(
+          Return cluster site-to-site distances
+
+          Parameters
+          ----------
+          xtal_prim : libcasm.xtal.Prim
+              The :class:`libcasm.xtal.Prim`
+
+          Returns
+          -------
+          distances : list[float]
+              The cluster site-to-site distances, sorted in increasing order.
+          )pbdoc",
+          py::arg("xtal_prim"))
+      .def(
+          "phenomenal_distances",
+          [](clust::IntegralCluster const &cluster,
+             xtal::BasicStructure const &xtal_prim,
+             clust::IntegralCluster const &phenomenal) {
+            return clust::ClusterInvariants(cluster, phenomenal, xtal_prim)
+                .phenomenal_distances();
+          },
+          R"pbdoc(
+          Return phenomenal cluster site to cluster site distances
+
+          Parameters
+          ----------
+          xtal_prim : libcasm.xtal.Prim
+              The :class:`libcasm.xtal.Prim`
+          phenomenal : Cluster
+              The phenomenal cluster.
+
+          Returns
+          -------
+          phenomenal_distances : list[float]
+              The phenomenal cluster site to cluster site distances, sorted
+              in increasing order.
+          )pbdoc",
+          py::arg("xtal_prim"), py::arg("phenomenal"))
       .def("__len__", &clust::IntegralCluster::size)
       .def(
           "__getitem__",
