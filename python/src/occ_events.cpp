@@ -155,7 +155,7 @@ PYBIND11_MODULE(_occ_events, m) {
       xtal_prim: libcasm.xtal.Prim
           A :class:`libcasm.xtal.Prim`
       chemical_name_list: Optional[List[str]]=None
-          Order of chemical name indices (i.e. :func:`~libcasm.xtal.Occupant.name`)
+          Order of chemical name indices (i.e. :func:`libcasm.xtal.Occupant.name`)
           to use in specifying OccEvents, performing Monte Carlo calculations, etc.
       vacancy_name_list: Optional[List[str]]=None
           Chemical names that should be recognized as vacancies.
@@ -727,8 +727,24 @@ PYBIND11_MODULE(_occ_events, m) {
       .def(
           "standardize",
           [](occ_events::OccEvent &event) { return standardize(event); },
-          "Put event into standardized form with regard to "
-          "permutation/reversal")
+          R"pbdoc(
+          Put event into standardized form with regard to permutation/reversal.
+
+          This is equivalent to:
+
+          .. code-block:: Python
+
+              forward_occ_event = self.copy().sort();
+              reverse_occ_event = self.copy().reverse().sort();
+              if (reverse_occ_event < occ_event) {
+                self = reverse_occ_event;
+              }
+              else {
+                self = forward_occ_event;
+              }
+
+          )pbdoc"
+          "")
       .def(
           "cluster",
           [](occ_events::OccEvent const &event) {

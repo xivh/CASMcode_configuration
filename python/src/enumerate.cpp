@@ -23,7 +23,9 @@
 #include "casm/configuration/enumeration/perturbations.hh"
 #include "casm/configuration/occ_events/OccSystem.hh"
 #include "casm/configuration/occ_events/orbits.hh"
+#include "casm/crystallography/CanonicalForm.hh"
 #include "casm/crystallography/SimpleStructure.hh"
+#include "casm/crystallography/SuperlatticeEnumerator.hh"
 
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
@@ -187,6 +189,104 @@ std::vector<occ_events::OccEvent> make_phenomenal_occevent(
   return phenomenal_occevent;
 }
 
+std::vector<xtal::Lattice> enumerate_superlattices(
+    xtal::Lattice const &unit_lattice,
+    std::vector<xtal::SymOp> const &point_group, Index max_volume,
+    Index min_volume = 1, std::string dirs = std::string("abc"),
+    std::optional<Eigen::Matrix3i> unit_cell = std::nullopt,
+    bool diagonal_only = false, bool fixed_shape = false) {
+  if (!unit_cell.has_value()) {
+    unit_cell = Eigen::Matrix3i::Identity();
+  }
+  xtal::ScelEnumProps enum_props{min_volume,    max_volume + 1,
+                                 dirs,          unit_cell.value(),
+                                 diagonal_only, fixed_shape};
+  xtal::SuperlatticeEnumerator enumerator{unit_lattice, point_group,
+                                          enum_props};
+  std::vector<xtal::Lattice> superlattices;
+  for (auto const &superlat : enumerator) {
+    superlattices.push_back(
+        xtal::canonical::equivalent(superlat, point_group, unit_lattice.tol()));
+  }
+  return superlattices;
+}
+
+class SuperlatticeEnum {
+ public:
+  SuperlatticeEnum(xtal::Lattice const &unit_lattice,
+                   std::vector<xtal::SymOp> const &point_group,
+                   Index max_volume, Index min_volume, std::string dirs,
+                   std::optional<Eigen::Matrix3i> unit_cell, bool diagonal_only,
+                   bool fixed_shape)
+      : m_unit_lattice(unit_lattice),
+        m_point_group(point_group),
+        m_max_volume(max_volume),
+        m_min_volume(min_volume),
+        m_dirs(dirs),
+        m_unit_cell(unit_cell.has_value() ? unit_cell.value()
+                                          : Eigen::Matrix3i::Identity()),
+        m_diagonal_only(diagonal_only),
+        m_fixed_shape(fixed_shape),
+        m_enumerator(
+            unit_lattice, point_group,
+            xtal::ScelEnumProps{m_min_volume, m_max_volume + 1, m_dirs,
+                                m_unit_cell, m_diagonal_only, m_fixed_shape}) {
+    m_it = m_enumerator.begin();
+    m_end = m_enumerator.end();
+    _set_current();
+  }
+
+  xtal::Lattice const &value() const { return m_current; }
+
+  void advance() {
+    if (m_it != m_end) {
+      ++m_it;
+    }
+    _set_current();
+  }
+
+  bool is_valid() const { return m_it != m_end; }
+
+  void reset() {
+    m_it = m_enumerator.begin();
+    _set_current();
+  }
+
+  Index min_volume() const { return m_min_volume; }
+
+  Index max_volume() const { return m_max_volume; }
+
+  std::string dirs() const { return m_dirs; }
+
+  Eigen::Matrix3i unit_cell() const { return m_unit_cell; }
+
+  bool diagonal_only() const { return m_diagonal_only; }
+
+  bool fixed_shape() const { return m_fixed_shape; }
+
+ private:
+  void _set_current() {
+    if (m_it != m_end) {
+      m_current = xtal::canonical::equivalent(*m_it, m_point_group,
+                                              m_unit_lattice.tol());
+    }
+  }
+
+  xtal::Lattice m_unit_lattice;
+  std::vector<xtal::SymOp> m_point_group;
+  Index m_max_volume;
+  Index m_min_volume;
+  std::string m_dirs;
+  Eigen::Matrix3i m_unit_cell;
+  bool m_diagonal_only;
+  bool m_fixed_shape;
+  xtal::SuperlatticeEnumerator m_enumerator;
+
+  xtal::SuperlatticeIterator m_it;
+  xtal::SuperlatticeIterator m_end;
+  xtal::Lattice m_current;
+};
+
 }  // namespace CASMpy
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
@@ -206,6 +306,86 @@ PYBIND11_MODULE(_enumerate, m) {
   py::module::import("libcasm.xtal");
   py::module::import("libcasm.configuration");
   py::module::import("libcasm.occ_events");
+
+  py::class_<SuperlatticeEnum>(m, "SuperlatticeEnumBase")
+      .def(py::init<xtal::Lattice const &, std::vector<xtal::SymOp> const &,
+                    Index, Index, std::string, std::optional<Eigen::Matrix3i>,
+                    bool, bool>(),
+           py::arg("unit_lattice"), py::arg("point_group"),
+           py::arg("max_volume"), py::arg("min_volume") = 1,
+           py::arg("dirs") = "abc", py::arg("unit_cell") = std::nullopt,
+           py::arg("diagonal_only") = false, py::arg("fixed_shape") = false)
+      .def("value", &SuperlatticeEnum::value, R"pbdoc(
+            Get the current superlattice
+
+            Returns
+            -------
+            superlattice: xtal.Lattice
+                A const reference to the current superlattice.
+            )pbdoc",
+           py::return_value_policy::reference_internal)
+      .def("advance", &SuperlatticeEnum::advance, R"pbdoc(
+            Generate the next superlattice
+            )pbdoc")
+      .def("is_valid", &SuperlatticeEnum::is_valid, R"pbdoc(
+          Return True if `value` is valid, False if no more valid values
+
+          Returns
+          -------
+          is_valid: bool
+              True if `value` is valid, False if no more valid values
+          )pbdoc")
+      .def("reset", &SuperlatticeEnum::reset, R"pbdoc(
+            Reset the enumeration to the beginning
+            )pbdoc")
+      .def("min_volume", &SuperlatticeEnum::min_volume, R"pbdoc(
+          Get the minimum volume
+
+          Returns
+          -------
+          min_volume: int
+                  The minimum volume
+          )pbdoc")
+      .def("max_volume", &SuperlatticeEnum::max_volume, R"pbdoc(
+          Get the maximum volume
+
+          Returns
+          -------
+          max_volume: int
+                  The maximum volume
+          )pbdoc")
+      .def("dirs", &SuperlatticeEnum::dirs, R"pbdoc(
+          Get the enumeration directions
+
+          Returns
+          -------
+          dirs: str
+                  The enumeration directions
+          )pbdoc")
+      .def("unit_cell", &SuperlatticeEnum::unit_cell, R"pbdoc(
+          Get the unit cell matrix
+
+          Returns
+          -------
+          unit_cell: np.ndarray[ np.int[3, 3]]
+              The unit cell matrix
+          )pbdoc")
+      .def("diagonal_only", &SuperlatticeEnum::diagonal_only, R"pbdoc(
+          Get the diagonal only flag
+
+          Returns
+          -------
+          diagonal_only: bool
+                  The diagonal only flag
+          )pbdoc")
+      .def("fixed_shape", &SuperlatticeEnum::fixed_shape, R"pbdoc(
+          Get the fixed shape flag
+
+          Returns
+          -------
+          fixed_shape: bool
+                  The fixed shape flag
+          )pbdoc");
 
   py::class_<config::ConfigEnumAllOccupations>(m,
                                                "ConfigEnumAllOccupationsBase")
@@ -397,7 +577,7 @@ PYBIND11_MODULE(_enumerate, m) {
         py::arg("supercell"));
 
   m.def(
-      "make_canonical_local_configuration",
+      "_make_canonical_local_configuration_about_event",
       [](config::Configuration const &configuration,
          occ_events::OccEvent const &occ_event,
          std::vector<config::SupercellSymOp> const &event_group) {
@@ -450,6 +630,15 @@ PYBIND11_MODULE(_enumerate, m) {
         /// \brief Make {cluster, {occ_init, occ_final}} from OccEvent
 
         auto supercell = configuration.supercell;
+        for (auto const &op : event_group) {
+          if (op.supercell() != supercell) {
+            throw std::runtime_error(
+                "Error in libcasm.enumerate.make_distinct_local_cluster_sites: "
+                "configuration supercell does not match event_group operation "
+                "supercell");
+          }
+        }
+
         auto cluster_occupation =
             occ_events::make_cluster_occupation(occ_event);
         std::vector<Index> const &event_sites = to_index_vector(
@@ -513,7 +702,8 @@ PYBIND11_MODULE(_enumerate, m) {
       [](config::Configuration const &background,
          occ_events::OccEvent const &occ_event,
          std::vector<config::SupercellSymOp> const &event_group,
-         std::vector<std::set<Index>> const &distinct_local_cluster_sites) {
+         std::vector<std::set<Index>> const &distinct_local_cluster_sites,
+         bool allow_subcluster_perturbations) {
         /// \brief Make {cluster, {occ_init, occ_final}} from OccEvent
 
         auto supercell = background.supercell;
@@ -524,23 +714,72 @@ PYBIND11_MODULE(_enumerate, m) {
         std::vector<int> const &occ_init = cluster_occupation.second[0];
         std::vector<int> const &occ_final = cluster_occupation.second[1];
 
+        // Choose background + occ_init or background + occ_final as a reference
+        config::Configuration reference =
+            config::copy_apply_occ(background, event_sites, occ_init);
+        config::Configuration config_final =
+            config::copy_apply_occ(background, event_sites, occ_final);
+        if (config_final > reference) {
+          reference = config_final;
+        }
+
         // make distinct local perturbations, with clusters that
         std::set<config::Configuration> distinct_local_perturbations;
 
-        typedef std::tuple<std::set<Index>, config::Configuration,
+        typedef std::tuple<std::vector<Index>, config::Configuration,
                            config::Configuration>
             tuple_type;
         std::vector<tuple_type> results;
         for (auto const &local_cluster_sites : distinct_local_cluster_sites) {
-          config::ConfigEnumAllOccupations enumerator(background,
+          std::vector<Index> local_cluster_sites_vec(
+              local_cluster_sites.begin(), local_cluster_sites.end());
+          if (local_cluster_sites.size() == 0) {
+            auto result =
+                distinct_local_perturbations.emplace(make_canonical_form(
+                    background, event_sites, occ_init, occ_final, event_group));
+            if (result.second) {
+              results.push_back(std::make_tuple(local_cluster_sites_vec,
+                                                reference, *result.first));
+            }
+            continue;
+          }
+          std::vector<int> initial_occupation;
+          std::vector<int> final_occupation;
+
+          // lambda to get occupation on local-cluster sites:
+          auto get_occ = [&](config::Configuration const &config,
+                             std::vector<int> &occ) {
+            occ.resize(local_cluster_sites_vec.size());
+            int i = 0;
+            for (Index l : local_cluster_sites_vec) {
+              occ[i] = config.dof_values.occupation(l);
+              ++i;
+            }
+          };
+
+          get_occ(reference, initial_occupation);
+
+          config::ConfigEnumAllOccupations enumerator(reference,
                                                       local_cluster_sites);
           while (enumerator.is_valid()) {
-            auto result = distinct_local_perturbations.emplace(
-                make_canonical_form(enumerator.value(), event_sites, occ_init,
-                                    occ_final, event_group));
-            if (result.second) {
-              results.push_back(std::make_tuple(
-                  local_cluster_sites, enumerator.value(), *result.first));
+            get_occ(enumerator.value(), final_occupation);
+
+            bool is_subcluster_perturbation = false;
+            for (int i = 0; i < initial_occupation.size(); ++i) {
+              if (initial_occupation[i] == final_occupation[i]) {
+                is_subcluster_perturbation = false;
+                break;
+              }
+            }
+            if (allow_subcluster_perturbations || !is_subcluster_perturbation) {
+              auto result = distinct_local_perturbations.emplace(
+                  make_canonical_form(enumerator.value(), event_sites, occ_init,
+                                      occ_final, event_group));
+              if (result.second) {
+                results.push_back(std::make_tuple(local_cluster_sites_vec,
+                                                  enumerator.value(),
+                                                  *result.first));
+              }
             }
             enumerator.advance();
           }
@@ -549,8 +788,8 @@ PYBIND11_MODULE(_enumerate, m) {
       },
       R"pbdoc(
       Given orbits of local-clusters in the infinite crystal, make the distinct
-      local-clusters around an event in a particular configuration, as linear
-      site indices
+      occupation perturbation configurations around an event in a particular
+      background configuration.
 
       Parameters
       ----------
@@ -567,14 +806,23 @@ PYBIND11_MODULE(_enumerate, m) {
           `i`-th distinct cluster, represented as a set of linear site indices
           in the supercell.
 
+          If `len(distinct_local_cluster_sites[i]) == 0`, the unperturbed
+          configuration is included as the only result. Otherwise, only
+          perturbations which change the occupation on every site are included
+          in the results.
+      allow_subcluster_perturbations: bool = False
+          If True, output perturbations that only change the occupation on a
+          subset of sites. If False (default), only output perturbations that
+          change the occupation on all sites.
+
       Returns
       -------
-      results : list[tuple[set[int], libcasm.configuration.Configuration, libcasm.configuration.Configuration]]
+      results : list[tuple[list[int], libcasm.configuration.Configuration, libcasm.configuration.Configuration]]
           A list of resulting distinct perturbation configurations, as a list
           tuples `(background_index, cluster_sites, config, canonical_config)`,
           where:
 
-          - `cluster_sites`: set[int], The linear site indices for the cluster
+          - `cluster_sites`: list[int], The linear site indices for the cluster
             of sites on which the perturbation was applied.
           - `config`: :class:`~libcasm.configuration.Configuration`, The
             configuration with perturbation as applied.
@@ -585,7 +833,8 @@ PYBIND11_MODULE(_enumerate, m) {
 
       )pbdoc",
       py::arg("configuration"), py::arg("event"), py::arg("event_group"),
-      py::arg("distinct_local_cluster_sites"));
+      py::arg("distinct_local_cluster_sites"),
+      py::arg("allow_subcluster_perturbations"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

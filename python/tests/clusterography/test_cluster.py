@@ -149,6 +149,46 @@ def test_cluster_repr():
     assert "sites" in out
 
 
+def test_cluster_distances():
+    xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
+
+    # construct Cluster
+    cluster_1 = clust.Cluster.from_list(
+        [
+            [0, 0, 0, 0],  # [b, i, j, k]
+            [0, 0, 1, 0],
+        ]
+    )
+
+    assert np.allclose(cluster_1.distances(xtal_prim=xtal_prim), [2.0])
+
+    # construct Cluster
+    cluster_2 = clust.Cluster.from_list(
+        [
+            [0, 0, 0, 0],  # [b, i, j, k]
+            [0, 0, 1, 0],
+            [0, 0, 2, 0],
+        ]
+    )
+
+    assert np.allclose(cluster_2.distances(xtal_prim=xtal_prim), [2.0, 2.0, 4.0])
+
+    # construct Cluster
+    phenomenal_cluster = clust.Cluster.from_list(
+        [
+            [0, 0, -1, 0],  # [b, i, j, k]
+        ]
+    )
+
+    assert np.allclose(
+        cluster_1.phenomenal_distances(
+            xtal_prim=xtal_prim,
+            phenomenal=phenomenal_cluster,
+        ),
+        [2.0, 4.0],
+    )
+
+
 def test_IntegralClusterOrbitGenerator():
     xtal_prim = xtal_prims.FCC(r=1.0, occ_dof=["A", "B", "Va"])
     cluster = clust.Cluster.from_list(

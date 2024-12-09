@@ -381,7 +381,7 @@ PYBIND11_MODULE(_sym_info, m) {
 
           Returns
           -------
-          data : json
+          data : dict
               The
               `SymGroup reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/symmetry/SymGroup/>`_
               documents the expected format.

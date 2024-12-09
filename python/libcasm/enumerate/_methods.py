@@ -411,8 +411,9 @@ def make_first_n_orbits(
     phenomenal: Union[
         libcasm.clusterography.Cluster, libcasm.occ_events.OccEvent, None
     ] = None,
-    n_orbits: Optional[list[int]] = [],
-    cutoff_radius: Optional[list[float]] = [],
+    n_orbits: Optional[list[int]] = None,
+    cutoff_radius: Optional[list[float]] = None,
+    make_all_possible_orbits: bool = False,
 ):
     """Construct the first `n` local cluster orbits of each cluster size.
 
@@ -425,16 +426,21 @@ def make_first_n_orbits(
         If provided, generate local-cluster orbits using the invariant group of the
         phenomenal cluster or event. By default, periodic cluster orbits are
         generated.
-    n_orbits: Optional[list[int]] = []
+    n_orbits: Optional[list[int]] = None
         The number of orbits to include, by number of sites in the cluster. The null
         cluster is always included, and all point cluster orbits are always included
         for periodic orbits. Example: for periodic orbits, `[0, 0, 6, 4]` specifies
         that the null cluster, all point clusters, the first 6 pair cluster orbits, and
         the first 4 triplet cluster orbits should be included.
-    cutoff_radius: Optional[list[float]] = []
+    cutoff_radius: Optional[list[float]] = None
         For local clusters, the maximum distance of sites from any phenomenal cluster
         site to include in the local environment, by number of sites in the cluster.
         The null cluster value (element 0) is arbitrary.
+    make_all_possible_orbits: bool = False
+        If True, ignore `n_orbits` and generate all possible local-cluster orbits for
+        the specified `cutoff_radius`. If False, raise ValueError if the specified
+        `n_orbits` cannot be generated. Default is False. Requires `phenomenal` and
+        `cutoff_radius` to be specified.
 
     Returns
     -------
@@ -456,11 +462,22 @@ def make_first_n_orbits(
 
     xtal_prim = prim.xtal_prim
 
+    if n_orbits is None:
+        n_orbits = []
+    if cutoff_radius is None:
+        cutoff_radius = []
+
+    # Set `generating_group`, `phenomenal_cluster`, and minimum `n_orbits`
     if phenomenal is None:
         generating_group = prim.factor_group
         phenomenal_cluster = None
         while len(n_orbits) < 2:
             n_orbits.append(0)
+        if make_all_possible_orbits:
+            raise ValueError(
+                "Error in make_first_n_orbits:"
+                "`make_all_possible_orbits` requires `phenomenal` and `cutoff_radius`."
+            )
     elif isinstance(phenomenal, Cluster):
         symgroup_rep = make_integral_site_coordinate_symgroup_rep(
             prim.factor_group.elements, prim.xtal_prim
@@ -493,14 +510,15 @@ def make_first_n_orbits(
             "`phenomenal` must be a Cluster, OccEvent, or None"
         )
 
-    l_1 = min(xtal_prim.lattice().lengths_and_angles()[:3])
-    l_current = l_1
-
-    total_n_orbits = 0
-    while True:
-        max_length = [0.0, 0.0]
-        while len(max_length) < len(n_orbits):
-            max_length.append(l_current)
+    # If `make_all_possible_orbits`, generate all possible orbits
+    if make_all_possible_orbits:
+        max_cluster_distance = phenomenal_cluster.distances(xtal_prim=xtal_prim)[-1]
+        max_length = []
+        for i_branch, r in enumerate(cutoff_radius):
+            if i_branch < 2:
+                max_length.append(0.0)
+            else:
+                max_length.append(r * 2.0 + max_cluster_distance * 2.0)
 
         cluster_specs = libcasm.clusterography.ClusterSpecs(
             xtal_prim=xtal_prim,
@@ -510,8 +528,53 @@ def make_first_n_orbits(
             max_length=max_length,
             cutoff_radius=cutoff_radius,
         )
+        return cluster_specs.make_orbits()
+
+    # Otherwise, prepapre to make first `n` orbits in each branch...
+
+    # Check `n_orbits` and `cuttoff_radius` consistency
+    if phenomenal is not None:
+        if len(n_orbits) != len(cutoff_radius):
+            raise ValueError(
+                "Error in make_first_n_orbits:"
+                "`n_orbits` and `cutoff_radius` must have the same length "
+                "for local-cluster orbits."
+            )
+
+    # Prepare to initial `max_length` for each branch...
+
+    # Use the minimum lattice vector length
+    # as the initial `max_length` for branches 2, 3, ...
+    l_min = min(xtal_prim.lattice().lengths_and_angles()[:3])
+    max_length = [0.0, 0.0]
+    while len(max_length) < len(n_orbits):
+        max_length.append(l_min * 2.0)
+
+    # Method:
+    # - Generate orbits
+    # - Check if `n_orbits` are generated for each branch
+    # - If not complete:
+    #   - If no change from previous step, raise ValueError
+    #   - Otherwise increase `max_length` for the incomplete branches
+    #   - Go to the next iteration
+    # - If complete:
+    #   - Collect the first `n` orbits from each branch and return them
+    total_n_orbits = 0
+    while True:
+        # Generate orbits
+        cluster_specs = libcasm.clusterography.ClusterSpecs(
+            xtal_prim=xtal_prim,
+            phenomenal=phenomenal_cluster,
+            include_phenomenal_sites=False,
+            generating_group=generating_group,
+            max_length=max_length,
+            cutoff_radius=cutoff_radius,
+        )
         orbits = cluster_specs.make_orbits()
-        if len(orbits) <= total_n_orbits:
+
+        # If no change from previous step, raise ValueError
+        all_possible_orbits_found = len(orbits) <= total_n_orbits
+        if all_possible_orbits_found:
             if phenomenal is None:
                 raise ValueError(
                     "Error in make_first_n_orbits:"
@@ -524,11 +587,13 @@ def make_first_n_orbits(
                 )
         total_n_orbits = len(orbits)
 
+        # Organize orbits by branch
         branches = [list() for _ in range(len(cluster_specs.max_length()))]
         for orbit in orbits:
             i_branch = len(orbit[0])
             branches[i_branch].append(orbit)
 
+        # Check if `n_orbits` are generated for each branch
         complete = True
         for i_branch, branch in enumerate(branches):
             if phenomenal is None and i_branch < 2:
@@ -537,8 +602,9 @@ def make_first_n_orbits(
                 continue
             if len(branch) < n_orbits[i_branch]:
                 complete = False
-                break
+                max_length[i_branch] += l_min
 
+        # If complete, collect the first `n` orbits from each branch and return them
         if complete:
             orbits = []
             for i_branch, branch in enumerate(branches):
@@ -550,8 +616,8 @@ def make_first_n_orbits(
                     orbits += branch[: n_orbits[i_branch]]
 
             return orbits
-        else:
-            l_current += l_1
+
+        # Otherwise, continue to the next iteration
 
     return
 
@@ -561,8 +627,9 @@ def make_first_n_orbits_cluster_specs(
     phenomenal: Union[
         libcasm.clusterography.Cluster, libcasm.occ_events.OccEvent, None
     ] = None,
-    n_orbits: Optional[list[int]] = [],
-    cutoff_radius: Optional[list[float]] = [],
+    n_orbits: Optional[list[int]] = None,
+    cutoff_radius: Optional[list[float]] = None,
+    make_all_possible_orbits: bool = False,
 ):
     """Construct ClusterSpecs for generating the first `n` local cluster orbits of each
     cluster size using `custom_generators` for all orbits.
@@ -576,16 +643,21 @@ def make_first_n_orbits_cluster_specs(
         If provided, generate local-cluster orbits using the invariant group of the
         phenomenal cluster or event. By default, periodic cluster orbits are
         generated.
-    n_orbits: Optional[list[int]] = []
+    n_orbits: Optional[list[int]] = None
         The number of orbits to include, by number of sites in the cluster. The null
         cluster is always included, and all point cluster orbits are always included
         for periodic orbits. Example: for periodic orbits, `[0, 0, 6, 4]` specifies
         that the null cluster, all point clusters, the first 6 pair cluster orbits, and
         the first 4 triplet cluster orbits should be included.
-    cutoff_radius: Optional[list[float]] = []
+    cutoff_radius: Optional[list[float]] = None
         For local clusters, the maximum distance of sites from any phenomenal cluster
         site to include in the local environment, by number of sites in the cluster.
         The null cluster value (element 0) is arbitrary.
+    make_all_possible_orbits: bool = False
+        If True, ignore `n_orbits` and generate all possible local-cluster orbits for
+        the specified `cutoff_radius`. If False, raise ValueError if the specified
+        `n_orbits` cannot be generated. Default is False. Requires `phenomenal` and
+        `cutoff_radius` to be specified.
 
     Returns
     -------
@@ -599,6 +671,7 @@ def make_first_n_orbits_cluster_specs(
         phenomenal=phenomenal,
         n_orbits=n_orbits,
         cutoff_radius=cutoff_radius,
+        make_all_possible_orbits=make_all_possible_orbits,
     )
     custom_generators = [
         libcasm.clusterography.ClusterOrbitGenerator(

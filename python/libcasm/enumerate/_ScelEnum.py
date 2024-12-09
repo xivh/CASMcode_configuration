@@ -5,6 +5,8 @@ import numpy as np
 import libcasm.configuration as casmconfig
 import libcasm.xtal as xtal
 
+from ._SuperlatticeEnum import SuperlatticeEnum
+
 
 class ScelEnum:
     """Enumerate symmetrically distinct supercells
@@ -196,11 +198,12 @@ class ScelEnum:
             form.
         """
         prim_lattice = self.prim.xtal_prim.lattice()
-        for superlattice in xtal.enumerate_superlattices(
-            unit_lattice=prim_lattice,
-            point_group=self.prim.crystal_point_group.elements,
-            max_volume=max,
-            min_volume=min,
+        superlat_enum = SuperlatticeEnum(
+            prim=self.prim,
+        )
+        for superlattice in superlat_enum.by_volume(
+            max=max,
+            min=min,
             dirs=dirs,
             unit_cell=unit_cell,
             diagonal_only=diagonal_only,

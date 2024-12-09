@@ -121,16 +121,6 @@ bool compare(OccEventInvariants const &A, OccEventInvariants const &B,
     }
   }
   if (A.molecule_count() != B.molecule_count()) {
-    for (auto const &x : A.molecule_count()) {
-      std::cout << "A: " << x.transpose() << std::endl;
-    }
-
-    for (auto const &x : B.molecule_count()) {
-      std::cout << "B: " << x.transpose() << std::endl;
-    }
-
-    std::cout << std::endl;
-
     // return A.molecule_count() < B.molecule_count();
     return !std::lexicographical_compare(
         A.molecule_count().begin(), A.molecule_count().end(),

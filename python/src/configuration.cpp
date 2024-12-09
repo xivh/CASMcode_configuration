@@ -537,7 +537,7 @@ PYBIND11_MODULE(_configuration, m) {
 
           Returns
           -------
-          data : json
+          data : dict
               The `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_ documents the expected format.
 
           )pbdoc")
@@ -2421,7 +2421,7 @@ PYBIND11_MODULE(_configuration, m) {
 
           Returns
           -------
-          data : json
+          data : dict
               The `Prim reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/crystallography/BasicStructure/>`_ documents the expected format.
           )pbdoc",
           py::arg("write_prim_basis") = false);
@@ -2430,8 +2430,9 @@ PYBIND11_MODULE(_configuration, m) {
   pySupercellSymOp
       .def(py::init(&make_supercell_symop), py::arg("supercell"),
            py::arg("supercell_factor_group_index"),
-           py::arg("translation_index"), py::arg("translation_frac"),
-           py::arg("translation_cart"),
+           py::arg("translation_index") = std::nullopt,
+           py::arg("translation_frac") = std::nullopt,
+           py::arg("translation_cart") = std::nullopt,
            R"pbdoc(
       .. rubric:: Constructor
 
@@ -3242,7 +3243,7 @@ PYBIND11_MODULE(_configuration, m) {
 
           Returns
           -------
-          data : json
+          data : dict
               The `Configuration reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/Configuration/>`_ documents the expected format for Configurations."
           )pbdoc",
           py::arg("write_prim_basis") = false)
@@ -3323,6 +3324,59 @@ PYBIND11_MODULE(_configuration, m) {
           py::arg("atom_type_naming_method") = std::string("chemical_name"),
           py::arg("excluded_species") =
               std::vector<std::string>({"Va", "VA", "va"}));
+
+  m.def(
+      "asymmetric_unit_indices",
+      [](config::Configuration const &configuration) {
+        // Make the configuration invariant subgroup
+        auto const &supercell = configuration.supercell;
+        auto begin = config::SupercellSymOp::begin(supercell);
+        auto end = config::SupercellSymOp::end(supercell);
+        std::vector<config::SupercellSymOp> invariant_subgroup =
+            config::make_invariant_subgroup(configuration, begin, end);
+
+        // Make the orbits of equivalent sites
+        std::vector<std::vector<Index>> asymmetric_unit_indices;
+        Index n_sites = supercell->unitcellcoord_index_converter.total_sites();
+        for (Index l = 0; l < n_sites; ++l) {
+          bool found = false;
+          for (auto const &indices : asymmetric_unit_indices) {
+            if (std::find(indices.begin(), indices.end(), l) != indices.end()) {
+              found = true;
+              break;
+            }
+          }
+
+          if (found) {
+            continue;
+          }
+
+          std::set<Index> orbit;
+          for (auto const &op : invariant_subgroup) {
+            orbit.insert(op.permute_index(l));
+          }
+          asymmetric_unit_indices.push_back(
+              std::vector<Index>(orbit.begin(), orbit.end()));
+        }
+        return asymmetric_unit_indices;
+      },
+      R"pbdoc(
+      Returns the indices of equivalent sites.
+
+      Parameters
+      ----------
+      configuration : libcasm.configuration.Configuration
+          The configuration.
+
+      Returns
+      -------
+      asymmetric_unit_indices: list[list[int]]
+          One list of linear site indices for each set of symmetrically
+          equivalent sites in the configuration. In other words, the elements
+          of asymmetric_unit_indices[i] are the indices of the i-th set of
+          linear site indices which are symmetrically equivalent to each other.
+      )pbdoc",
+      py::arg("configuration"));
 
   // ConfigurationWithProperties -- define functions
   pyConfigurationWithProperties
@@ -3479,7 +3533,7 @@ PYBIND11_MODULE(_configuration, m) {
 
           Returns
           -------
-          data : json
+          data : dict
               The `Configuration reference <https://prisms-center.github.io/CASMcode_docs/formats/casm/clex/Configuration/>`_ documents the expected format for Configurations."
           )pbdoc",
           py::arg("write_prim_basis") = false)
@@ -4297,7 +4351,7 @@ PYBIND11_MODULE(_configuration, m) {
 
           Returns
           -------
-          data : json
+          data : dict
               The ConfigSpaceAnalysisResults as a Python dict
           )pbdoc");
 
@@ -4394,7 +4448,7 @@ PYBIND11_MODULE(_configuration, m) {
 
           Returns
           -------
-          data : json
+          data : dict
               The DoFSpaceAnalysisResults as a Python dict
           )pbdoc")
       .def("__repr__", [](config::DoFSpaceAnalysisResults const &self) {

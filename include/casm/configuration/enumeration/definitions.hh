@@ -23,11 +23,7 @@
 // - CASMcode_crystallography
 // - CASMcode_clexulator
 // - CASMcode_configuration (top level)
-//
-// Included indirectly:
 // - CASMcode_configuration/group
 // - CASMcode_configuration/sym_info
-//
-// Do not include:
 // - CASMcode_configuration/clusterography
 // - CASMcode_configuration/occ_events

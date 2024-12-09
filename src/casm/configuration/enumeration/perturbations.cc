@@ -141,9 +141,6 @@ std::set<std::set<Index>> make_distinct_local_cluster_sites(
       copy_apply_occ(background, event_sites, occ_final);
 
   std::vector<sym_info::Permutation> indices_group_rep;
-  // ConfigIsEquivalent is_background_invariant(background);
-  // ConfigIsEquivalent init_is_equiv(config_init);
-  // ConfigIsEquivalent final_is_equiv(config_final);
   for (auto const &op : event_group) {
     // Apply completely, then check:
     Configuration A = copy_apply(op, config_init);
@@ -152,16 +149,6 @@ std::set<std::set<Index>> make_distinct_local_cluster_sites(
         (B == config_init && A == config_final)) {
       indices_group_rep.push_back(sym_info::inverse(op.combined_permute()));
     }
-
-    // if (is_background_invariant(op)) { TODO: check init and final somehow
-    //   indices_group_rep.push_back(sym_info::inverse(op.combined_permute()));
-    // }
-
-    // // Incremental apply and check:
-    // if ( (init_is_equiv(op) && final_is_equiv(op)) || (final_is_equiv(op,
-    // config_init) && init_is_equiv(op, config_final)) ) {
-    //   indices_group_rep.push_back(sym_info::inverse(op.combined_permute()));
-    // }
   }
   auto copy_apply_f = [](sym_info::Permutation const &perm,
                          std::set<Index> const &site_indices) {

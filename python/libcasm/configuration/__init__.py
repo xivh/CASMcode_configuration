@@ -11,6 +11,7 @@ from ._configuration import (
     SupercellRecord,
     SupercellSet,
     SupercellSymOp,
+    asymmetric_unit_indices,
     config_space_analysis,
     copy_configuration,
     copy_transformed_configuration,
@@ -36,6 +37,8 @@ from ._configuration import (
 from ._methods import (
     apply,
     copy_apply,
+    find_mapping_operation,
+    make_consistent_asymmetric_unit_indices,
 )
 from ._misc import (
     equivalent_order_parameters_index,
