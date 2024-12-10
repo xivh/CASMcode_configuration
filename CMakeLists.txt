@@ -335,8 +335,6 @@ install(FILES "${PROJECT_BINARY_DIR}/CASMcode_configurationConfig.cmake"
 # build flow.
 if(DEFINED SKBUILD)
 
-  message(STATUS "Configuring Python extension modules")
-
   # call pybind11-config to obtain the root of the cmake package
   execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pybind11 --cmakedir
                   OUTPUT_VARIABLE pybind11_ROOT_RAW)
@@ -384,6 +382,24 @@ if(DEFINED SKBUILD)
   else()
     set_target_properties(
       _configuration PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
+  endif()
+
+  ### libcasm.local_configuration._local_configuration ###
+  pybind11_add_module(_local_configuration MODULE
+                      "${PROJECT_SOURCE_DIR}/python/src/local_configuration.cpp")
+  target_link_libraries(_local_configuration PRIVATE
+    CASM::casm_global
+    CASM::casm_crystallography
+    CASM::casm_clexulator
+    casm_configuration
+  )
+  install(TARGETS _local_configuration DESTINATION local_configuration)
+  if(APPLE)
+    set_target_properties(
+      _local_configuration PROPERTIES INSTALL_RPATH "@loader_path/../lib")
+  else()
+    set_target_properties(
+      _local_configuration PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 
   ### libcasm.enumerate._enumerate ###

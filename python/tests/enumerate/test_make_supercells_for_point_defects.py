@@ -2,6 +2,7 @@ import math
 
 import libcasm.configuration as casmconfig
 import libcasm.enumerate as casmenum
+import libcasm.local_configuration as casmlocal
 import libcasm.occ_events as occ_events
 
 
@@ -90,7 +91,7 @@ def test_make_supercells_for_point_defects_1(fcc_1NN_A_Va_event):
 
     # Make event prim info
     system = occ_events.OccSystem(xtal_prim=prim.xtal_prim)
-    event_prim_info = casmenum.OccEventPrimSymInfo(
+    event_prim_info = casmlocal.OccEventPrimSymInfo(
         prim=prim,
         system=system,
         prototype_event=event,

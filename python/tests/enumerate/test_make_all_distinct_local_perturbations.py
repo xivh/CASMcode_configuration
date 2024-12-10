@@ -2,6 +2,7 @@ import numpy as np
 
 import libcasm.configuration as config
 import libcasm.enumerate as enum
+import libcasm.local_configuration as casmlocal
 import libcasm.occ_events as occ_events
 import libcasm.xtal as xtal
 
@@ -37,7 +38,7 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
     supercell_1 = config.Supercell(prim, T_motif * 3)
     assert len(supercell_1.factor_group.elements) == 48
 
-    suborbits_1 = enum.make_occevent_suborbits(supercell_1, occ_event)
+    suborbits_1 = casmlocal.make_occevent_suborbits(supercell_1, occ_event)
     assert len(suborbits_1) == 1
     assert len(suborbits_1[0]) == 6
 
@@ -52,7 +53,7 @@ def test_make_occevent_suborbits(fcc_1NN_A_Va_event):
     supercell_2 = config.Supercell(prim, T_motif @ S)
     assert len(supercell_2.factor_group.elements) == 16
 
-    suborbits_2 = enum.make_occevent_suborbits(supercell_2, occ_event)
+    suborbits_2 = casmlocal.make_occevent_suborbits(supercell_2, occ_event)
     assert len(suborbits_2) == 2
     assert len(suborbits_2[0]) == 2
     assert len(suborbits_2[1]) == 4

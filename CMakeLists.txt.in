@@ -230,6 +230,24 @@ if(DEFINED SKBUILD)
       _configuration PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 
+  ### libcasm.local_configuration._local_configuration ###
+  pybind11_add_module(_local_configuration MODULE
+                      "${PROJECT_SOURCE_DIR}/python/src/local_configuration.cpp")
+  target_link_libraries(_local_configuration PRIVATE
+    CASM::casm_global
+    CASM::casm_crystallography
+    CASM::casm_clexulator
+    casm_configuration
+  )
+  install(TARGETS _local_configuration DESTINATION local_configuration)
+  if(APPLE)
+    set_target_properties(
+      _local_configuration PROPERTIES INSTALL_RPATH "@loader_path/../lib")
+  else()
+    set_target_properties(
+      _local_configuration PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
+  endif()
+
   ### libcasm.enumerate._enumerate ###
   pybind11_add_module(_enumerate MODULE
                       "${PROJECT_SOURCE_DIR}/python/src/enumerate.cpp")

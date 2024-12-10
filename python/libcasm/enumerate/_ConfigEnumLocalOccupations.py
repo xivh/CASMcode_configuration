@@ -3,18 +3,15 @@ from typing import Optional, Union
 
 import libcasm.clusterography as casmclust
 import libcasm.configuration as casmconfig
+import libcasm.local_configuration as casmlocal
 import libcasm.xtal as xtal
 
 from ._enumerate import (
     make_distinct_local_cluster_sites,
     make_distinct_local_perturbations,
 )
-from ._LocalConfiguration import LocalConfiguration, OccEventSymInfo
 from ._make_distinct_super_configurations import (
     make_distinct_super_configurations,
-)
-from ._OccEventSupercellSymInfo import (
-    OccEventSupercellSymInfo,
 )
 from ._point_defect_supercell_methods import (
     has_required_sites,
@@ -24,9 +21,8 @@ from ._point_defect_supercell_methods import (
 
 def make_distinct_local_configurations(
     background: casmconfig.Configuration,
-    event_info: OccEventSymInfo,
+    event_info: casmlocal.OccEventSymInfo,
     fix: str = "background",
-    supercell_set: Optional[casmconfig.SupercellSet] = None,
 ):
     """Return the distinct LocalConfiguration that can be generated as a combination of
     a background configuration and event.
@@ -35,7 +31,7 @@ def make_distinct_local_configurations(
     ----------
     background : casmconfig.Configuration
         A primitive background configuration.
-    event_info : OccEventPrimSymInfo
+    event_info : libcasm.local_configuration.OccEventSymInfo
         The OccEventSymInfo for the event.
     fix : str = "background"
         The object to be fixed during the method. Can be "background" or "event". If
@@ -45,7 +41,7 @@ def make_distinct_local_configurations(
 
     Returns
     -------
-    local_configurations : list[LocalConfiguration]
+    local_configurations : list[libcasm.local_configuration.LocalConfiguration]
         The symmetrically distinct LocalConfigurations.
     """
     if not casmconfig.is_primitive_configuration(background):
@@ -84,7 +80,7 @@ def make_distinct_local_configurations(
                         occ_event=event_init,
                     )
                     local_configurations.append(
-                        LocalConfiguration(
+                        casmlocal.LocalConfiguration(
                             pos=event_supercell_info.coordinate(event_final),
                             configuration=background,
                             event_info=event_info,
@@ -126,7 +122,7 @@ def make_distinct_local_configurations(
         local_configurations = []
         for _background in distinct_backgrounds:
             local_configurations.append(
-                LocalConfiguration(
+                casmlocal.LocalConfiguration(
                     pos=(0, 0),
                     configuration=_background,
                     event_info=event_info,
@@ -184,6 +180,361 @@ def _make_local_orbits_data(
     return local_orbits_data
 
 
+class ConfigEnumLocalOccupationsReference:
+    """Data structure for storing contextual information common for results from
+    :class:`~libcasm.local_configuration.ConfigEnumLocalOccupations`.
+
+    Reference is used to store information about the background configurations
+    that is common to all results from the enumeration of local perturbations.
+    Individual results are returned as instances of :class:`Result`.
+    """
+
+    def __init__(
+        self,
+        event_info: casmlocal.OccEventSymInfo,
+        event_supercell_info: casmlocal.OccEventSupercellSymInfo,
+        initial: list[casmlocal.LocalConfiguration],
+        prim_local_orbits: list[list[list[casmclust.Cluster]]] = None,
+    ):
+        if not isinstance(event_info, casmlocal.OccEventSymInfo):
+            raise ValueError(
+                "Error in ConfigEnumLocalOccupationsReference: "
+                "`event_info` must be an instance of `OccEventSymInfo`."
+            )
+        if not isinstance(event_supercell_info, casmlocal.OccEventSupercellSymInfo):
+            raise ValueError(
+                "Error in ConfigEnumLocalOccupationsReference: "
+                "`event_supercell_info` must be an instance of "
+                "`OccEventSupercellSymInfo`."
+            )
+
+        self.event_info = event_info
+        """libcasm.local_configuration.OccEventSymInfo: Shared information about the OccEvent."""
+
+        self.event_supercell_info = event_supercell_info
+        """libcasm.local_configuration.OccEventSupercellSymInfo: Information about the OccEvent 
+        with respect to the supercell."""
+
+        self.initial = initial
+        """list[libcasm.local_configuration.LocalConfiguration]: The list of initial 
+        LocalConfiguration before perturbations. The configurations are expected
+        to be equivalent and primitive, with events in distinct positions. Before
+        generating perturbations, these configurations are filled into the 
+        supercell without re-orientation and the events are placed at the same 
+        coordinates relative to the origin unit cell."""
+
+        # Generate event positions in the supercell for each initial configuration
+        _trans_frac = []
+        _pos = []
+        _event = []
+        for i_initial, local_config in enumerate(initial):
+            # Validate that the initial local configuration can tile the supercell
+            small_supercell = local_config.configuration.supercell
+            large_supercell = event_supercell_info.supercell
+            is_supercell, T = large_supercell.superlattice.is_superlattice_of(
+                small_supercell.superlattice
+            )
+            if not is_supercell:
+                print("~~~")
+                print("Initial LocalConfiguration:")
+                print(local_config)
+                print("Supercell:")
+                print(large_supercell)
+                raise ValueError(
+                    "Error in ConfigEnumLocalOccupations: "
+                    "The initial background configuration "
+                    "cannot tile the supercell."
+                )
+
+            # Determine `pos` in the supercell
+            # from `pos` in the initial local config
+            f_small = small_supercell.unitcell_index_converter
+            f_large = large_supercell.unitcell_index_converter
+            trans_frac = f_small.unitcell(local_config.pos[0])
+            _trans_frac.append(trans_frac)
+            pos = (f_large.linear_unitcell_index(trans_frac), local_config.pos[1])
+            _pos.append(pos)
+
+            # Get the event in the supercell at `pos`
+            _event.append(event_supercell_info.event(pos))
+
+        self.super_background = [
+            casmconfig.copy_configuration(
+                motif=x.configuration,
+                supercell=event_supercell_info.supercell,
+            )
+            for x in initial
+        ]
+        """list[libcasm.configuration.Configuration]: The super configurations 
+        formed by filling the `initial` local configurations into the supercell, 
+        where the events are placed at the same coordinates relative to the origin 
+        unit cell."""
+
+        self.event = _event
+        """list[libcasm.occ_events.OccEvent]: The events about which perturbations
+        are enumerated, for each initial configuration."""
+
+        self.event_trans_frac = _trans_frac
+        """list[np.ndarray]: The fractional translation from the origin unit cell
+        to the position of the phenomenal cluster or event, for each initial
+        configuration."""
+
+        self.event_pos = _pos
+        """list[tuple[int, int]]: The position of the phenomenal cluster or event in
+        the supercell, as `(unitcell_index, equivalent_index)`, for each initial
+        configuration."""
+
+        self.event_phenomenal_clusters = [x.cluster() for x in self.event]
+        """list[libcasm.clusterography.Cluster]: The phenomenal clusters, for each
+        event in 
+        :py:attr:`ConfigEnumLocalOccupationsReference.event 
+        <libcasm.enumerate.ConfigEnumLocalOccupationsReference.event>`."""
+
+        f_large = event_supercell_info.supercell.site_index_converter
+        self.event_sites = [
+            [f_large.linear_site_index(site) for site in cluster]
+            for cluster in self.event_phenomenal_clusters
+        ]
+        """list[list[int]]: The linear site indices for the event sites, for each
+        event in 
+        :py:attr:`ConfigEnumLocalOccupationsReference.event 
+        <libcasm.enumerate.ConfigEnumLocalOccupationsReference.event>`."""
+
+        # Generate asymmetric unit indices for each local configuration
+        _asym_indices = []
+        asymmetric_unit_indices_ref = None
+        configuration_ref = None
+        for local_config in initial:
+            small_supercell = local_config.configuration.supercell
+            asymmetric_unit_indices = casmconfig.asymmetric_unit_indices(
+                configuration=local_config.configuration,
+            )
+            if asymmetric_unit_indices_ref is None:
+                asymmetric_unit_indices_ref = asymmetric_unit_indices
+                configuration_ref = local_config.configuration
+
+            else:
+                asymmetric_unit_indices = (
+                    casmconfig.make_consistent_asymmetric_unit_indices(
+                        initial=asymmetric_unit_indices,
+                        configuration_init=local_config.configuration,
+                        reference=asymmetric_unit_indices_ref,
+                        configuration_ref=configuration_ref,
+                    )
+                )
+
+                if asymmetric_unit_indices is None:
+                    raise ValueError(
+                        "Error in ConfigEnumLocalOccupationsReference: "
+                        "Failed mapping asymmetric unit indices "
+                        "between initial configurations."
+                    )
+
+            asym_by_small_site_index = [None] * small_supercell.n_sites
+            for i_asym_unit, asym_unit in enumerate(asymmetric_unit_indices):
+                for site in asym_unit:
+                    asym_by_small_site_index[site] = i_asym_unit
+            _asym_indices.append(asym_by_small_site_index)
+
+        self.sublattice_indices = event_supercell_info.supercell.sublattice_indices()
+        """list[int]: The prim sublattice indices for the sites in the supercell."""
+
+        self.asymmetric_unit_indices = _asym_indices
+        """list[list[int]]: The asymmetric unit indices for the sites in each
+        `initial` configuration, where `asymmetric_unit_indices[i_initial][l]`
+        gives the same integer value for all equivalent sites in the `i_initial`-th
+        initial configuration. Asymmetric unit indices are arbitrarily determined
+        for the first initial configuration and then made such that they are
+        consistent for the other initial configurations."""
+
+        self.occupation_indices = [
+            casmconfig.copy_configuration(
+                motif=x.configuration,
+                supercell=self.event_supercell_info.supercell,
+            ).occupation.tolist()
+            for x in initial
+        ]
+        """list[list[int]]: The occupation indices for the sites in each super
+        configuration formed by filling the `initial` configurations into the 
+        supercell, where `occupation_indices[i_initial][l]` gives the occupation 
+        index for the `l`-th site in the `i_initial`-th super configuration."""
+
+        self.prim_local_orbits = prim_local_orbits
+        """list[list[list[libcasm.clusterography.Cluster]]]: The 
+        local-cluster orbits about each equivalent event in the origin unit cell.
+        
+        The local orbits for the equivalent events, where
+        `prim_local_orbits[i_event][i_local_orbit][i_cluster]` is the 
+        `i_cluster`-th cluster in the `i_local_orbit`-th local-cluster orbit about 
+        `event_info.event_prim_info.events[i_event]`."""
+
+        # Translate the local orbits to the position in the supercell
+        # where the event is located, for each initial configuration
+        _event_local_orbits = []
+        for i_initial, local_config in enumerate(initial):
+            # Get the position of the event in the supercell
+            pos = self.event_pos[i_initial]
+
+            # For each local-cluster orbit around the event...
+            _curr = []
+            for i_local_orbit, local_orbit in enumerate(prim_local_orbits[pos[1]]):
+                # Make symmetrically distinct-local cluster sites,
+                # as list[set[int]], appropriately translated to the correct `pos`
+                # in the supercell
+                _curr.append(
+                    [
+                        cluster + self.event_trans_frac[i_initial]
+                        for cluster in local_orbit
+                    ]
+                )
+            _event_local_orbits.append(_curr)
+
+        self.event_local_orbits = _event_local_orbits
+        """list[list[list[libcasm.clusterography.Cluster]]]: The local-cluster 
+        orbits for each event around which perturbations are made,
+        where `event_local_orbits[i_initial][i_local_orbit][i_cluster]` is the
+        `i_cluster`-th cluster in the `i_local_orbit`-th local-cluster orbit 
+        about `event[i_initial]`."""
+
+    def to_dict(
+        self,
+        write_prim_basis: bool = False,
+    ):
+        """Represent the ConfigEnumLocalOccupationsReference as a Python dict.
+
+        Parameters
+        ----------
+        write_prim_basis : bool, default=False
+            If True, write DoF values using the prim basis. Default (False)
+            is to write DoF values in the standard basis.
+
+        Returns
+        -------
+        data : dict
+            The ConfigEnumLocalOccupationsReference as a Python dict.
+        """
+        event_prim_info = self.event_info.event_prim_info
+        system = event_prim_info.system
+        (
+            prototype_event_data,
+            equivalents_info_data,
+        ) = event_prim_info.to_data()
+
+        xtal_prim = event_prim_info.prim.xtal_prim
+
+        return dict(
+            equivalents_info=equivalents_info_data,
+            prototype_event=prototype_event_data,
+            events=[event.to_dict(system=system) for event in event_prim_info.events],
+            supercell=self.event_supercell_info.supercell.to_dict(),
+            initial=[
+                x.to_dict(write_prim_basis=write_prim_basis) for x in self.initial
+            ],
+            asymmetric_unit_indices=self.asymmetric_unit_indices,
+            sublattice_indices=self.sublattice_indices,
+            occupation_indices=self.occupation_indices,
+            prim_local_orbits=_make_local_orbits_data(
+                local_orbits=self.prim_local_orbits,
+                xtal_prim=xtal_prim,
+                phenomenal_clusters=event_prim_info.phenomenal_clusters,
+            ),
+            event_local_orbits=_make_local_orbits_data(
+                local_orbits=self.event_local_orbits,
+                xtal_prim=xtal_prim,
+                phenomenal_clusters=self.event_phenomenal_clusters,
+            ),
+        )
+
+    def __repr__(self):
+        return xtal.pretty_json(self.to_dict())
+
+
+class ConfigEnumLocalOccupationsResult:
+    """Data structure for returning enumerated LocalConfiguration along with
+    contextual information
+
+    :class:`Reference` is used to store information about the background
+    configurations that is common to all results from the enumeration of local
+    perturbations. Individual results are returned as instances of Result.
+    """
+
+    def __init__(
+        self,
+        reference: ConfigEnumLocalOccupationsReference,
+    ):
+        self.reference = reference
+        """libcasm.enumerate.ConfigEnumLocalOccupationsReference: The reference information for the
+        enumeration results."""
+
+        self.local_configuration = None
+        """libcasm.local_configuration.LocalConfiguration: The current LocalConfiguration, as 
+        constructed from the background configuration and perturbation."""
+
+        self.canonical_local_configuration = None
+        """libcasm.local_configuration.LocalConfiguration: The canonical equivalent 
+        LocalConfiguration, after applying the event invariant group in the supercell 
+        (leaving the event in the same position as the initial, unperturbed 
+        configuration)."""
+
+        self.i_initial = None
+        """int: The index of the initial configuration in `reference.initial` 
+        that was perturbed to create the current result."""
+
+        self.pos = None
+        """tuple[int, int]: The position of the phenomenal cluster or event in the 
+        supercell, as `(unitcell_index, equivalent_index)`."""
+
+        self.i_local_orbit = None
+        """int: The index of the local orbit in `event_local_orbits[i_initial]` 
+        that was perturbed."""
+
+        self.sites = None
+        """list[int]: The linear site indices for the cluster of sites on which the
+        perturbation was applied."""
+
+        self.sublattices = None
+        """list[int]: The sublattice indices for the cluster of sites on which the
+        perturbation was applied."""
+
+        self.asymmetric_units = None
+        """list[int]: The initial configuration asymmetric unit indices for the 
+        cluster of sites on which the perturbation was applied, where the indices 
+        are defined as in 
+        :py:attr:`ConfigEnumLocalOccupationsReference.asymmetric_unit_indices 
+        <libcasm.enumerate.ConfigEnumLocalOccupationsReference.asymmetric_unit_indices>`.
+        """
+
+        self.initial_occupation = None
+        """list[int]: The initial occupation on the sites in `sites`."""
+
+        self.final_occupation = None
+        """list[int]: The final occupation on the sites in `sites`."""
+
+    def to_dict(self):
+        """Represent the ConfigEnumLocalOccupationsResult as a Python dict.
+
+        Returns
+        -------
+        data : dict
+            The Result as a Python dict.
+        """
+        return dict(
+            local_configuration=self.local_configuration.to_dict(),
+            canonical_local_configuration=self.canonical_local_configuration.to_dict(),
+            i_initial=self.i_initial,
+            pos=[self.pos[0], self.pos[1]],
+            i_local_orbit=self.i_local_orbit,
+            sites=self.sites,
+            sublattices=self.sublattices,
+            asymmetric_units=self.asymmetric_units,
+            initial_occupation=self.initial_occupation,
+            final_occupation=self.final_occupation,
+        )
+
+    def __repr__(self):
+        return xtal.pretty_json(self.to_dict())
+
+
 def _print_local_orbits_summary(
     local_orbits: list[list[casmclust.Cluster]],
     xtal_prim: xtal.Prim,
@@ -220,352 +571,9 @@ def _print_local_orbits_summary(
 class ConfigEnumLocalOccupations:
     """Enumerate occupations in the local environment of an event."""
 
-    class Reference:
-        """Data structure for storing contextual information"""
-
-        def __init__(
-            self,
-            event_info: OccEventSymInfo,
-            event_supercell_info: OccEventSupercellSymInfo,
-            initial: list[LocalConfiguration],
-            prim_local_orbits: list[list[list[casmclust.Cluster]]] = None,
-        ):
-            if not isinstance(event_info, OccEventSymInfo):
-                raise ValueError(
-                    "Error in ConfigEnumLocalOccupations.Reference: "
-                    "`event_info` must be an instance of `OccEventSymInfo`."
-                )
-            if not isinstance(event_supercell_info, OccEventSupercellSymInfo):
-                raise ValueError(
-                    "Error in ConfigEnumLocalOccupations.Reference: "
-                    "`event_supercell_info` must be an instance of "
-                    "`OccEventSupercellSymInfo`."
-                )
-
-            self.event_info = event_info
-            """OccEventSymInfo: Shared information about the OccEvent."""
-
-            self.event_supercell_info = event_supercell_info
-            """OccEventSupercellSymInfo: Information about the OccEvent with respect to 
-            the supercell."""
-
-            self.initial = initial
-            """list[libcasm.enumerate.LocalConfiguration]: The list of initial 
-            LocalConfiguration before perturbations. The configurations are expected
-            to be equivalent and primitive, with events in distinct positions. Before
-            generating perturbations, these configurations are filled into the 
-            supercell without re-orientation and the events are placed at the same 
-            coordinates relative to the origin unit cell."""
-
-            # Generate event positions in the supercell for each initial configuration
-            _trans_frac = []
-            _pos = []
-            _event = []
-            for i_initial, local_config in enumerate(initial):
-                # Validate that the initial local configuration can tile the supercell
-                small_supercell = local_config.configuration.supercell
-                large_supercell = event_supercell_info.supercell
-                is_supercell, T = large_supercell.superlattice.is_superlattice_of(
-                    small_supercell.superlattice
-                )
-                if not is_supercell:
-                    print("~~~")
-                    print("Initial LocalConfiguration:")
-                    print(local_config)
-                    print("Supercell:")
-                    print(large_supercell)
-                    raise ValueError(
-                        "Error in ConfigEnumLocalOccupations: "
-                        "The initial background configuration "
-                        "cannot tile the supercell."
-                    )
-
-                # Determine `pos` in the supercell
-                # from `pos` in the initial local config
-                f_small = small_supercell.unitcell_index_converter
-                f_large = large_supercell.unitcell_index_converter
-                trans_frac = f_small.unitcell(local_config.pos[0])
-                _trans_frac.append(trans_frac)
-                pos = (f_large.linear_unitcell_index(trans_frac), local_config.pos[1])
-                _pos.append(pos)
-
-                # Get the event in the supercell at `pos`
-                _event.append(event_supercell_info.event(pos))
-
-            self.super_background = [
-                casmconfig.copy_configuration(
-                    motif=x.configuration,
-                    supercell=event_supercell_info.supercell,
-                )
-                for x in initial
-            ]
-            """list[libcasm.configuration.Configuration]: The super configurations 
-            formed by filling the `initial` local configurations into the supercell, 
-            where the events are placed at the same coordinates relative to the origin 
-            unit cell."""
-
-            self.event = _event
-            """list[libcasm.occ_events.OccEvent]: The events about which perturbations
-            are enumerated, for each initial configuration."""
-
-            self.event_trans_frac = _trans_frac
-            """list[np.ndarray]: The fractional translation from the origin unit cell
-            to the position of the phenomenal cluster or event, for each initial
-            configuration."""
-
-            self.event_pos = _pos
-            """list[tuple[int, int]]: The position of the phenomenal cluster or event in
-            the supercell, as `(unitcell_index, equivalent_index)`, for each initial
-            configuration."""
-
-            self.event_phenomenal_clusters = [x.cluster() for x in self.event]
-            """list[libcasm.clusterography.Cluster]: The phenomenal clusters, for each
-            event in 
-            :func:`~libcasm.enumerate.ConfigEnumLocalOccupations.Reference.event`."""
-
-            f_large = event_supercell_info.supercell.site_index_converter
-            self.event_sites = [
-                [f_large.linear_site_index(site) for site in cluster]
-                for cluster in self.event_phenomenal_clusters
-            ]
-            """list[list[int]]: The linear site indices for the event sites, for each
-            event in 
-            :func:`~libcasm.enumerate.ConfigEnumLocalOccupations.Reference.event`."""
-
-            # Generate asymmetric unit indices for each local configuration
-            _asym_indices = []
-            asymmetric_unit_indices_ref = None
-            configuration_ref = None
-            for local_config in initial:
-                small_supercell = local_config.configuration.supercell
-                asymmetric_unit_indices = casmconfig.asymmetric_unit_indices(
-                    configuration=local_config.configuration,
-                )
-                if asymmetric_unit_indices_ref is None:
-                    asymmetric_unit_indices_ref = asymmetric_unit_indices
-                    configuration_ref = local_config.configuration
-
-                else:
-                    asymmetric_unit_indices = (
-                        casmconfig.make_consistent_asymmetric_unit_indices(
-                            initial=asymmetric_unit_indices,
-                            configuration_init=local_config.configuration,
-                            reference=asymmetric_unit_indices_ref,
-                            configuration_ref=configuration_ref,
-                        )
-                    )
-
-                    if asymmetric_unit_indices is None:
-                        raise ValueError(
-                            "Error in ConfigEnumLocalOccupations.Reference: "
-                            "Failed mapping asymmetric unit indices "
-                            "between initial configurations."
-                        )
-
-                asym_by_small_site_index = [None] * small_supercell.n_sites
-                for i_asym_unit, asym_unit in enumerate(asymmetric_unit_indices):
-                    for site in asym_unit:
-                        asym_by_small_site_index[site] = i_asym_unit
-                _asym_indices.append(asym_by_small_site_index)
-
-            self.sublattice_indices = (
-                event_supercell_info.supercell.sublattice_indices()
-            )
-            """list[int]: The prim sublattice indices for the sites in the supercell."""
-
-            self.asymmetric_unit_indices = _asym_indices
-            """list[list[int]]: The asymmetric unit indices for the sites in each
-            `initial` configuration, where `asymmetric_unit_indices[i_initial][l]`
-            gives the same integer value for all equivalent sites in the `i_initial`-th
-            initial configuration. Asymmetric unit indices are arbitrarily determined
-            for the first initial configuration and then made such that they are
-            consistent for the other initial configurations."""
-
-            self.occupation_indices = [
-                casmconfig.copy_configuration(
-                    motif=x.configuration,
-                    supercell=self.event_supercell_info.supercell,
-                ).occupation.tolist()
-                for x in initial
-            ]
-            """list[list[int]]: The occupation indices for the sites in each super
-            configuration formed by filling the `initial` configurations into the 
-            supercell, where `occupation_indices[i_initial][l]` gives the occupation 
-            index for the `l`-th site in the `i_initial`-th super configuration."""
-
-            self.prim_local_orbits = prim_local_orbits
-            """list[list[list[libcasm.clusterography.Cluster]]]: The 
-            local-cluster orbits about each equivalent event in the origin unit cell.
-            
-            The local orbits for the equivalent events, where
-            `prim_local_orbits[i_event][i_local_orbit][i_cluster]` is the 
-            `i_cluster`-th cluster in the `i_local_orbit`-th local-cluster orbit about 
-            `event_info.event_prim_info.events[i_event]`."""
-
-            # Translate the local orbits to the position in the supercell
-            # where the event is located, for each initial configuration
-            _event_local_orbits = []
-            for i_initial, local_config in enumerate(initial):
-                # Get the position of the event in the supercell
-                pos = self.event_pos[i_initial]
-
-                # For each local-cluster orbit around the event...
-                _curr = []
-                for i_local_orbit, local_orbit in enumerate(prim_local_orbits[pos[1]]):
-                    # Make symmetrically distinct-local cluster sites,
-                    # as list[set[int]], appropriately translated to the correct `pos`
-                    # in the supercell
-                    _curr.append(
-                        [
-                            cluster + self.event_trans_frac[i_initial]
-                            for cluster in local_orbit
-                        ]
-                    )
-                _event_local_orbits.append(_curr)
-
-            self.event_local_orbits = _event_local_orbits
-            """list[list[list[libcasm.clusterography.Cluster]]]: The local-cluster 
-            orbits for each event around which perturbations are made,
-            where `event_local_orbits[i_initial][i_local_orbit][i_cluster]` is the
-            `i_cluster`-th cluster in the `i_local_orbit`-th local-cluster orbit 
-            about `event[i_initial]`."""
-
-        def to_dict(
-            self,
-            write_prim_basis: bool = False,
-        ):
-            """Represent the Reference as a Python dict.
-
-            Parameters
-            ----------
-            write_prim_basis : bool, default=False
-                If True, write DoF values using the prim basis. Default (False)
-                is to write DoF values in the standard basis.
-
-            Returns
-            -------
-            data : dict
-                The Reference as a Python dict.
-            """
-            event_prim_info = self.event_info.event_prim_info
-            system = event_prim_info.system
-            (
-                prototype_event_data,
-                equivalents_info_data,
-            ) = event_prim_info.to_data()
-
-            xtal_prim = event_prim_info.prim.xtal_prim
-
-            return dict(
-                equivalents_info=equivalents_info_data,
-                prototype_event=prototype_event_data,
-                events=[
-                    event.to_dict(system=system) for event in event_prim_info.events
-                ],
-                supercell=self.event_supercell_info.supercell.to_dict(),
-                initial=[
-                    x.to_dict(write_prim_basis=write_prim_basis) for x in self.initial
-                ],
-                asymmetric_unit_indices=self.asymmetric_unit_indices,
-                sublattice_indices=self.sublattice_indices,
-                occupation_indices=self.occupation_indices,
-                prim_local_orbits=_make_local_orbits_data(
-                    local_orbits=self.prim_local_orbits,
-                    xtal_prim=xtal_prim,
-                    phenomenal_clusters=event_prim_info.phenomenal_clusters,
-                ),
-                event_local_orbits=_make_local_orbits_data(
-                    local_orbits=self.event_local_orbits,
-                    xtal_prim=xtal_prim,
-                    phenomenal_clusters=self.event_phenomenal_clusters,
-                ),
-            )
-
-        def __repr__(self):
-            return xtal.pretty_json(self.to_dict())
-
-    class Result:
-        """Data structure for returning enumerated LocalConfiguration along with
-        contextual information
-        """
-
-        def __init__(
-            self,
-            reference: "ConfigEnumLocalOccupations.Reference",
-        ):
-            self.reference = reference
-            """ConfigEnumLocalOccupations.Reference: The reference information for the
-            enumeration results."""
-
-            self.local_configuration = None
-            """LocalConfiguration: The current LocalConfiguration, as constructed from
-            the background configuration and perturbation."""
-
-            self.canonical_local_configuration = None
-            """LocalConfiguration: The canonical equivalent LocalConfiguration, after
-            applying the event invariant group in the supercell (leaving the event
-            in the same position as the initial, unperturbed configuration)."""
-
-            self.i_initial = None
-            """int: The index of the initial configuration in `reference.initial` 
-            that was perturbed to create the current result."""
-
-            self.pos = None
-            """tuple[int, int]: The position of the phenomenal cluster or event in the 
-            supercell, as `(unitcell_index, equivalent_index)`."""
-
-            self.i_local_orbit = None
-            """int: The index of the local orbit in `event_local_orbits[i_initial]` 
-            that was perturbed."""
-
-            self.sites = None
-            """list[int]: The linear site indices for the cluster of sites on which the
-            perturbation was applied."""
-
-            self.sublattices = None
-            """list[int]: The sublattice indices for the cluster of sites on which the
-            perturbation was applied."""
-
-            self.asymmetric_units = None
-            """list[int]: The initial configuration asymmetric unit indices for the 
-            cluster of sites on which the perturbation was applied, where the indices 
-            are defined as in 
-            :func:`~libcasm.enumerate.ConfigEnumLocalOccupations.Reference.asymmetric_unit_indices`.
-            """
-
-            self.initial_occupation = None
-            """list[int]: The initial occupation on the sites in `sites`."""
-
-            self.final_occupation = None
-            """list[int]: The final occupation on the sites in `sites`."""
-
-        def to_dict(self):
-            """Represent the Result as a Python dict.
-
-            Returns
-            -------
-            data : dict
-                The Result as a Python dict.
-            """
-            return dict(
-                local_configuration=self.local_configuration.to_dict(),
-                canonical_local_configuration=self.canonical_local_configuration.to_dict(),
-                i_initial=self.i_initial,
-                pos=[self.pos[0], self.pos[1]],
-                i_local_orbit=self.i_local_orbit,
-                sites=self.sites,
-                sublattices=self.sublattices,
-                asymmetric_units=self.asymmetric_units,
-                initial_occupation=self.initial_occupation,
-                final_occupation=self.final_occupation,
-            )
-
-        def __repr__(self):
-            return xtal.pretty_json(self.to_dict())
-
     def __init__(
         self,
-        event_info: OccEventSymInfo,
+        event_info: casmlocal.OccEventSymInfo,
         supercell_set: Optional[casmconfig.SupercellSet] = None,
         verbose: bool = False,
     ):
@@ -574,7 +582,7 @@ class ConfigEnumLocalOccupations:
 
         Parameters
         ----------
-        event_info: libcasm.enumerate.OccEventSymInfo
+        event_info: libcasm.local_configuration.OccEventSymInfo
             The OccEventSymInfo for the event.
         supercell_set: Optional[casmconfig.SupercellSet] = None
             If not None, generated :class:`~casmconfig.Supercell` are constructed by
@@ -583,14 +591,14 @@ class ConfigEnumLocalOccupations:
             If True, print additional information about the enumeration process.
 
         """
-        if not isinstance(event_info, OccEventSymInfo):
+        if not isinstance(event_info, casmlocal.OccEventSymInfo):
             raise ValueError(
                 "Error in ConfigEnumLocalOccupations: "
                 "`event_info` must be an instance of `OccEventSymInfo`."
             )
 
         self.event_info = event_info
-        """OccEventSymInfo: The OccEventSymInfo for the event."""
+        """libcasm.local_configuration.OccEventSymInfo: The OccEventSymInfo for the event."""
 
         self.supercell_set = supercell_set
         """Optional[casmconfig.SupercellSet]: If not None, generated 
@@ -598,7 +606,7 @@ class ConfigEnumLocalOccupations:
         :class:`~casmconfig.SupercellSet`."""
 
         self.reference = None
-        """Optional[ConfigEnumLocalOccupations.Reference]: The reference information 
+        """Optional[libcasm.enumerate.ConfigEnumLocalOccupationsReference]: The reference information 
         for the more recent enumeration results."""
 
         self.verbose = verbose
@@ -819,14 +827,14 @@ class ConfigEnumLocalOccupations:
             # For each individual perturbation, store the results in `result` and yield
             for cluster_sites, config, canonical_config in perturbations:
                 # Set result local configuration
-                result.local_configuration = LocalConfiguration(
+                result.local_configuration = casmlocal.LocalConfiguration(
                     pos=pos,
                     configuration=config,
                     event_info=ref.event_info,
                 )
 
                 # Set result canonical local configuration
-                result.canonical_local_configuration = LocalConfiguration(
+                result.canonical_local_configuration = casmlocal.LocalConfiguration(
                     pos=pos,
                     configuration=canonical_config,
                     event_info=ref.event_info,
@@ -921,7 +929,7 @@ class ConfigEnumLocalOccupations:
 
         Yields
         ------
-        result: ConfigEnumLocalOccupations.Result
+        result: libcasm.enumerate.ConfigEnumLocalOccupationsResult
             Contains the local configuration and additional information about the
             enumeration result.
         """
@@ -1060,7 +1068,7 @@ class ConfigEnumLocalOccupations:
         .. rubric:: Results
 
         Each perturbation is yielded as a
-        :class:`~libcasm.configuration.ConfigEnumLocalOccupations.Result` object which
+        :class:`~libcasm.enumerate.ConfigEnumLocalOccupationsResult` object which
         contains the local configuration, both in its position as enumerated, and in
         canonical form to allow checking for duplicates, along with additional
         information about the enumeration result such as which orbit was perturbed and
@@ -1068,14 +1076,14 @@ class ConfigEnumLocalOccupations:
         information can be used to filter results or just help to understand and check
         the results.
 
-        The :class:`~libcasm.configuration.ConfigEnumLocalOccupations.Result`
+        The :class:`~libcasm.enumerate.ConfigEnumLocalOccupationsResult`
         object is re-used for each yield, but its members are new objects, except for
         the
-        :func:`~libcasm.configuration.ConfigEnumLocalOccupations.Result.reference`
+        :py:attr:`~libcasm.enumerate.ConfigEnumLocalOccupationsResult.reference`
         object which remains constant for all results.
 
-        Resulting :class:`~libcasm.enumerate.LocalConfiguration` objects can be
-        stored in a :class:`~libcasm.enumerate.LocalConfigurationList`, for instance
+        Resulting :class:`~libcasm.local_configuration.LocalConfiguration` objects can be
+        stored in a :class:`~libcasm.local_configuration.LocalConfigurationList`, for instance
         using
 
         Parameters
@@ -1131,7 +1139,7 @@ class ConfigEnumLocalOccupations:
 
         Yields
         ------
-        result: ConfigEnumLocalOccupations.Result
+        result: libcasm.enumerate.ConfigEnumLocalOccupationsResult
             Contains the local configuration and additional information about the
             enumeration result. The same `result` object is re-used for each yield,
             but its members are new objects.
@@ -1231,7 +1239,7 @@ class ConfigEnumLocalOccupations:
             if not isinstance(pos, list):
                 pos = [pos]
             initial = [
-                LocalConfiguration(
+                casmlocal.LocalConfiguration(
                     pos=_pos,
                     configuration=casmconfig.copy_configuration(
                         motif=background,
@@ -1267,14 +1275,14 @@ class ConfigEnumLocalOccupations:
                 fix=fix,
             )
 
-        self.reference = self.Reference(
+        self.reference = ConfigEnumLocalOccupationsReference(
             event_info=self.event_info,
             event_supercell_info=event_supercell_info,
             initial=initial,
             prim_local_orbits=prim_local_orbits,
         )
 
-        result = self.Result(reference=self.reference)
+        result = ConfigEnumLocalOccupationsResult(reference=self.reference)
 
         for i_initial, x in enumerate(self.reference.initial):
             for result in self._yield_results(

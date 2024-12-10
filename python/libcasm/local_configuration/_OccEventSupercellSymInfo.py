@@ -3,7 +3,7 @@ import numpy as np
 import libcasm.configuration as casmconfig
 import libcasm.occ_events as occ_events
 
-from ._enumerate import (
+from ._local_configuration import (
     _make_canonical_local_configuration_about_event,
 )
 from ._methods import make_occevent_suborbits

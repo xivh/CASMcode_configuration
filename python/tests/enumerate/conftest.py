@@ -6,6 +6,7 @@ import pytest
 
 import libcasm.configuration as casmconfig
 import libcasm.enumerate as casmenum
+import libcasm.local_configuration as casmlocal
 import libcasm.occ_events as occ_events
 import libcasm.xtal as xtal
 import libcasm.xtal.prims as xtal_prims
@@ -42,7 +43,7 @@ def fcc_1NN_A_Va_event_L12(fcc_1NN_A_Va_event):
     # a = 4 * r / math.sqrt(2)
     prim = casmconfig.Prim(xtal_prim)
     system = occ_events.OccSystem(xtal_prim=prim.xtal_prim)
-    event_info = casmenum.OccEventSymInfo.init(
+    event_info = casmlocal.OccEventSymInfo.init(
         prim=prim,
         system=system,
         prototype_event=event,
@@ -71,7 +72,7 @@ class ConfigEnumLocalTestData:
         self,
         prim: casmconfig.Prim,
         event: occ_events.OccEvent,
-        event_info: casmenum.OccEventSymInfo,
+        event_info: casmlocal.OccEventSymInfo,
     ):
         self.prim = prim
         self.event = event
@@ -117,7 +118,7 @@ class ConfigEnumLocalTestData:
         orbits: Optional[list[int]] = None,
         neighborhood_from_orbits: Optional[list[int]] = None,
         skip_result_f: Callable[
-            [casmenum.ConfigEnumLocalOccupations.Result], bool
+            [casmenum.ConfigEnumLocalOccupationsResult], bool
         ] = lambda result: False,
         n_expected: Optional[int] = None,
     ):
@@ -150,7 +151,7 @@ class ConfigEnumLocalTestData:
             See casmenum.ConfigEnumLocalOccupations.by_cluster_specs.
         neighborhood_from_orbits : Optional[list[int]] = None
             See casmenum.ConfigEnumLocalOccupations.by_cluster_specs.
-        skip_result_f : Callable[[casmenum.ConfigEnumLocalOccupations.Result], bool]
+        skip_result_f : Callable[[casmenum.ConfigEnumLocalOccupationsResult], bool]
             Optional filter function. If True, skip the result; If False, add it to
             `self.local_config_list` and `self.canonical_local_config_list` if not
             already present.
@@ -162,23 +163,24 @@ class ConfigEnumLocalTestData:
         self.supercells = casmconfig.SupercellSet(prim=self.prim)
         """SupercellSet: Set of supercells for enumeration."""
 
-        self.local_config_list = casmenum.LocalConfigurationList(
+        self.local_config_list = casmlocal.LocalConfigurationList(
             event_info=self.event_info,
         )
-        """LocalConfigurationList: List of local configurations, as enumerated."""
+        """libcasm.local_configuration.LocalConfigurationList: List of local 
+        configurations, as enumerated."""
 
-        self.canonical_local_config_list = casmenum.LocalConfigurationList(
+        self.canonical_local_config_list = casmlocal.LocalConfigurationList(
             event_info=self.event_info,
         )
-        """LocalConfigurationList: List of local configurations, made canonical
-        with respect to the event invariant group for the initial unperturbed
-        configuration."""
+        """libcasm.local_configuration.LocalConfigurationList: List of local 
+        configurations, made canonical with respect to the event invariant group for 
+        the initial unperturbed configuration."""
 
-        self.fully_canonical_local_config_list = casmenum.LocalConfigurationList(
+        self.fully_canonical_local_config_list = casmlocal.LocalConfigurationList(
             event_info=self.event_info
         )
-        """LocalConfigurationList: List of local configurations, made canonical
-        with respect to the prim factor group."""
+        """libcasm.local_configuration.LocalConfigurationList: List of local 
+        configurations, made canonical with respect to the prim factor group."""
 
         self.config_enum = casmenum.ConfigEnumLocalOccupations(
             event_info=self.event_info,
@@ -211,7 +213,7 @@ class ConfigEnumLocalTestData:
                 # Make fully canonical LocalConfiguration
                 x = result.local_configuration
                 _list = self.fully_canonical_local_config_list
-                x_fully_canonical = casmenum.make_canonical_local_configuration(
+                x_fully_canonical = casmlocal.make_canonical_local_configuration(
                     x,
                     in_canonical_pos=True,
                     in_canonical_supercell=True,
@@ -231,7 +233,7 @@ class ConfigEnumLocalTestData:
 
     def print_result_summary(
         self,
-        result: casmenum.ConfigEnumLocalOccupations.Result,
+        result: casmenum.ConfigEnumLocalOccupationsResult,
         existing: bool,
     ):
         print(

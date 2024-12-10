@@ -4,6 +4,7 @@ import numpy as np
 
 import libcasm.configuration as casmconfig
 import libcasm.enumerate as casmenum
+import libcasm.local_configuration as casmlocal
 import libcasm.occ_events as occ_events
 
 
@@ -81,7 +82,7 @@ def test_make_distinct_local_configurations_L12(fcc_1NN_A_Va_event):
     config.set_occ(0, 1)
 
     system = occ_events.OccSystem(xtal_prim=prim.xtal_prim)
-    event_info = casmenum.OccEventSymInfo.init(
+    event_info = casmlocal.OccEventSymInfo.init(
         prim=prim,
         system=system,
         prototype_event=event,
@@ -121,7 +122,7 @@ def test_make_distinct_local_configurations_fcc(fcc_1NN_A_Va_event):
     prim = casmconfig.Prim(xtal_prim)
 
     system = occ_events.OccSystem(xtal_prim=prim.xtal_prim)
-    event_info = casmenum.OccEventSymInfo.init(
+    event_info = casmlocal.OccEventSymInfo.init(
         prim=prim,
         system=system,
         prototype_event=event,
@@ -165,7 +166,7 @@ def test_make_distinct_local_configurations_fcc(fcc_1NN_A_Va_event):
             if x.configuration.supercell not in event_supercell_info:
                 event_supercell_info[
                     x.configuration.supercell
-                ] = casmenum.OccEventSupercellSymInfo(
+                ] = casmlocal.OccEventSupercellSymInfo(
                     event_prim_info=event_info.event_prim_info,
                     supercell=x.configuration.supercell,
                 )
@@ -181,7 +182,7 @@ def test_make_distinct_local_configurations_fcc(fcc_1NN_A_Va_event):
                 in_canonical_supercell=True,
                 apply_event_occupation=False,
             )
-            return casmenum.LocalConfiguration(
+            return casmlocal.LocalConfiguration(
                 pos=pos,
                 configuration=config,
                 event_info=x.event_info,
@@ -204,7 +205,7 @@ def test_make_distinct_local_configurations_fcc(fcc_1NN_A_Va_event):
                 if config.supercell not in event_supercell_info:
                     event_supercell_info[
                         config.supercell
-                    ] = casmenum.OccEventSupercellSymInfo(
+                    ] = casmlocal.OccEventSupercellSymInfo(
                         event_prim_info=event_info.event_prim_info,
                         supercell=config.supercell,
                     )
@@ -261,7 +262,7 @@ def test_ConfigEnumLocalOccupations_L12(fcc_1NN_A_Va_event_L12):
     # a = 4 * r / math.sqrt(2)
 
     supercells = casmconfig.SupercellSet(prim=prim)
-    local_config_list = casmenum.LocalConfigurationList(event_info=event_info)
+    local_config_list = casmlocal.LocalConfigurationList(event_info=event_info)
 
     # NEB supercell
     neb_supercell = make_test_1_neb_supercell(supercells)

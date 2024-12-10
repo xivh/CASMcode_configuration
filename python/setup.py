@@ -86,6 +86,11 @@ ext_modules = [
         "libcasm.occ_events._occ_events", ["src/occ_events.cpp"], **ext_modules_params
     ),
     Pybind11Extension(
+        "libcasm.local_configuration._local_configuration",
+        ["src/local_configuration.cpp"],
+        **ext_modules_params,
+    ),
+    Pybind11Extension(
         "libcasm.enumerate._enumerate", ["src/enumerate.cpp"], **ext_modules_params
     ),
 ]
@@ -101,6 +106,7 @@ setup(
         "libcasm.configuration.io",
         "libcasm.enumerate",
         "libcasm.irreps",
+        "libcasm.local_configuration",
         "libcasm.occ_events",
         "libcasm.sym_info",
     ],

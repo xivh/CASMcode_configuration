@@ -7,6 +7,8 @@ from ._ConfigEnumInfo import (
 )
 from ._ConfigEnumLocalOccupations import (
     ConfigEnumLocalOccupations,
+    ConfigEnumLocalOccupationsReference,
+    ConfigEnumLocalOccupationsResult,
     make_distinct_local_configurations,
 )
 from ._ConfigEnumMeshGrid import (
@@ -22,29 +24,14 @@ from ._enumerate import (
     make_occevent_simple_structures,
     make_phenomenal_occevent,
 )
-from ._LocalConfiguration import (
-    LocalConfiguration,
-    LocalConfigurationList,
-    OccEventSymInfo,
-    make_canonical_local_configuration,
-)
 from ._make_distinct_super_configurations import (
     make_distinct_super_configurations,
 )
 from ._methods import (
     make_all_distinct_local_perturbations,
     make_all_distinct_periodic_perturbations,
-    make_equivalents_generators,
     make_first_n_orbits,
     make_first_n_orbits_cluster_specs,
-    make_occevent_equivalents_generators,
-    make_occevent_suborbits,
-)
-from ._OccEventPrimSymInfo import (
-    OccEventPrimSymInfo,
-)
-from ._OccEventSupercellSymInfo import (
-    OccEventSupercellSymInfo,
 )
 from ._point_defect_supercell_methods import (
     find_optimal_point_defect_supercells,
