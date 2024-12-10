@@ -45,13 +45,17 @@ def _make_pareto(
     n_unitcells: list[int],
     voronoi_inner_radius: list[float],
     has_required_sites: list[bool],
+    has_all_motif_operations: list[bool],
 ):
-    # Find pareto (n_unitcells, dist), restricted to has_required_sites==True
+    # Find pareto (n_unitcells, dist),
+    # restricted to has_required_sites==True and has_all_motif_operations==True
     pareto = []
     n_points = len(n_unitcells)
     tol = 1e-5
     for i in range(n_points):
         if not has_required_sites[i]:
+            continue
+        if not has_all_motif_operations[i]:
             continue
 
         point_set = []
@@ -180,6 +184,40 @@ def has_required_sites(
     return True
 
 
+def make_equivalent_supercells_with_required_operations(
+    supercell: casmconfig.Supercell,
+    required_operations: list[int],
+    supercell_set: Optional[casmconfig.SupercellSet] = None,
+) -> list[casmconfig.Supercell]:
+    """Make equivalent supercells with required operations.
+
+    Parameters
+    ----------
+    supercell: casmconfig.Supercell
+        The initial supercell.
+    required_operations: set[int]
+        The indices of prim factor group operations that are required in the
+        in supercell factor group.
+    supercell_set: Optional[casmconfig.SupercellSet] = None
+            If not None, generated :class:`~casmconfig.Supercell` are constructed by
+            adding in the :class:`~casmconfig.SupercellSet`.
+
+    Returns
+    -------
+    matching: list[casmconfig.Supercell]
+        Equivalent supercells to `supercell` with the required operations.
+    """
+    candidates = casmconfig.make_equivalent_supercells(supercell)
+    matching = []
+    for candidate in candidates:
+        operations = set(candidate.factor_group.head_group_index)
+        if required_operations.issubset(operations):
+            if supercell_set is not None:
+                supercell_set.add(candidate)
+            matching.append(candidate)
+    return matching
+
+
 def make_supercells_for_point_defects(
     motif: casmconfig.Configuration,
     base_max_volume: int,
@@ -221,17 +259,25 @@ def make_supercells_for_point_defects(
     -------
     candidate_supercells: Optional[dict]
         The best supercells, if any were found which meets the criteria; else None.
-        The dictionary keys are the candidate supercells and the values hold data
+        The dictionary keys are the candidate supercells (using an equivalent which
+        has all motif invariant group operations if possible) and the values hold data
         about the supercells:
 
         - "unitcell": The unit supercell used to generate the final supercell.
         - "unitcell_name": The name of the unit supercell.
         - "has_required_sites": True if the supercell has the required sites without
           overlap (or if there are no required sites).
+        - "has_all_motif_operations": True if at least one equivalent supercell
+          has all motif invariant group operations in the supercell factor group.
 
     """
     prim = motif.supercell.prim
     scel_enum = casmenum.ScelEnum(prim=prim)
+
+    # Get all prim factor group operations in the motif invariant group
+    required_operations = set()
+    for op in casmconfig.make_invariant_subgroup(motif):
+        required_operations.add(op.prim_factor_group_index())
 
     # Generate candidate unit cells
     candidate_unit_cells = []
@@ -263,25 +309,40 @@ def make_supercells_for_point_defects(
                 continue
 
             # Check if motif can tile the supercell
-            # Check if motif can tile the supercell
             S = supercell.superlattice
             is_superlat, _, _ = S.is_equivalent_superlattice_of(
                 lattice2=motif.supercell.superlattice,
                 point_group=prim.factor_group.elements,
             )
+            if not is_superlat:
+                continue
 
-            if is_superlat:
-                if supercell_set is not None:
-                    supercell_set.add(supercell)
-                candidate_supercells[supercell] = dict(
-                    unitcell=candidate,
-                    unitcell_name=casmconfig.SupercellRecord(candidate).supercell_name,
-                    has_required_sites=(
-                        True
-                        if required_sites is None
-                        else has_required_sites(required_sites, supercell)
-                    ),
-                )
+            # Check if at least one equivalent supercell has all required operations
+            matching = make_equivalent_supercells_with_required_operations(
+                supercell=supercell,
+                required_operations=required_operations,
+                supercell_set=supercell_set,
+            )
+            has_all_motif_operations = len(matching) > 0
+
+            if has_all_motif_operations:
+                key = matching[0]
+            else:
+                key = supercell
+
+            # All filters passed: include supercell
+            if supercell_set is not None:
+                supercell_set.add(key)
+            candidate_supercells[key] = dict(
+                unitcell=candidate,
+                unitcell_name=casmconfig.SupercellRecord(candidate).supercell_name,
+                has_required_sites=(
+                    True
+                    if required_sites is None
+                    else has_required_sites(required_sites, supercell)
+                ),
+                has_all_motif_operations=has_all_motif_operations,
+            )
 
     if len(candidate_supercells) == 0:
         candidate_supercells = None
@@ -292,6 +353,8 @@ def filter_point_defect_supercells(
     candidate_supercells: dict,
     min_volume: Optional[int] = None,
     max_volume: Optional[int] = None,
+    require_has_all_motif_operations: bool = True,
+    require_has_required_sites: bool = True,
     min_factor_group_size: Optional[int] = None,
     min_voronoi_inner_radius: Optional[float] = None,
 ):
@@ -305,6 +368,12 @@ def filter_point_defect_supercells(
         If not None, ignore supercells with fewer unit cells than this value.
     max_volume: Optional[int] = None
         If not None, ignore supercells with more unit cells than this value.
+    require_has_all_motif_operations: bool = True
+        If not True, ignore supercells that do not have at least
+        one equivalent supercell which includes all required operations in the
+        supercell factor group.
+    require_has_required_sites: bool = True
+        If not True, ignore supercells that do not have all required sites.
     min_factor_group_size: Optional[int] = None
         If not None, ignore supercells with factor group size less than this value.
     min_voronoi_inner_radius: Optional[float] = None
@@ -321,11 +390,15 @@ def filter_point_defect_supercells(
         - "unitcell_name": The name of the unit supercell.
         - "has_required_sites": True if the supercell has the required sites without
           overlap.
+        - "has_all_motif_operations": True if at least one equivalent supercell
+          has all motif invariant group operations in the supercell factor group.
 
     """
     x = {}
     for supercell, info in candidate_supercells.items():
-        if not info["has_required_sites"]:
+        if require_has_required_sites and not info["has_required_sites"]:
+            continue
+        if require_has_all_motif_operations and not info["has_all_motif_operations"]:
             continue
         if min_volume is not None and supercell.n_unitcells < min_volume:
             continue
@@ -350,6 +423,8 @@ def find_optimal_point_defect_supercells(
     candidate_supercells: dict,
     min_volume: Optional[int] = None,
     max_volume: Optional[int] = None,
+    require_has_all_motif_operations: bool = True,
+    require_has_required_sites: bool = True,
     min_factor_group_size: Optional[int] = None,
     min_voronoi_inner_radius: Optional[float] = None,
 ):
@@ -363,6 +438,12 @@ def find_optimal_point_defect_supercells(
         If not None, ignore supercells with fewer unit cells than this value.
     max_volume: Optional[int] = None
         If not None, ignore supercells with more unit cells than this value.
+    require_has_all_motif_operations: bool = True
+        If not True, ignore supercells that do not have at least
+        one equivalent supercell which includes all required operations in the
+        supercell factor group.
+    require_has_required_sites: bool = True
+        If not True, ignore supercells that do not have all required sites.
     min_factor_group_size: Optional[int] = None
         If not None, ignore supercells with factor group size less than this value.
     min_voronoi_inner_radius: Optional[float] = None
@@ -382,12 +463,17 @@ def find_optimal_point_defect_supercells(
         - "unitcell_name": The name of the unit supercell.
         - "has_required_sites": True if the supercell has the required sites without
           overlap.
+        - "has_all_motif_operations": True if at least one equivalent supercell
+          has all motif invariant group operations in the supercell factor group.
+
 
     """
     x = filter_point_defect_supercells(
         candidate_supercells=candidate_supercells,
         min_volume=min_volume,
         max_volume=max_volume,
+        require_has_all_motif_operations=require_has_all_motif_operations,
+        require_has_required_sites=require_has_required_sites,
         min_factor_group_size=min_factor_group_size,
         min_voronoi_inner_radius=min_voronoi_inner_radius,
     )
@@ -402,9 +488,12 @@ def find_optimal_point_defect_supercells(
         supercell.superlattice.voronoi_inner_radius() for supercell in supercells
     ]
     has_required_sites = [value["has_required_sites"] for value in values]
+    has_all_motif_operations = [value["has_all_motif_operations"] for value in values]
 
     # Find pareto (n_unitcells, dist)
-    pareto = _make_pareto(n_unitcells, voronoi_inner_radius, has_required_sites)
+    pareto = _make_pareto(
+        n_unitcells, voronoi_inner_radius, has_required_sites, has_all_motif_operations
+    )
 
     return sorted(
         [(supercells[i], values[i]) for i in pareto],
@@ -426,6 +515,7 @@ def print_point_defect_supercell_info(
         supercell.superlattice.voronoi_inner_radius(),
     )
     print("Factor group size:", len(supercell.factor_group.elements))
+    print("Has all motif operations:", data["has_all_motif_operations"])
     print("Has required sites:", data["has_required_sites"])
     print("Superlattice vectors: (column vector matrix)")
     print(supercell.superlattice.column_vector_matrix())
@@ -443,6 +533,8 @@ def plot_point_defect_supercell_scores(
     motif_name: str,
     min_volume: Optional[int] = None,
     max_volume: Optional[int] = None,
+    require_has_all_motif_operations=True,
+    require_has_required_sites=True,
     min_factor_group_size: Optional[int] = None,
     min_voronoi_inner_radius: Optional[float] = None,
     color_optimal: str = "darkorange",
@@ -463,8 +555,8 @@ def plot_point_defect_supercell_scores(
       (`min_volume`, `max_volume`, `min_factor_group_size`, and
       `min_voronoi_inner_radius`) are plotted with a larger marker size than those
       which are non-matching
-    - color: pareto-optimal supercells for which `has_required_sites` is True are
-      highlighted
+    - color: pareto-optimal supercells for which `has_required_sites` and
+      `has_all_motif_operations` are True are highlighted
 
     Parameters
     ----------
@@ -476,6 +568,12 @@ def plot_point_defect_supercell_scores(
         If not None, ignore supercells with fewer unit cells than this value.
     max_volume: Optional[int] = None
         If not None, ignore supercells with more unit cells than this value.
+    require_has_all_motif_operations: bool = True
+        If not True, ignore supercells that do not have at least
+        one equivalent supercell which includes all required operations in the
+        supercell factor group.
+    require_has_required_sites: bool = True
+        If not True, ignore supercells that do not have all required sites.
     min_factor_group_size: Optional[int] = None
         If not None, ignore supercells with factor group size less than this value.
     min_voronoi_inner_radius: Optional[float] = None
@@ -511,6 +609,7 @@ def plot_point_defect_supercell_scores(
         supercell.superlattice.voronoi_inner_radius() for supercell in supercells
     ]
     has_required_sites = [value["has_required_sites"] for value in values]
+    has_all_motif_operations = [value["has_all_motif_operations"] for value in values]
     supercell_name = [
         casmconfig.SupercellRecord(supercell).supercell_name
         for supercell in candidate_supercells
@@ -528,6 +627,8 @@ def plot_point_defect_supercell_scores(
         candidate_supercells=candidate_supercells,
         min_volume=min_volume,
         max_volume=max_volume,
+        require_has_all_motif_operations=require_has_all_motif_operations,
+        require_has_required_sites=require_has_required_sites,
         min_factor_group_size=min_factor_group_size,
         min_voronoi_inner_radius=min_voronoi_inner_radius,
     )
@@ -576,6 +677,7 @@ def plot_point_defect_supercell_scores(
             n_unitcells=n_unitcells,
             voronoi_inner_radius=voronoi_inner_radius,
             has_required_sites=has_required_sites,
+            has_all_motif_operations=has_all_motif_operations,
             v1_frac=v1_frac,
             v2_frac=v2_frac,
             v3_frac=v3_frac,
@@ -603,6 +705,7 @@ def plot_point_defect_supercell_scores(
         ("n_unitcells", "@n_unitcells"),
         ("voronoi_inner_radius", "@voronoi_inner_radius"),
         ("has_required_sites", "@has_required_sites"),
+        ("has_all_motif_operations", "@has_all_motif_operations"),
         ("v1_frac", "@v1_frac"),
         ("v2_frac", "@v2_frac"),
         ("v3_frac", "@v3_frac"),

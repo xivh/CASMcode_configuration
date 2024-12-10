@@ -17,8 +17,8 @@ def expected_neb_supercells():
             "transformation_matrix_to_supercell": [[-3, 3, 3], [3, -3, 3], [3, 3, -3]],
         },
         "SCEL2_2_1_1_0_1_1/0": {
-            "supercell_name": "SCEL128_8_4_4_0_0_4",
-            "transformation_matrix_to_supercell": [[0, -4, -4], [0, 4, -4], [4, 0, 4]],
+            "supercell_name": "SCEL128_8_4_4_0_4_4",
+            "transformation_matrix_to_supercell": [[4, 0, 4], [0, 4, 4], [-4, -4, 0]],
         },
         "SCEL3_3_1_1_0_0_2/0": {
             "supercell_name": "SCEL108_6_6_3_3_3_0",
@@ -33,16 +33,16 @@ def expected_neb_supercells():
             "transformation_matrix_to_supercell": [[-3, 3, 3], [3, -3, 3], [3, 3, -3]],
         },
         "SCEL4_2_2_1_0_1_0/0": {
-            "supercell_name": "SCEL128_8_4_4_0_0_4",
-            "transformation_matrix_to_supercell": [[0, -4, -4], [0, 4, -4], [4, 0, 4]],
+            "supercell_name": "SCEL128_8_4_4_0_4_0",
+            "transformation_matrix_to_supercell": [[0, -4, 4], [4, 0, -4], [0, 4, 4]],
         },
         "SCEL4_2_2_1_1_1_0/0": {
             "supercell_name": "SCEL108_6_6_3_3_3_0",
             "transformation_matrix_to_supercell": [[-3, 3, 3], [3, -3, 3], [3, 3, -3]],
         },
         "SCEL4_4_1_1_0_0_0/0": {
-            "supercell_name": "SCEL128_8_4_4_0_0_4",
-            "transformation_matrix_to_supercell": [[0, -4, -4], [0, 4, -4], [4, 0, 4]],
+            "supercell_name": "SCEL128_8_4_4_0_0_0",
+            "transformation_matrix_to_supercell": [[0, 0, 8], [0, -4, -4], [4, 4, 0]],
         },
         "SCEL4_4_1_1_0_0_2/0": {
             "supercell_name": "SCEL128_8_4_4_0_0_4",
@@ -53,8 +53,8 @@ def expected_neb_supercells():
             "transformation_matrix_to_supercell": [[0, -4, -4], [0, 4, -4], [4, 0, 4]],
         },
         "SCEL4_4_1_1_0_1_0/0": {
-            "supercell_name": "SCEL128_8_4_4_0_0_4",
-            "transformation_matrix_to_supercell": [[0, -4, -4], [0, 4, -4], [4, 0, 4]],
+            "supercell_name": "SCEL128_8_4_4_0_4_0",
+            "transformation_matrix_to_supercell": [[0, -4, 4], [4, 0, -4], [0, 4, 4]],
         },
         "SCEL4_4_1_1_0_2_1/0": {
             "supercell_name": "SCEL108_12_3_3_0_6_3",
@@ -167,6 +167,8 @@ def test_make_supercells_for_point_defects_1(fcc_1NN_A_Va_event):
             record.configuration_name,
             min_volume=100,
             max_volume=216,
+            require_has_required_sites=True,
+            require_has_all_motif_operations=True,
             min_factor_group_size=None,
             min_voronoi_inner_radius=None,
         )
@@ -175,6 +177,8 @@ def test_make_supercells_for_point_defects_1(fcc_1NN_A_Va_event):
             candidate_supercells=candidate_supercells,
             min_volume=100,
             max_volume=216,
+            require_has_required_sites=True,
+            require_has_all_motif_operations=True,
             min_factor_group_size=None,
             min_voronoi_inner_radius=None,
         )
