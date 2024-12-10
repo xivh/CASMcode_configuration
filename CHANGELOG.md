@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.0a6] - Unreleased
+## [2.0a6] - 2024-12-10
 
 ### Added
 
@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `make_canonical_local_configuration`, `make_distinct_local_cluster_sites`, and `make_distinct_local_perturbations` to `libcasm.enumerate`.
 - Added `local_symgroup_rep` to `libcasm.configuration.Supercell`.
 - Added `distances` and `phenomenal_distances` to `libcasm.clusterography.Cluster`
+- Added `libcasm.local_configuration` for local configuration enumeration and comparison.
+- Added `libcasm.enumerate.ConfigEnumLocalOccupations` for local configuration enumeration.
+- Added `make_supercells_for_point_defects`, `find_optimal_point_defect_supercells`, `make_required_sites`, `plot_point_defect_supercell_scores`, and `print_point_defect_supercell_info` to `libcasm.enumerate` to help find optimal supercells for calculations.
+
 
 ### Changed
 
