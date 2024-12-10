@@ -329,7 +329,7 @@ PYBIND11_MODULE(_configuration, m) {
             return prim->sym_info.unitcellcoord_symgroup_rep;
           },
           R"pbdoc(
-          list[xtal.IntegralSiteCoordinateRep]: The symmetry group \
+          list[libcasm.xtal.IntegralSiteCoordinateRep]: The symmetry group \
           representation for transforming \
           :class:`~libcasm.xtal.IntegralSiteCoordinate` by prim factor group \
           operations.
@@ -928,50 +928,66 @@ PYBIND11_MODULE(_configuration, m) {
           large supercells with `n_unitcells` > `max_n_translation_permutations`.
       )pbdoc")
       .def_readonly("prim", &config::Supercell::prim,
-                    "The internal shared :class:`libcasm.configuration.Prim`")
+                    R"pbdoc(
+          libcasm.configuration.Prim: The internal shared
+          :class:`libcasm.configuration.Prim`
+          )pbdoc")
       .def_property_readonly(
           "xtal_prim",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->prim->basicstructure;
           },
-          "The internal shared :class:`libcasm.xtal.Prim`")
+          R"pbdoc(
+          libcasm.xtal.Prim: The internal shared :class:`libcasm.xtal.Prim`
+          )pbdoc")
       .def_property_readonly(
           "transformation_matrix_to_super",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->superlattice.transformation_matrix_to_super();
           },
           py::return_value_policy::reference_internal,
-          "The supercell transformation matrix, as a const reference.")
+          R"pbdoc(
+          numpy.ndarray[numpy.int64[m, n]]: The supercell transformation
+          matrix, as a const reference.
+          )pbdoc")
       .def_property_readonly(
           "superlattice",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->superlattice.superlattice();
           },
           py::return_value_policy::reference_internal,
-          "The supercell lattice, as a const reference.")
+          R"pbdoc(
+          libcasm.xtal.Lattice: The supercell lattice, as a const reference.
+          )pbdoc")
       .def_property_readonly(
           "prim_lattice",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->superlattice.prim_lattice();
           },
           py::return_value_policy::reference_internal,
-          "The prim lattice, as a const reference.")
+          R"pbdoc(
+          libcasm.xtal.Lattice: The prim lattice, as a const reference.
+          )pbdoc")
       .def_property_readonly(
           "site_index_converter",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->unitcellcoord_index_converter;
           },
           py::return_value_policy::reference_internal,
-          "A const reference to the"
-          ":class:`~libcasm.xtal.SiteIndexConverter` for the supercell.")
+          R"pbdoc(
+          libcasm.xtal.SiteIndexConverter: A const reference to the
+          :class:`~libcasm.xtal.SiteIndexConverter` for the supercell.
+          )pbdoc")
       .def_property_readonly(
           "unitcell_index_converter",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->unitcell_index_converter;
           },
           py::return_value_policy::reference_internal,
-          "A const reference to the "
-          ":class:`~libcasm.xtal.UnitCellIndexConverter` for the supercell.")
+          R"pbdoc(
+          libcasm.xtal.UnitCellIndexConverter: A const reference to the
+          :class:`~libcasm.xtal.UnitCellIndexConverter` for the supercell.
+          )pbdoc")
       .def(
           "sub_supercell_index_converter",
           [](std::shared_ptr<config::Supercell const> const &supercell,
@@ -1073,34 +1089,48 @@ PYBIND11_MODULE(_configuration, m) {
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->sym_info.factor_group;
           },
-          "The supercell factor group, which is the subgroup of the "
-          "prim factor group that leaves the supercell lattice vectors "
-          "invariant.")
+          R"pbdoc(
+          libcasm.sym_info.SymGroup: The supercell factor group, which is the
+          subgroup of the prim factor group that leaves the supercell lattice
+          vectors invariant.
+
+          The
+          :py:attr:`head_group <libcasm.sym_info.SymGroup.head_group>`
+          of the supercell factor group is the
+          :py:attr:`Prim.factor_group <libcasm.configuration.Prim.factor_group>`.
+          )pbdoc")
       .def_property_readonly(
           "factor_group_permutations",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->sym_info.factor_group_permutations;
           },
-          "The factor group permutations, where "
-          "`factor_group_permutations()[i]` describes how "
-          "`factor_group().element(i)` permutes supercell site DoF values. "
-          "When permuting site occupants, the following convention is used, "
-          "`after[l] = before[permutation[l]]`. When applying symmetry to "
-          "anisotropic DoF values, the convention used by CASM, (for example, "
-          "by `apply_supercell_sym_op`), is that the DoF values are "
-          "transformed first, then permuted.")
+          R"pbdoc(
+          list[list[int]]: The factor group permutations, where
+          `factor_group_permutations()[i]` describes how
+          `factor_group().element(i)` permutes supercell site DoF values.
+
+          When permuting site occupants, the following convention is used,
+          `after[l] = before[permutation[l]]`. When applying symmetry to
+          anisotropic DoF values, the convention used by CASM, (for example,
+          by `apply_supercell_sym_op`), is that the DoF values are
+          transformed first, then permuted.
+          )pbdoc")
       .def_property_readonly(
           "translation_permutations",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->sym_info.translation_permutations;
           },
-          "Returns the translation permutations, where "
-          "`translations_permutations()[i]` describes how the translation "
-          "vector corresponding to translating the origin unit cell to the "
-          "unitcell specified by linear index `l`, permutes supercell site DoF "
-          "values. When permuting site occupants, the following convention is "
-          "used, `after[l] = before[permutation[l]]`. Returns None for large "
-          "supercells (n_unitcells > max_n_translation_permutations).")
+          R"pbdoc(
+          Optional[list[list[int]]]: The translation permutations, where
+          `translations_permutations()[i]` describes how the translation
+          vector corresponding to translating the origin unit cell to the
+          unitcell specified by linear index `l`, permutes supercell site DoF
+          values.
+
+          When permuting site occupants, the following convention is
+          used, `after[l] = before[permutation[l]]`. Has value None for large
+          supercells (when `n_unitcells` > `max_n_translation_permutations`).
+          )pbdoc")
       .def(
           "symgroup_rep",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
@@ -1166,13 +1196,13 @@ PYBIND11_MODULE(_configuration, m) {
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->unitcellcoord_index_converter.total_sites();
           },
-          "The number of sites in the supercell.")
+          "int: The number of sites in the supercell.")
       .def_property_readonly(
           "n_unitcells",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
             return supercell->unitcell_index_converter.total_sites();
           },
-          "The number of unit cells in the supercell.")
+          "int: The number of unit cells in the supercell.")
       .def(
           "n_occupants",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
@@ -1437,14 +1467,23 @@ PYBIND11_MODULE(_configuration, m) {
 
            )pbdoc")
       .def_readonly("supercell", &config::SupercellRecord::supercell,
-                    "The shared :class:`~libcasm.configuration.Supercell`")
+                    R"pbdoc(
+          libcasm.configuration.Supercell: The shared
+          :class:`~libcasm.configuration.Supercell`
+          )pbdoc")
       .def_readonly("supercell_name", &config::SupercellRecord::supercell_name,
-                    "The supercell name.")
+                    R"pbdoc(
+          str: The supercell name
+          )pbdoc")
       .def_readonly("canonical_supercell_name",
                     &config::SupercellRecord::canonical_supercell_name,
-                    "The canonical equivalent supercell name.")
+                    R"pbdoc(
+          str: The canonical equivalent supercell name
+          )pbdoc")
       .def_readonly("is_canonical", &config::SupercellRecord::is_canonical,
-                    "True if the supercell is canonical, False otherwise.")
+                    R"pbdoc(
+          bool: True if the supercell is canonical; False otherwise
+          )pbdoc")
       .def(py::self < py::self, "Sorts SupercellRecord.")
       .def(py::self <= py::self, "Sorts SupercellRecord.")
       .def(py::self > py::self, "Sorts SupercellRecord.")
@@ -1500,16 +1539,19 @@ PYBIND11_MODULE(_configuration, m) {
           )pbdoc")
       .def_readonly("configuration",
                     &config::ConfigurationRecord::configuration,
-                    "The :class:`~libcasm.configuration.Configuration`")
+                    R"pbdoc(
+          libcasm.configuration.Configuration: The
+          :class:`~libcasm.configuration.Configuration`
+          )pbdoc")
       .def_readonly("supercell_name",
                     &config::ConfigurationRecord::supercell_name,
-                    "The supercell name.")
+                    "str: The supercell name.")
       .def_readonly("configuration_id",
                     &config::ConfigurationRecord::configuration_id,
-                    "The configuration id.")
+                    "str: The configuration id.")
       .def_readonly("configuration_name",
                     &config::ConfigurationRecord::configuration_name,
-                    "The configuration name.")
+                    "str: The configuration name.")
       .def(py::self < py::self, "Sorts ConfigurationRecord.")
       .def(py::self <= py::self, "Sorts ConfigurationRecord.")
       .def(py::self > py::self, "Sorts ConfigurationRecord.")
