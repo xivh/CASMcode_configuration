@@ -209,11 +209,12 @@ class ConfigEnumLocalOccupationsReference:
             )
 
         self.event_info = event_info
-        """libcasm.local_configuration.OccEventSymInfo: Shared information about the OccEvent."""
+        """libcasm.local_configuration.OccEventSymInfo: Shared information about the 
+        OccEvent."""
 
         self.event_supercell_info = event_supercell_info
-        """libcasm.local_configuration.OccEventSupercellSymInfo: Information about the OccEvent 
-        with respect to the supercell."""
+        """libcasm.local_configuration.OccEventSupercellSymInfo: Information about the 
+        OccEvent with respect to the supercell."""
 
         self.initial = initial
         """list[libcasm.local_configuration.LocalConfiguration]: The list of initial 
@@ -463,12 +464,13 @@ class ConfigEnumLocalOccupationsResult:
         reference: ConfigEnumLocalOccupationsReference,
     ):
         self.reference = reference
-        """libcasm.enumerate.ConfigEnumLocalOccupationsReference: The reference information for the
-        enumeration results."""
+        """libcasm.enumerate.ConfigEnumLocalOccupationsReference: The reference 
+        information for the enumeration results."""
 
         self.local_configuration = None
-        """libcasm.local_configuration.LocalConfiguration: The current LocalConfiguration, as 
-        constructed from the background configuration and perturbation."""
+        """libcasm.local_configuration.LocalConfiguration: The current 
+        LocalConfiguration, as constructed from the background configuration and 
+        perturbation."""
 
         self.canonical_local_configuration = None
         """libcasm.local_configuration.LocalConfiguration: The canonical equivalent 
@@ -598,7 +600,8 @@ class ConfigEnumLocalOccupations:
             )
 
         self.event_info = event_info
-        """libcasm.local_configuration.OccEventSymInfo: The OccEventSymInfo for the event."""
+        """libcasm.local_configuration.OccEventSymInfo: The OccEventSymInfo for the 
+        event."""
 
         self.supercell_set = supercell_set
         """Optional[casmconfig.SupercellSet]: If not None, generated 
@@ -606,8 +609,8 @@ class ConfigEnumLocalOccupations:
         :class:`~casmconfig.SupercellSet`."""
 
         self.reference = None
-        """Optional[libcasm.enumerate.ConfigEnumLocalOccupationsReference]: The reference information 
-        for the more recent enumeration results."""
+        """Optional[libcasm.enumerate.ConfigEnumLocalOccupationsReference]: The 
+        reference information for the more recent enumeration results."""
 
         self.verbose = verbose
         """bool: If True, print additional information about the enumeration process."""
@@ -1082,9 +1085,18 @@ class ConfigEnumLocalOccupations:
         :py:attr:`~libcasm.enumerate.ConfigEnumLocalOccupationsResult.reference`
         object which remains constant for all results.
 
-        Resulting :class:`~libcasm.local_configuration.LocalConfiguration` objects can be
-        stored in a :class:`~libcasm.local_configuration.LocalConfigurationList`, for instance
-        using
+        Resulting :class:`~libcasm.local_configuration.LocalConfiguration` objects can
+        be stored in a :class:`~libcasm.local_configuration.LocalConfigurationList`,
+        for instance using:
+
+        .. code-block:: Python
+
+            local_config_list = LocalConfigurationList(...)
+            config_enum = ConfigEnumLocalOccupations(...)
+            for result in config_enum.by_cluster_specs(...):
+                if result.local_configuration not in local_config_list:
+                    local_config_list.append(result.local_configuration)
+
 
         Parameters
         ----------
