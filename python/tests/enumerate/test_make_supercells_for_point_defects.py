@@ -162,16 +162,16 @@ def test_make_supercells_for_point_defects_1(fcc_1NN_A_Va_event):
             required_sites=required_sites,
         )
 
-        casmenum.plot_point_defect_supercell_scores(
-            candidate_supercells,
-            record.configuration_name,
-            min_volume=100,
-            max_volume=216,
-            require_has_required_sites=True,
-            require_has_all_motif_operations=True,
-            min_factor_group_size=None,
-            min_voronoi_inner_radius=None,
-        )
+        # casmenum.plot_point_defect_supercell_scores(
+        #     candidate_supercells,
+        #     record.configuration_name,
+        #     min_volume=100,
+        #     max_volume=216,
+        #     require_has_required_sites=True,
+        #     require_has_all_motif_operations=True,
+        #     min_factor_group_size=None,
+        #     min_voronoi_inner_radius=None,
+        # )
 
         optimal_supercells = casmenum.find_optimal_point_defect_supercells(
             candidate_supercells=candidate_supercells,
