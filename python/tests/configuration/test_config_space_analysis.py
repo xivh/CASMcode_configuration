@@ -43,23 +43,15 @@ def build_configurations_1(fcc_binary_prim: casmconfig.Prim):
     return configurations
 
 
-def expect_same_basis_vectors(basis, expected):
-    assert basis.shape == expected.shape
-    cols = basis.shape[1]
-    all_basis_vectors_found = True
-    for i in range(cols):
-        found = False
-        for j in range(cols):
-            if np.allclose(basis[:, i], expected[:, j]):
-                found = True
-                break
-        if found is False:
-            all_basis_vectors_found = False
-            break
-    if not all_basis_vectors_found:
-        print("basis:\n", basis)
-        print("expected:\n", expected)
-    assert all_basis_vectors_found
+def is_same_space(found, expected):
+    rank_found = np.linalg.matrix_rank(found)
+    rank_expected = np.linalg.matrix_rank(expected)
+    if rank_found != rank_expected:
+        return False
+
+    augmented = np.hstack((found, expected))
+    rank_augmented = np.linalg.matrix_rank(augmented)
+    return rank_augmented == rank_expected
 
 
 def test_config_space_analysis_1(FCC_binary_prim):
@@ -97,7 +89,12 @@ def test_config_space_analysis_1(FCC_binary_prim):
     assert len(equivalent_dof_values["A3B1"]) == 4
     assert len(equivalent_dof_values["A1B3"]) == 4
 
-    expected = np.array(
+    ### eigenvalues
+    expected = np.array([2.0, 2.0, 2.0, 14.0])
+    assert np.allclose(results["occ"].eigenvalues, expected)
+
+    ### basis
+    expected_1 = np.array(
         [
             [
                 0.0,
@@ -120,11 +117,20 @@ def test_config_space_analysis_1(FCC_binary_prim):
                 0.0,
                 sqrt(3.0) / 6.0,
             ],
+        ]
+    ).transpose()
+
+    expected_2 = np.array(
+        [
             [0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5],
         ]
     ).transpose()
 
-    expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
+    found_1 = symmetry_adapted_dof_space.basis[:, :3]
+    found_2 = symmetry_adapted_dof_space.basis[:, 3:]
+
+    assert is_same_space(found_1, expected_1)
+    assert is_same_space(found_2, expected_2)
 
 
 def test_config_space_analysis_2(FCC_binary_prim):
@@ -164,7 +170,12 @@ def test_config_space_analysis_2(FCC_binary_prim):
     assert len(equivalent_dof_values["A3B1"]) == 4
     assert len(equivalent_dof_values["A1B3"]) == 4
 
-    expected = np.array(
+    ### eigenvalues
+    expected = np.array([2.0, 2.0, 2.0, 14.0])
+    assert np.allclose(results["occ"].eigenvalues, expected)
+
+    ### basis
+    expected_1 = np.array(
         [
             [
                 0.0,
@@ -187,11 +198,20 @@ def test_config_space_analysis_2(FCC_binary_prim):
                 sqrt(3.0) / 6.0,
                 0.0,
             ],
+        ]
+    ).transpose()
+
+    expected_2 = np.array(
+        [
             [0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0],
         ]
     ).transpose()
 
-    expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
+    found_1 = symmetry_adapted_dof_space.basis[:, :3]
+    found_2 = symmetry_adapted_dof_space.basis[:, 3:]
+
+    assert is_same_space(found_1, expected_1)
+    assert is_same_space(found_2, expected_2)
 
 
 def test_config_space_analysis_3(FCC_binary_prim):
@@ -231,16 +251,37 @@ def test_config_space_analysis_3(FCC_binary_prim):
     assert len(equivalent_dof_values["A3B1"]) == 4
     assert len(equivalent_dof_values["A1B3"]) == 4
 
-    expected = np.array(
+    ### eigenvalues
+    expected = np.array([2.0, 2.0, 4.0, 12.0])
+    assert np.allclose(results["occ"].eigenvalues, expected)
+
+    ### basis
+    expected_1 = np.array(
         [
             [0.0, 0.0, 0.0, 0.0, 0.0, -sqrt(2.0) / 2.0, 0.0, sqrt(2.0) / 2.0],
             [-sqrt(2.0) / 2.0, 0.0, sqrt(2.0) / 2.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ]
+    ).transpose()
+
+    expected_2 = np.array(
+        [
             [-0.5, 0.0, -0.5, 0.0, 0.0, 0.5, 0.0, 0.5],
+        ]
+    ).transpose()
+
+    expected_3 = np.array(
+        [
             [0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.0, 0.5],
         ]
     ).transpose()
 
-    expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
+    found_1 = symmetry_adapted_dof_space.basis[:, :2]
+    found_2 = symmetry_adapted_dof_space.basis[:, 2:3]
+    found_3 = symmetry_adapted_dof_space.basis[:, 3:]
+
+    assert is_same_space(found_1, expected_1)
+    assert is_same_space(found_2, expected_2)
+    assert is_same_space(found_3, expected_3)
 
 
 def test_config_space_analysis_4(FCC_binary_prim):
@@ -280,16 +321,37 @@ def test_config_space_analysis_4(FCC_binary_prim):
     assert len(equivalent_dof_values["A3B1"]) == 4
     assert len(equivalent_dof_values["A1B3"]) == 4
 
-    expected = np.array(
+    ### eigenvalues
+    expected = np.array([2.0, 2.0, 4.0, 12.0])
+    assert np.allclose(results["occ"].eigenvalues, expected)
+
+    ### basis
+    expected_1 = np.array(
         [
             [0.0, 0.0, 0.0, 0.0, -sqrt(2.0) / 2.0, 0.0, sqrt(2.0) / 2.0, 0.0],
             [0.0, -sqrt(2.0) / 2.0, 0.0, sqrt(2.0) / 2.0, 0.0, 0.0, 0.0, 0.0],
+        ]
+    ).transpose()
+
+    expected_2 = np.array(
+        [
             [0.0, -0.5, 0.0, -0.5, 0.5, 0.0, 0.5, 0.0],
+        ]
+    ).transpose()
+
+    expected_3 = np.array(
+        [
             [0.0, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, 0.0],
         ]
     ).transpose()
 
-    expect_same_basis_vectors(symmetry_adapted_dof_space.basis, expected)
+    found_1 = symmetry_adapted_dof_space.basis[:, 0:2]
+    found_2 = symmetry_adapted_dof_space.basis[:, 2:3]
+    found_3 = symmetry_adapted_dof_space.basis[:, 3:]
+
+    assert is_same_space(found_1, expected_1)
+    assert is_same_space(found_2, expected_2)
+    assert is_same_space(found_3, expected_3)
 
 
 def test_config_space_analysis_1_to_dict(FCC_binary_prim):
