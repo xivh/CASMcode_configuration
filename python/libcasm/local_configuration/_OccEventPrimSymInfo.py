@@ -159,7 +159,6 @@ class OccEventPrimSymInfo:
 
         if equivalent_generating_ops is None:
             L = prim.xtal_prim.lattice().column_vector_matrix()
-            print("translations", translations)
             equivalent_generating_ops = [
                 libcasm.xtal.SymOp(
                     matrix=prim.factor_group.elements[fg_index].matrix(),
