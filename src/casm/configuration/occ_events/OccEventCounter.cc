@@ -103,7 +103,7 @@ class PrototypeClusterCounter : public SingleStepBase<OccEventCounterData> {
     if (!data()->params.required_cluster_size.has_value()) {
       return false;
     }
-    return data()->cluster.size() > *data()->params.required_cluster_size;
+    return data()->cluster.size() != *data()->params.required_cluster_size;
   }
 
   /// \brief Check if cluster includes any
