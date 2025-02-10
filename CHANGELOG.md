@@ -5,6 +5,14 @@ All notable changes to `libcasm-configuration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0a8] - 2024-02-10
+
+### Fixed
+
+- Removed testing comment from `libcasm.local_configuration.OccEventPrimSymInfo` constructor.
+- Fixed `required_cluster_size` comparison in `libcasm.occ_events.make_canonical_prim_periodic_occevents`.
+
+
 ## [2.0a7] - 2024-12-12
 
 ### Fixed
