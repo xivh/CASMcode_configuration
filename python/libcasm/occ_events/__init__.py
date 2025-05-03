@@ -1,4 +1,5 @@
 """Occupation events"""
+
 from ._methods import (
     load_occevent,
     make_canonical_occevent,

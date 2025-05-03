@@ -1,4 +1,5 @@
 """Supercells and configurations"""
+
 from ._configuration import (
     ConfigSpaceAnalysisResults,
     Configuration,

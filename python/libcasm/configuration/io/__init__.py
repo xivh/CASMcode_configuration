@@ -1,4 +1,5 @@
 """Additional methods for IO"""
+
 from typing import Dict, List, Optional
 
 import libcasm.configuration._configuration as _config

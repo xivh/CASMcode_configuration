@@ -1,4 +1,5 @@
 """Local configurations"""
+
 from ._LocalConfiguration import (
     LocalConfiguration,
     LocalConfigurationList,

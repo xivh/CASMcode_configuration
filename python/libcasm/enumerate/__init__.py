@@ -1,4 +1,5 @@
 """Configuration enumeration"""
+
 from ._ConfigEnumAllOccupations import (
     ConfigEnumAllOccupations,
 )

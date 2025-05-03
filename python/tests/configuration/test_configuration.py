@@ -22,7 +22,7 @@ def test_configuration_constructor(simple_cubic_binary_prim):
     )
     supercell = casmconfig.make_canonical_supercell(casmconfig.Supercell(prim, T))
     configuration = casmconfig.Configuration(supercell)
-    assert type(configuration) == casmconfig.Configuration
+    assert isinstance(configuration, casmconfig.Configuration)
 
 
 def test_configuration_dof_values(simple_cubic_binary_prim):
@@ -37,7 +37,7 @@ def test_configuration_dof_values(simple_cubic_binary_prim):
     supercell = casmconfig.make_canonical_supercell(casmconfig.Supercell(prim, T))
     configuration = casmconfig.Configuration(supercell)
     dof_values = configuration.dof_values
-    assert type(dof_values) == casmclex.ConfigDoFValues
+    assert isinstance(dof_values, casmclex.ConfigDoFValues)
     assert dof_values is configuration.dof_values
 
     assert configuration.occ(0) == 0

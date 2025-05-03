@@ -164,11 +164,11 @@ def test_make_distinct_local_configurations_fcc(fcc_1NN_A_Va_event):
 
         def _make_canonical(x):
             if x.configuration.supercell not in event_supercell_info:
-                event_supercell_info[
-                    x.configuration.supercell
-                ] = casmlocal.OccEventSupercellSymInfo(
-                    event_prim_info=event_info.event_prim_info,
-                    supercell=x.configuration.supercell,
+                event_supercell_info[x.configuration.supercell] = (
+                    casmlocal.OccEventSupercellSymInfo(
+                        event_prim_info=event_info.event_prim_info,
+                        supercell=x.configuration.supercell,
+                    )
                 )
             curr = event_supercell_info[x.configuration.supercell]
             (
@@ -203,11 +203,11 @@ def test_make_distinct_local_configurations_fcc(fcc_1NN_A_Va_event):
                 config = x.configuration
                 scelname = casmconfig.SupercellRecord(config.supercell).supercell_name
                 if config.supercell not in event_supercell_info:
-                    event_supercell_info[
-                        config.supercell
-                    ] = casmlocal.OccEventSupercellSymInfo(
-                        event_prim_info=event_info.event_prim_info,
-                        supercell=config.supercell,
+                    event_supercell_info[config.supercell] = (
+                        casmlocal.OccEventSupercellSymInfo(
+                            event_prim_info=event_info.event_prim_info,
+                            supercell=config.supercell,
+                        )
                     )
                 _curr = event_supercell_info[config.supercell]
                 print(scelname, config.occupation.tolist(), x.pos)

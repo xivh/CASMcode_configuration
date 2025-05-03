@@ -41,9 +41,9 @@ def make_equivalents_info_dict(
     #     )
 
     # Write prim factor group info
-    equivalents_info[
-        "factor_group"
-    ] = config_io.symgroup_to_dict_with_group_classification(prim, prim.factor_group)
+    equivalents_info["factor_group"] = (
+        config_io.symgroup_to_dict_with_group_classification(prim, prim.factor_group)
+    )
 
     # Write equivalents generating ops
     # (actually prim factor group indices of those ops and the
