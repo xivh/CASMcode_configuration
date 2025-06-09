@@ -10,7 +10,7 @@
   .. rubric:: {{ _('Methods') }}
 
   .. autosummary::
-    :nosignatures:
+    :signatures: short
     :toctree:
     :template: custom-function-template.rst
   {% for item in methods %}
@@ -26,11 +26,11 @@
   .. rubric:: {{ _('Attributes') }}
 
   .. autosummary::
-    :nosignatures:
+    :signatures: short
     :toctree:
     :template: custom-attr-template.rst
     {% for item in attributes %}
       ~{{ name }}.{{ item }}
     {%- endfor %}
-  {% endif %}
-  {% endblock %}
+    {% endif %}
+    {% endblock %}

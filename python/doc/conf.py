@@ -81,12 +81,9 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx.ext.napoleon",
     "sphinxarg.ext",
-    "sphinxcontrib.bibtex",
     "sphinx.ext.intersphinx",
     "numpydoc",
 ]
-
-bibtex_bibfiles = ["refs.bib"]
 
 # Napoleon settings
 napoleon_google_docstring = False
@@ -169,20 +166,6 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
-    "favicons": [
-        {
-            "rel": "icon",
-            "sizes": "32x32",
-            "href": "favicon-32x32.png",
-        },
-        {
-            "rel": "icon",
-            "sizes": "16x16",
-            "href": "favicon-16x16.png",
-        },
-        {"rel": "apple-touch-icon", "sizes": "180x180", "href": "apple-touch-icon.png"},
-    ],
-    # "primary_sidebar_end": ["primary_sidebar_end"]
 }
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -191,6 +174,8 @@ html_static_path = ["_static"]
 html_css_files = [
     "css/custom.css",
 ]
+html_favicon = "_static/favicon-16x16.png"
+html_show_sourcelink = False
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
