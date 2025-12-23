@@ -7,6 +7,7 @@
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/SupercellSymInfo.hh"
 #include "casm/configuration/sym_info/definitions.hh"
+#include "casm/configuration/sym_info/factor_group.hh"
 #include "casm/crystallography/SymType.hh"
 #include "casm/crystallography/SymTypeComparator.hh"
 
@@ -545,6 +546,8 @@ std::shared_ptr<SymGroup const> make_local_symgroup(
 ///     no value).
 /// \param symgroup The resulting group as a SymGroup. For global DoF,
 ///     this is the point group with repeated elements are removed.
+/// \param make_symgroup If true, `symgroup` is constructed, otherwise
+///     it is unchanged.
 ///
 /// \returns matrix_rep The matrix representation of `group` which transforms
 ///     the specified DoF. For global DoF repeated elements are removed (the
@@ -558,19 +561,20 @@ std::shared_ptr<SymGroup const> make_local_symgroup(
 std::vector<Eigen::MatrixXd> make_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::optional<std::set<Index>> site_indices,
-    std::shared_ptr<SymGroup const> &symgroup) {
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup) {
   if (group.size() == 0) {
     throw std::runtime_error("Error in make_matrix_rep: group has size==0.");
   }
   if (AnisoValTraits(key).global()) {
-    return make_global_dof_matrix_rep(group, key, symgroup);
+    return make_global_dof_matrix_rep(group, key, symgroup, make_symgroup);
   } else {
     if (!site_indices.has_value()) {
       throw std::runtime_error(
           "Error in make_matrix_rep: site_indices has no value for occupation "
           "or local DoF");
     }
-    return make_local_dof_matrix_rep(group, key, *site_indices, symgroup);
+    return make_local_dof_matrix_rep(group, key, *site_indices, symgroup,
+                                     make_symgroup);
   }
 }
 
@@ -581,6 +585,8 @@ std::vector<Eigen::MatrixXd> make_matrix_rep(
 ///     crystallographic factor group)
 /// \param key The type of global DoF to be transformed.
 /// \param symgroup The resulting group, which is a point group, as a SymGroup.
+/// \param make_symgroup If true, `symgroup` is constructed, otherwise
+///     it is unchanged.
 ///
 /// \returns matrix_rep The matrix representation of `group` which transforms
 ///     the specified global DoF. Repeated elements are removed (the result
@@ -589,7 +595,7 @@ std::vector<Eigen::MatrixXd> make_matrix_rep(
 ///
 std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
-    std::shared_ptr<SymGroup const> &symgroup) {
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup) {
   if (group.size() == 0) {
     throw std::runtime_error(
         "Error in make_global_dof_matrix_rep: group has size==0.");
@@ -633,11 +639,12 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
     result.push_back(M);
   }
 
-  std::multiplies<SymOp> multiply_f;
-  xtal::SymOpPeriodicCompare_f equal_to_f(prim_lattice, xtal_tol);
-  symgroup = std::make_shared<SymGroup const>(
-      group::make_group(element, multiply_f, equal_to_f));
-
+  if (make_symgroup) {
+    std::multiplies<SymOp> multiply_f;
+    xtal::SymOpPeriodicCompare_f equal_to_f(prim_lattice, xtal_tol);
+    symgroup = std::make_shared<SymGroup const>(
+        group::make_group(element, multiply_f, equal_to_f));
+  }
   // std::cout << "make_global_dof_matrix_rep: " << group.size() << ","
   //           << prim_factor_group_indices.size() << "," << result.size()
   //           << std::endl;
@@ -655,6 +662,8 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
 /// \param site_indices Set of site indices that define the subset of sites
 ///     where DoF will be transformed
 /// \param symgroup The resulting group as a SymGroup.
+/// \param make_symgroup If true, `symgroup` is constructed, otherwise
+///     it is unchanged.
 ///
 /// \returns matrix_rep The matrix representation of `group` which transforms
 ///     the specified occupation or local DoF.
@@ -662,7 +671,7 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
 std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::set<Index> const &site_indices,
-    std::shared_ptr<SymGroup const> &symgroup) {
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup) {
   if (group.size() == 0) {
     throw std::runtime_error(
         "Error in make_local_dof_matrix_rep: group has size==0.");
@@ -744,11 +753,13 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
     element.push_back(supercell_symop.to_symop());
   }
 
-  std::multiplies<SymOp> multiply_f;
-  xtal::SymOpPeriodicCompare_f equal_to_f(supercell.superlattice.superlattice(),
-                                          xtal_tol);
-  symgroup = std::make_shared<SymGroup const>(
-      group::make_group(element, multiply_f, equal_to_f));
+  if (make_symgroup) {
+    std::multiplies<SymOp> multiply_f;
+    xtal::SymOpPeriodicCompare_f equal_to_f(
+        supercell.superlattice.superlattice(), xtal_tol);
+    symgroup = std::make_shared<SymGroup const>(
+        group::make_group(element, multiply_f, equal_to_f));
+  }
 
   return result;
 }
@@ -766,24 +777,52 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
 std::vector<Eigen::MatrixXd> make_dof_space_rep(
     std::vector<config::SupercellSymOp> const &group,
     clexulator::DoFSpace const &dof_space) {
+  bool make_symgroup = false;
   std::shared_ptr<config::SymGroup const> symgroup;
   std::vector<Eigen::MatrixXd> fullspace_rep;
   std::vector<Eigen::MatrixXd> dof_space_rep;
   if (dof_space.is_global) {
-    fullspace_rep =
-        config::make_global_dof_matrix_rep(group, dof_space.dof_key, symgroup);
+    fullspace_rep = config::make_global_dof_matrix_rep(group, dof_space.dof_key,
+                                                       symgroup, make_symgroup);
   } else {
     if (!dof_space.sites.has_value()) {
       throw std::runtime_error(
           "Error in make_dof_space_rep with local DoF: no DoFSpace sites");
     }
     fullspace_rep = config::make_local_dof_matrix_rep(
-        group, dof_space.dof_key, *dof_space.sites, symgroup);
+        group, dof_space.dof_key, *dof_space.sites, symgroup, make_symgroup);
   }
   for (auto const &M : fullspace_rep) {
     dof_space_rep.push_back(dof_space.basis_inv * M * dof_space.basis);
   }
   return dof_space_rep;
+}
+
+/// \brief Make a SymGroup from a list of SupercellSymOp
+///
+/// \brief group The group as a list of SupercellSymOp
+///
+/// \returns symgroup The SymGroup corresponding to `group`. This is a head
+/// group, it is not a subgroup of the prim factor group because it can
+/// include unit cell translations.
+std::shared_ptr<SymGroup const> make_symgroup(
+    std::vector<SupercellSymOp> const &group) {
+  if (group.size() == 0) {
+    throw std::runtime_error("Error in make_symgroup: group has size==0.");
+  }
+
+  std::shared_ptr<Supercell const> supercell = group.begin()->supercell();
+
+  std::vector<xtal::SymOp> element;
+  for (auto const &supercell_symop : group) {
+    element.push_back(supercell_symop.to_symop());
+  }
+  std::multiplies<SymOp> multiply_f;
+  xtal::SymOpPeriodicCompare_f equal_to_f(
+      supercell->superlattice.superlattice(),
+      supercell->prim->basicstructure->lattice().tol());
+  return std::make_shared<SymGroup const>(
+      group::make_group(element, multiply_f, equal_to_f));
 }
 
 }  // namespace config

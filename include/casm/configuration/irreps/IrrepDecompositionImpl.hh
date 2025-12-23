@@ -158,7 +158,8 @@ bool is_irrep(MatrixRep const &rep, GroupIndices const &head_group);
 /// Finds irreducible subspaces that comprise an underlying subspace
 std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
                                            GroupIndices const &head_group,
-                                           bool allow_complex);
+                                           bool allow_complex,
+                                           std::optional<Log> log);
 
 /// Convert irreps generated for a subspace to full space dimension
 std::vector<IrrepInfo> make_fullspace_irreps(
@@ -179,8 +180,8 @@ MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
 std::vector<IrrepInfo> symmetrize_irreps(
     MatrixRep const &subspace_rep, GroupIndices const &head_group,
     std::vector<IrrepInfo> const &irreps,
-    std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
-    std::function<GroupIndicesOrbitSet()> make_all_subgroups_f);
+    std::function<GroupIndicesOrbitSet()> make_subgroups_f,
+    std::optional<Log> log);
 
 }  // namespace IrrepDecompositionImpl
 

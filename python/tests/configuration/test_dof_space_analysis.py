@@ -1,5 +1,9 @@
+import json
+import pathlib
+import pytest
 import numpy as np
 
+import libcasm.xtal as xtal
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
 import libcasm.irreps as casmirreps
@@ -134,6 +138,272 @@ def test_dof_space_analysis_1_generic(FCC_binary_prim):
     assert isinstance(data, dict)
 
 
+def plot_irrep_axes(irrep: casmirreps.IrrepInfo, index: int):
+    from bokeh.plotting import figure, show
+    from bokeh.layouts import gridplot
+    from bokeh.models import Title
+
+    i = index
+
+    title = f"Irrep {i} Basis"
+    B = irrep.trans_mat.real
+
+    plots = []
+    for j in range(B.shape[0]):
+        # p = figure(width=800, height=300, title=f"Basis Vector {j}")
+        # p.add_layout(Title(text=title, align="center"), "above")
+        # x = np.arange(B.shape[1])
+        # y = B[j, :]
+        # p.vbar(x=x, top=y, width=0.5)
+        # plots.append(p)
+
+        # Each row of B corresponds to (x1, y1, z1, x2, y2, z2, ..., xn, yn, zn)
+        # where (xi, yi, zi) are the components of the displacement vector for atom i.
+        # Let's plot the x, y, z components separately for clarity:
+        p_xyz = figure(width=400, height=200, title=f"Basis Vector {j} Components")
+        p_xyz.add_layout(Title(text=title, align="center"), "above")
+        x_atoms = np.arange(B.shape[1] // 3)
+        y_x = B[j, 0::3]
+        y_y = B[j, 1::3]
+        y_z = B[j, 2::3]
+        p_xyz.vbar(x=x_atoms - 0.2, top=y_x, width=0.2, color="red", legend_label="x")
+        p_xyz.vbar(x=x_atoms, top=y_y, width=0.2, color="green", legend_label="y")
+        p_xyz.vbar(x=x_atoms + 0.2, top=y_z, width=0.2, color="blue", legend_label="z")
+        # p_xyz.legend.location = "top_right"
+        # Move the auto-created legend outside the plot area (to the right)
+        if p_xyz.legend:
+            legend = p_xyz.legend[0]
+            p_xyz.add_layout(legend, "right")
+            legend.orientation = "vertical"
+            legend.label_text_font_size = "10pt"
+
+        plots.append(p_xyz)
+
+    grid = gridplot(plots, ncols=3)
+    show(grid)
+
+
+def plot_irrep_directions_orbit(
+    directions: list[np.array],
+    irrep_index: int,
+    orbit_index: int,
+):
+    from bokeh.plotting import figure, show
+    from bokeh.layouts import gridplot
+    from bokeh.models import Title
+
+    i = irrep_index
+    k = orbit_index
+
+    title = f"Irrep {i}, Direction orbit {k}"
+
+    plots = []
+    for l, d in enumerate(directions):
+        p_dir = figure(
+            width=400,
+            height=200,
+            title=f"{title}, Direction {l}",
+        )
+        p_dir.add_layout(Title(text=title, align="center"), "above")
+        x_atoms = np.arange(d.shape[0] // 3)
+        y_x = d[0::3]
+        y_y = d[1::3]
+        y_z = d[2::3]
+        p_dir.vbar(x=x_atoms - 0.2, top=y_x, width=0.2, color="red", legend_label="x")
+        p_dir.vbar(x=x_atoms, top=y_y, width=0.2, color="green", legend_label="y")
+        p_dir.vbar(x=x_atoms + 0.2, top=y_z, width=0.2, color="blue", legend_label="z")
+        # p_dir.legend.location = "top_right"
+        # Move the auto-created legend outside the plot area (to the right)
+        if p_dir.legend:
+            legend = p_dir.legend[0]
+            p_dir.add_layout(legend, "right")
+            legend.orientation = "vertical"
+            legend.label_text_font_size = "10pt"
+
+        plots.append(p_dir)
+
+    grid = gridplot(plots, ncols=3)
+    show(grid)
+
+
+def print_report(report):
+    for i, irrep in enumerate(report.irreps):
+        with open(f"irrep.{i}.json", "w") as f:
+            f.write(xtal.pretty_json(irrep.to_dict()))
+
+    irreps_in = []
+    i = 0
+    path = pathlib.Path(f"irrep.{i}.json")
+    while path.exists():
+        with open(path, "r") as f:
+            data = json.load(f)
+            irrep = casmirreps.IrrepInfo.from_dict(data)
+            irreps_in.append(irrep)
+        i += 1
+        path = pathlib.Path(f"irrep.{i}.json")
+
+    irreps = irreps_in
+
+    for i, irrep in enumerate(irreps):
+        dirs_mult = [len(directions) for directions in irrep.directions]
+        print(f"Irrep {i}: dim={irrep.irrep_dim}, dirs_mult={dirs_mult}")
+    print()
+
+    selected_irrep = 1
+
+    for i, irrep in enumerate(irreps):
+        # if i != selected_irrep:
+        #     continue
+
+        plot_irrep_axes(irrep=irrep, index=i)
+
+        # for k, directions in enumerate(irrep.directions):
+        #     plot_irrep_directions_orbit(
+        #         directions=directions,
+        #         irrep_index=i,
+        #         orbit_index=k,
+        #     )
+
+    # for i, irrep in enumerate(report.irreps):
+    #     dirs_mult = [len(directions) for directions in irrep.directions]
+    #     print(f"-- Irrep {i}: dim={irrep.irrep_dim}, dirs_mult={dirs_mult} --")
+    #     for j, directions in enumerate(irrep.directions):
+    #         print(f"- Direction Orbit {j}:")
+    #         for k, d in enumerate(directions):
+    #             print(f"- - {k}: {d.tolist()}")
+    #     print()
+
+    print("-- Summary --")
+    print("Symmetry adapted space shape=", report.symmetry_adapted_subspace.shape)
+
+    print()
+
+
+def make_maximal_subgroups(supercell_symops: list[casmconfig.SupercellSymOp]):
+    """Make maximal subgroups from supercell symmetry operations."""
+
+    no_lattice_translation_group = []
+    only_lattice_translation_group = []
+    for op in supercell_symops:
+        if op.translation_index() == 0:
+            no_lattice_translation_group.append(op)
+        if op.prim_factor_group_index() == 0:
+            only_lattice_translation_group.append(op)
+    print(f"# no_lattice_translation_group: {len(no_lattice_translation_group)}")
+    print(f"# only_lattice_translation_group: {len(only_lattice_translation_group)}")
+
+
+def test_groups(FCC_binary_GLstrain_disp_prim):
+    prim = casmconfig.Prim(FCC_binary_GLstrain_disp_prim)
+    # T_dof_space = (
+    #     np.array(
+    #         [  # conventional FCC cubic cell
+    #             [-1, 1, 1],
+    #             [1, -1, 1],
+    #             [1, 1, -1],
+    #         ],
+    #         dtype=int,
+    #     )
+    #     * 2
+    # )
+    T_dof_space = np.eye(3, dtype=int) * 2
+    symmetrization = "fast"
+    supercell = casmconfig.Supercell(prim, T_dof_space)
+    configuration = casmconfig.Configuration(
+        supercell=supercell,
+    )
+
+    supercell_factor_group = casmconfig.make_invariant_subgroup(
+        configuration=configuration,
+    )
+    make_maximal_subgroups(
+        supercell_symops=supercell_factor_group,
+    )
+
+    # construct DoFSpace with default basis
+    dof_space_full, _ = configuration.make_dof_space(
+        dof_key="disp",
+        symmetry_adapted=False,
+        exclude_homogeneous_modes=False,
+    )
+
+    dof_space, _ = configuration.make_dof_space(
+        dof_key="disp",
+        symmetry_adapted=False,
+        exclude_homogeneous_modes=True,
+    )
+    print("basis shape:", dof_space.basis.shape)
+
+    print("-- dof_space_analysis -- ")
+    print()
+
+    # Perform DoF space analysis
+    results = casmconfig.dof_space_analysis(
+        dof_space=dof_space,
+        prim=prim,
+        symmetrization=symmetrization,
+        calc_wedges=False,
+        verbosity="standard",
+    )
+
+    print_report(results.symmetry_report)
+
+    assert False
+
+    print("-- IrrepDecomposition -- ")
+    print()
+
+    matrix_rep = casmconfig.make_dof_space_rep(
+        group=supercell_factor_group,
+        dof_space=dof_space_full,
+    )
+
+    abs_tol = 1e-5
+
+    # remove duplicate matrices from matrix_rep:
+    unique_matrices = []
+    for M in matrix_rep:
+        if not any(np.allclose(M, UM, atol=abs_tol) for UM in unique_matrices):
+            unique_matrices.append(M)
+
+    print("# of duplicate matrices removed:", len(matrix_rep) - len(unique_matrices))
+    matrix_rep = unique_matrices
+
+    # print("-- matrix_rep -- ")
+    # for i, M in enumerate(matrix_rep):
+    #     print(f"Matrix {i}:")
+    #     print(M)
+    #     print()
+
+    print("basis shape:", dof_space.basis.shape)
+
+    # Perform DoF space analysis
+    irrep_decomposition = casmirreps.IrrepDecomposition(
+        matrix_rep=matrix_rep,
+        init_subspace=dof_space.basis,
+        # init_subspace=np.array(
+        #     [
+        #         [0.0, 0.0, 0.0, 0.0],
+        #         [1.0, 0.0, 0.0, 0.0],
+        #         [0.0, 0.0, 0.0, 0.0],
+        #         [0.0, 1.0, 0.0, 0.0],
+        #         [0.0, 0.0, 0.0, 0.0],
+        #         [0.0, 0.0, 1.0, 0.0],
+        #         [0.0, 0.0, 0.0, 0.0],
+        #         [0.0, 0.0, 0.0, 1.0],
+        #     ]
+        # ),
+        symmetrization=symmetrization,
+    )
+
+    report = irrep_decomposition.make_symmetry_report(
+        calc_wedges=False,
+    )
+    print_report(report)
+
+    assert False
+
+
 def test_dof_space_analysis_2(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
     T_dof_space = np.array(
@@ -161,7 +431,8 @@ def test_dof_space_analysis_2(FCC_binary_prim):
         # include_default_occ_modes=False,
         # sublattice_index_to_default_occ=None,
         # site_index_to_default_occ=None,
-        calc_wedges=True,
+        # symmetrization="fast",
+        calc_wedges=False,
     )
 
     symmetry_adapted_dof_space = results.symmetry_adapted_dof_space
@@ -231,6 +502,7 @@ def test_dof_space_analysis_2_generic(FCC_binary_prim):
                 [0.0, 0.0, 0.0, 1.0],
             ]
         ),
+        # symmetrization="fast",
     )
     assert isinstance(irrep_decomposition, casmirreps.IrrepDecomposition)
 
@@ -283,6 +555,7 @@ def test_dof_space_analysis_2a(FCC_binary_prim):
         # include_default_occ_modes=False,
         # sublattice_index_to_default_occ=None,
         site_index_to_default_occ=site_index_to_default_occ,
+        symmetrization="fast",
         # calc_wedges=False,
     )
 
@@ -327,6 +600,7 @@ def test_dof_space_analysis_2b(FCC_binary_prim):
         # exclude_homogeneous_modes=None,
         # include_default_occ_modes=False,
         sublattice_index_to_default_occ=sublattice_index_to_default_occ,
+        symmetrization="fast",
         # site_index_to_default_occ=None,
         # calc_wedges=False,
     )
@@ -371,6 +645,7 @@ def test_dof_space_analysis_2c(FCC_binary_prim):
         # include_default_occ_modes=False,
         # sublattice_index_to_default_occ=None,
         # site_index_to_default_occ=None,
+        symmetrization="fast",
         calc_wedges=True,
     )
 
@@ -464,6 +739,7 @@ def test_dof_space_analysis_4(FCC_binary_GLstrain_disp_prim):
         # configuration=None,
         # exclude_homogeneous_modes=None,
         # include_default_occ_modes=False,
+        symmetrization="fast",
         # calc_wedges=False,
     )
 
@@ -495,6 +771,7 @@ def test_dof_space_analysis_5(prim_ABC2):
         # configuration=None,
         # exclude_homogeneous_modes=None,
         # include_default_occ_modes=False,
+        symmetrization="fast",
         # calc_wedges=False,
     )
 
@@ -528,6 +805,7 @@ def test_dof_space_analysis_6(FCC_binary_disp_fix_corner_prim):
         # configuration=None,
         # exclude_homogeneous_modes=None,
         # include_default_occ_modes=False,
+        symmetrization="fast",
         # calc_wedges=False,
     )
 

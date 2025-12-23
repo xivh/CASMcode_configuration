@@ -13,6 +13,7 @@
 #include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
 #include "casm/configuration/ConfigCompare.hh"
 #include "casm/configuration/ConfigurationSet.hh"
+#include "casm/configuration/DoFSpace_functions.hh"
 #include "casm/configuration/FromStructure.hh"
 #include "casm/configuration/Prim.hh"
 #include "casm/configuration/Supercell.hh"
@@ -176,6 +177,36 @@ inline Eigen::MatrixXd pretty(const Eigen::MatrixXd &M, double tol = 1e-10) {
     }
   }
   return Mp;
+}
+
+// class Log {
+// public:
+//   static const int none = 0;
+//   static const int quiet = 5;
+//   static const int standard = 10;
+//   static const int verbose = 20;
+//   static const int debug = 100;
+
+inline std::optional<Log> make_log(
+    std::optional<std::string> const &verbosity) {
+  std::optional<Log> log;
+  if (verbosity.has_value()) {
+    if (verbosity.value() == "debug") {
+      log = Log(std::cout, Log::debug, true);
+    } else if (verbosity.value() == "verbose") {
+      log = Log(std::cout, Log::verbose, true);
+    } else if (verbosity.value() == "standard") {
+      log = Log(std::cout, Log::standard, true);
+    } else if (verbosity.value() == "quiet") {
+      log = Log(std::cout, Log::quiet, true);
+    } else if (verbosity.value() == "none") {
+      log = Log(std::cout, Log::none, true);
+    } else {
+      throw std::runtime_error("Error: verbosity level " + verbosity.value() +
+                               " not recognized");
+    }
+  }
+  return log;
 }
 
 }  // namespace CASMpy
@@ -2944,26 +2975,57 @@ PYBIND11_MODULE(_configuration, m) {
              bool include_default_occ_modes,
              std::optional<std::map<int, int>> sublattice_index_to_default_occ,
              std::optional<std::map<Index, int>> site_index_to_default_occ,
+             std::string symmetrization, Index max_iter,
              bool calc_wedges) -> py::tuple {
-            auto dof_space = std::make_shared<clexulator::DoFSpace>(
-                dof_key, self.supercell->prim->basicstructure,
-                self.supercell->superlattice.transformation_matrix_to_super(),
-                sites, basis);
             if (!symmetry_adapted) {
+              clexulator::DoFSpace dof_space_in(
+                  dof_key, self.supercell->prim->basicstructure,
+                  self.supercell->superlattice.transformation_matrix_to_super(),
+                  sites, basis);
+              clexulator::DoFSpace dof_space_pre1 =
+                  config::exclude_homogeneous_mode_space(
+                      dof_space_in, exclude_homogeneous_modes);
+              if (dof_space_pre1.basis.cols() == 0) {
+                std::stringstream msg;
+                msg << "Error in make_dof_space: "
+                    << "After excluding homogeneous mode space: basis.cols() "
+                       "== 0";
+                throw config::dof_space_analysis_error(msg.str());
+              }
+
+              clexulator::DoFSpace dof_space =
+                  config::exclude_default_occ_modes(
+                      dof_space_pre1, include_default_occ_modes,
+                      sublattice_index_to_default_occ,
+                      site_index_to_default_occ);
+              if (dof_space.basis.cols() == 0) {
+                std::stringstream msg;
+                msg << "Error in dof_space_analysis: "
+                    << "After excluding default occ modes: basis.cols() == 0";
+                throw config::dof_space_analysis_error(msg.str());
+              }
+
               return py::make_tuple(dof_space, py::none());
+            } else {
+              auto dof_space = std::make_shared<clexulator::DoFSpace>(
+                  dof_key, self.supercell->prim->basicstructure,
+                  self.supercell->superlattice.transformation_matrix_to_super(),
+                  sites, basis);
+
+              std::optional<Log> log = std::nullopt;
+              // std::optional<Log> log = Log(std::cout, Log::debug, true);
+              config::DoFSpaceAnalysisResults results =
+                  config::dof_space_analysis(
+                      *dof_space, self.supercell->prim, self,
+                      exclude_homogeneous_modes, include_default_occ_modes,
+                      sublattice_index_to_default_occ,
+                      site_index_to_default_occ, symmetrization, max_iter,
+                      calc_wedges, log);
+              return py::make_tuple(
+                  std::make_shared<clexulator::DoFSpace>(
+                      std::move(results.symmetry_adapted_dof_space)),
+                  results.symmetry_report);
             }
-            std::optional<Log> log = std::nullopt;
-            // std::optional<Log> log = Log(std::cout, Log::debug, true);
-            config::DoFSpaceAnalysisResults results =
-                config::dof_space_analysis(
-                    *dof_space, self.supercell->prim, self,
-                    exclude_homogeneous_modes, include_default_occ_modes,
-                    sublattice_index_to_default_occ, site_index_to_default_occ,
-                    calc_wedges, log);
-            return py::make_tuple(
-                std::make_shared<clexulator::DoFSpace>(
-                    std::move(results.symmetry_adapted_dof_space)),
-                results.symmetry_report);
           },
           R"pbdoc(
           Construct a :class:`~libcasm.clexulator.DoFSpace` for this \
@@ -3011,6 +3073,27 @@ PYBIND11_MODULE(_configuration, m) {
           site_index_to_default_occ: Optional[dict[int,int]]
               Optional values of default occupation index (the value), specified
               by supercell site index (the key).
+          symmetrization: str = "complete"
+              Controls how irreducible subspace bases are symmetrized to
+              align along high-symmetry directions. Options are:
+
+              - "none": Leave the irreducible subspace bases as initially
+                found, reducing computation time.
+              - "fast": Symmetrize the irreducible subspace
+                bases to align along high-symmetry directions using
+                cyclic subgroups. This may not be a complete
+                symmetrization, but is generally fast.
+              - "complete": Symmetrize the irreducible subspace
+                bases to align along high-symmetry directions using
+                all subgroups. For large spaces, finding all
+                subgroups is slow.
+
+          max_iter: int = 10
+              Maximum number of iterations to use when finding irreducible
+              subspaces. If a non-irreducible subspace cannot be decomposed
+              within this number of iterations, `complete_decomposition` will
+              be set to False. Starting with a different `init_subspace` may
+              result in a complete decomposition.
           calc_wedges : bool = False
               If True, calculate the irreducible wedges for the vector space.
               This may take a long time, but provides the symmetrically unique
@@ -3033,6 +3116,7 @@ PYBIND11_MODULE(_configuration, m) {
           py::arg("include_default_occ_modes") = false,
           py::arg("sublattice_index_to_default_occ") = std::nullopt,
           py::arg("site_index_to_default_occ") = std::nullopt,
+          py::arg("symmetrization") = "complete", py::arg("max_iter") = 10,
           py::arg("calc_wedges") = false)
       .def(
           "order_parameters",
@@ -4335,6 +4419,22 @@ PYBIND11_MODULE(_configuration, m) {
       )pbdoc",
         py::arg("group"), py::arg("dof_space"));
 
+  m.def("make_symgroup", &config::make_symgroup, R"pbdoc(
+        Make a SymGroup from a list of SupercellSymOp
+
+        Parameters
+        ----------
+        group: list[:class:`~libcasm.configuration.SupercellSymOp`]
+            The symmetry group, as a list of SupercellSymOp.
+
+        Returns
+        -------
+        symgroup: :class:`~libcasm.configuration.SymGroup`
+            The symmetry group, as a SymGroup representation
+
+        )pbdoc",
+        py::arg("group"));
+
   //
   py::class_<config::ConfigSpaceAnalysisResults>(m,
                                                  "ConfigSpaceAnalysisResults",
@@ -4464,11 +4564,13 @@ PYBIND11_MODULE(_configuration, m) {
       Holds results from :func:`~libcasm.configuration.dof_space_analysis`.
 
       )pbdoc")
-      .def(py::init<clexulator::DoFSpace, irreps::VectorSpaceSymReport>(),
+      .def(py::init<clexulator::DoFSpace, irreps::IrrepDecomposition,
+                    irreps::VectorSpaceSymReport>(),
            R"pbdoc(
            .. rubric:: Constructor
            )pbdoc",
-           py::arg("symmetry_adapted_dof_space"), py::arg("symmetry_report"))
+           py::arg("symmetry_adapted_dof_space"),
+           py::arg("irrep_decomposition"), py::arg("symmetry_report"))
       .def_readonly(
           "symmetry_adapted_dof_space",
           &config::DoFSpaceAnalysisResults::symmetry_adapted_dof_space,
@@ -4480,19 +4582,29 @@ PYBIND11_MODULE(_configuration, m) {
                     "irreducible space decomposition")
       .def(
           "to_dict",
-          [](config::DoFSpaceAnalysisResults const &self) {
+          [](config::DoFSpaceAnalysisResults const &self,
+             bool include_symop_matrices) {
             jsonParser json;
-            to_json(self, json);
+            to_json(self, json, include_symop_matrices);
             return static_cast<nlohmann::json>(json);
           },
           R"pbdoc(
           Represent the DoFSpaceAnalysisResults as a Python dict
 
+          Parameters
+          ----------
+          include_symop_matrices : bool = True
+              If True, include the symmetry operation matrices in the
+              irreducible representation bases for the symmetry report. For
+              large spaces, use False to exclude these matrices, saving output
+              time and memory.
+
           Returns
           -------
           data : dict
               The DoFSpaceAnalysisResults as a Python dict
-          )pbdoc")
+          )pbdoc",
+          py::arg("include_symop_matrices") = true)
       .def("__repr__", [](config::DoFSpaceAnalysisResults const &self) {
         std::stringstream ss;
         jsonParser json;
@@ -4510,13 +4622,15 @@ PYBIND11_MODULE(_configuration, m) {
          bool include_default_occ_modes,
          std::optional<std::map<int, int>> sublattice_index_to_default_occ,
          std::optional<std::map<Index, int>> site_index_to_default_occ,
-         bool calc_wedges) -> config::DoFSpaceAnalysisResults {
-        std::optional<Log> log = std::nullopt;
-        // std::optional<Log> log = Log(std::cout, Log::debug, true);
+         std::string symmetrization, Index max_iter, bool calc_wedges,
+         std::optional<std::string> verbosity)
+          -> config::DoFSpaceAnalysisResults {
+        std::optional<Log> log = make_log(verbosity);
         return config::dof_space_analysis(
             dof_space, prim, configuration, exclude_homogeneous_modes,
             include_default_occ_modes, sublattice_index_to_default_occ,
-            site_index_to_default_occ, calc_wedges, log);
+            site_index_to_default_occ, symmetrization, max_iter, calc_wedges,
+            log);
       },
       R"pbdoc(
       Construct symmetry adapted bases in a DoFSpace
@@ -4564,11 +4678,35 @@ PYBIND11_MODULE(_configuration, m) {
       site_index_to_default_occ: Optional[dict[int,int]]
           Optional values of default occupation index (the value), specified by
           supercell site index (the key).
+      symmetrization: str = "complete"
+          Controls how irreducible subspace bases are symmetrized to
+          align along high-symmetry directions. Options are:
+
+          - "none": Leave the irreducible subspace bases as initially
+            found, reducing computation time.
+          - "fast": Symmetrize the irreducible subspace
+            bases to align along high-symmetry directions using
+            cyclic subgroups. This may not be a complete
+            symmetrization, but is generally fast.
+          - "complete": Symmetrize the irreducible subspace
+            bases to align along high-symmetry directions using
+            all subgroups. For large spaces, finding all
+            subgroups is slow.
+
+      max_iter: int = 10
+          Maximum number of iterations to use when finding irreducible
+          subspaces. If a non-irreducible subspace cannot be decomposed
+          within this number of iterations, `complete_decomposition` will
+          be set to False. Starting with a different `init_subspace` may
+          result in a complete decomposition.
       calc_wedges : bool = False
           If True, calculate the irreducible wedges for the vector space.
           This may take a long time, but provides the symmetrically unique
           portions of the vector space, which is useful for enumeration.
-
+      verbosity : Optional[str] = None
+          If not None, the irrep decomposition process will be logged to
+          standard output. Use "standard" for basic logging output,
+          or "verbose" for additional logging output.
 
       Returns
       -------
@@ -4584,7 +4722,8 @@ PYBIND11_MODULE(_configuration, m) {
       py::arg("include_default_occ_modes") = false,
       py::arg("sublattice_index_to_default_occ") = std::nullopt,
       py::arg("site_index_to_default_occ") = std::nullopt,
-      py::arg("calc_wedges") = false);
+      py::arg("symmetrization") = "complete", py::arg("max_iter") = 10,
+      py::arg("calc_wedges") = false, py::arg("verbosity") = std::nullopt);
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

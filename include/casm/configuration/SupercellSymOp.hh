@@ -237,13 +237,13 @@ std::shared_ptr<SymGroup const> make_local_symgroup(
 std::vector<Eigen::MatrixXd> make_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::optional<std::set<Index>> site_indices,
-    std::shared_ptr<SymGroup const> &symgroup);
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup = true);
 
 /// \brief Make the matrix representation of `group` that describes the
 ///     transformation of a particular global DoF
 std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
-    std::shared_ptr<SymGroup const> &symgroup);
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup = true);
 
 /// \brief Make the matrix representation of `group` that describes the
 ///     transformation of occupation DoF or a particular local DoF of
@@ -251,13 +251,17 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
 std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::set<Index> const &site_indices,
-    std::shared_ptr<SymGroup const> &symgroup);
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup = true);
 
 /// \brief Make the matrix representation of `group` that describes the
 ///     transformation of values in the basis of the given DoFSpace
 std::vector<Eigen::MatrixXd> make_dof_space_rep(
     std::vector<config::SupercellSymOp> const &group,
     clexulator::DoFSpace const &dof_space);
+
+/// \brief Make a SymGroup from a list of SupercellSymOp
+std::shared_ptr<SymGroup const> make_symgroup(
+    std::vector<SupercellSymOp> const &group);
 
 }  // namespace config
 }  // namespace CASM

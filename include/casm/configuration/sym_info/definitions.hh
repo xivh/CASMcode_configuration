@@ -24,7 +24,9 @@ namespace CASM {
 namespace group {
 template <typename ElementType>
 struct Group;
-}
+template <typename ElementType>
+class Subset;
+}  // namespace group
 
 namespace xtal {
 class BasicStructure;
@@ -49,6 +51,9 @@ typedef std::string DoFKey;
 
 /// \brief A group::Group of xtal::SymOp
 typedef group::Group<SymOp> SymGroup;
+
+/// \brief A subset of elements in SymGroup
+typedef group::Subset<SymOp> Subset;
 
 /// \brief Describes how sites are permuted
 typedef std::vector<UnitCellCoordRep> UnitCellCoordSymGroupRep;

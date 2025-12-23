@@ -62,7 +62,7 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
     irreps::MatrixRep const &matrix_rep,
     std::optional<irreps::GroupIndices> head_group,
     std::optional<Eigen::MatrixXd> init_subspace, bool allow_complex,
-    double abs_tol) {
+    std::string symmetrization, Index max_iter, double abs_tol) {
   if (matrix_rep.size() == 0) {
     throw std::runtime_error(
         "Error in make_IrrepDecomposition: matrix_rep.size() == 0");
@@ -91,19 +91,18 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
     init_subspace = Eigen::MatrixXd::Identity(dim, dim);
   }
 
-  std::shared_ptr<irreps::MatrixRepGroup> matrixrepgroup =
+  std::shared_ptr<irreps::MatrixRepGroup const> matrixrepgroup =
       make_matrixrepgroup(matrix_rep, abs_tol);
 
   std::function<irreps::GroupIndicesOrbitSet()> make_cyclic_subgroups_f =
-      [=]() { return group::make_cyclic_subgroups(*matrixrepgroup); };
-  std::function<irreps::GroupIndicesOrbitSet()> make_all_subgroups_f = [=]() {
-    return group::make_all_subgroups(*matrixrepgroup);
-  };
+      group::MakeCyclicSubgroups<Eigen::MatrixXd>(matrixrepgroup);
+  std::function<irreps::GroupIndicesOrbitSet()> make_all_subgroups_f =
+      group::MakeAllSubgroups<Eigen::MatrixXd>(matrixrepgroup);
 
   std::optional<Log> log;
-  return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
-                                    make_cyclic_subgroups_f,
-                                    make_all_subgroups_f, allow_complex, log);
+  return irreps::IrrepDecomposition(
+      matrix_rep, *head_group, *init_subspace, make_cyclic_subgroups_f,
+      make_all_subgroups_f, allow_complex, symmetrization, max_iter, log);
 }
 
 }  // namespace CASMpy
@@ -341,7 +340,33 @@ PYBIND11_MODULE(_irreps, m) {
           },
           R"pbdoc(
           Represent the IrrepInfo as a Python dict.
-          )pbdoc");
+          )pbdoc")
+      .def_static(
+          "from_dict",
+          [](nlohmann::json const &data) -> irreps::IrrepInfo {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
+            jsonParser json{data};
+            InputParser<irreps::IrrepInfo> parser(json);
+            std::runtime_error error_if_invalid{
+                "Error in libcasm.irreps.IrrepInfo.from_dict"};
+            report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+            return std::move(*parser.value);
+          },
+          R"pbdoc(
+          Construct an IrrepInfo from a Python dict.
+
+          Parameters
+          ----------
+          data : dict
+              A :class:`~libcasm.configuration.Supercell` as a dict.
+
+          Returns
+          -------
+          irrep_info : IrrepInfo
+              The :class:`~libcasm.irreps.IrrepInfo` constructed from the dict.
+          )pbdoc",
+          py::arg("data"));
 
   //
   py::class_<irreps::IrrepWedge>(m, "IrrepWedge", R"pbdoc(
@@ -498,14 +523,23 @@ PYBIND11_MODULE(_irreps, m) {
           )pbdoc")
       .def(
           "to_dict",
-          [](irreps::VectorSpaceSymReport const &self) -> nlohmann::json {
+          [](irreps::VectorSpaceSymReport const &self,
+             bool include_symop_matrices) -> nlohmann::json {
             jsonParser json;
-            to_json(self, json);
+            to_json(self, json, include_symop_matrices);
             return static_cast<nlohmann::json>(json);
           },
           R"pbdoc(
-          Represent the VectorSpaceSymReport as a Python dict."
-          )pbdoc");
+          Represent the VectorSpaceSymReport as a Python dict.
+
+          Parameters
+          ----------
+          include_symop_matrices : bool = True
+              If True, include the symmetry operation matrices in the
+              irreducible representation bases. For large vector spaces, use
+              False to exclude these matrices, saving output time and memory .
+          )pbdoc",
+          py::arg("include_symop_matrices") = true);
 
   //
   py::class_<irreps::IrrepDecomposition>(m, "IrrepDecomposition", R"pbdoc(
@@ -532,13 +566,36 @@ PYBIND11_MODULE(_irreps, m) {
           allow_complex: bool = True
               If True, all irreps may be complex-valued, if False, complex
               irreps are combined to form real representations
+          symmetrization: str = "complete"
+              Controls how irreducible subspace bases are symmetrized to
+              align along high-symmetry directions. Options are:
+
+              - "none": Leave the irreducible subspace bases as initially
+                found, reducing computation time.
+              - "fast": Symmetrize the irreducible subspace
+                bases to align along high-symmetry directions using
+                cyclic subgroups. This may not be a complete
+                symmetrization, but is generally fast.
+              - "complete": Symmetrize the irreducible subspace
+                bases to align along high-symmetry directions using
+                all subgroups. For large spaces, finding all
+                subgroups is slow.
+
+          max_iter: int = 10
+              Maximum number of iterations to use when finding irreducible
+              subspaces. If a non-irreducible subspace cannot be decomposed
+              within this number of iterations, `complete_decomposition` will
+              be set to False. Starting with a different `init_subspace` may
+              result in a complete decomposition.
           abs_tol: float = :data:`~libcasm.casmglobal.TOL`
               The absolute tolerance, used to construct a group multiplication
               table.
           )pbdoc",
            py::arg("matrix_rep"), py::arg("head_group") = std::nullopt,
            py::arg("init_subspace") = std::nullopt,
-           py::arg("allow_complex") = true, py::arg("abs_tol") = CASM::TOL)
+           py::arg("allow_complex") = true,
+           py::arg("symmetrization") = "complete", py::arg("max_iter") = 10,
+           py::arg("abs_tol") = CASM::TOL)
       .def_readonly("matrix_rep", &irreps::IrrepDecomposition::fullspace_rep,
                     "Full space matrix representation")
       .def_readonly("head_group", &irreps::IrrepDecomposition::head_group,
@@ -556,6 +613,17 @@ PYBIND11_MODULE(_irreps, m) {
           `irrep[i].vector_dim() == full space dimension` and
           `sum_i irrep[i].irrep_dim() == subspace columns`).
           )pbdoc")
+      .def_readonly(
+          "complete_decomposition",
+          &irreps::IrrepDecomposition::complete_decomposition,
+          "True if the irrep decomposition successfully decomposed all of the "
+          "input subspace within `max_iter` iterations.")
+      .def_readonly(
+          "incomplete_subspace",
+          &irreps::IrrepDecomposition::incomplete_subspace,
+          "If `complete_decomposition == False`, the remaining portion of the "
+          "input subspace that was not successfully decomposed into "
+          "irreducible subspaces.")
       .def(
           "make_symmetry_report",
           [](irreps::IrrepDecomposition const &self, bool calc_wedges,
@@ -585,7 +653,44 @@ PYBIND11_MODULE(_irreps, m) {
           glossary: Optional[list[str]] = None
               If provided, a description of each dimension of the vector space.
           )pbdoc",
-          py::arg("calc_wedges") = false, py::arg("glossary") = std::nullopt);
+          py::arg("calc_wedges") = false, py::arg("glossary") = std::nullopt)
+      .def(
+          "to_dict",
+          [](irreps::IrrepDecomposition const &self) -> nlohmann::json {
+            jsonParser json;
+            to_json(self, json);
+            return static_cast<nlohmann::json>(json);
+          },
+          R"pbdoc(
+          Represent the IrrepDecomposition as a Python dict.
+          )pbdoc")
+      .def_static(
+          "from_dict",
+          [](nlohmann::json const &data) -> irreps::IrrepDecomposition {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
+            jsonParser json{data};
+            InputParser<irreps::IrrepDecomposition> parser(json);
+            std::runtime_error error_if_invalid{
+                "Error in libcasm.irreps.IrrepDecomposition.from_dict"};
+            report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+            return std::move(*parser.value);
+          },
+          R"pbdoc(
+          Construct an IrrepDecomposition from a Python dict.
+
+          Parameters
+          ----------
+          data : dict
+              A :class:`~libcasm.configuration.Supercell` as a dict.
+
+          Returns
+          -------
+          irrep_decomposition : IrrepDecomposition
+              The :class:`~libcasm.irreps.IrrepDecomposition` constructed from the
+              dict.
+          )pbdoc",
+          py::arg("data"));
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

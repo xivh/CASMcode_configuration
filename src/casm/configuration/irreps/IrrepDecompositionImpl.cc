@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "casm/configuration/irreps/Symmetrizer.hh"
+#include "casm/configuration/irreps/misc.hh"
 #include "casm/configuration/irreps/to_real.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
 #include "casm/misc/CASM_math.hh"
@@ -612,6 +613,7 @@ bool is_irrep(MatrixRep const &rep, GroupIndices const &head_group) {
 /// \param allow_complex If true, irreducible space basis vectors may be
 ///     complex-valued. If false, complex irreps are combined to form real
 ///     representations
+/// \param log Optional Log object for logging progress
 ///
 /// \result vector of IrrepInfo objects. Irreps are ordered by dimension, with
 ///     identity first (if present).  Repeated irreps (with equal character
@@ -619,10 +621,30 @@ bool is_irrep(MatrixRep const &rep, GroupIndices const &head_group) {
 ///
 std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
                                            GroupIndices const &head_group,
-                                           bool allow_complex) {
+                                           bool allow_complex,
+                                           std::optional<Log> log) {
+  if (log.has_value()) {
+    log->increase_indent();
+    log->begin<Log::standard>("Find irreps");
+    log->indent() << std::endl;
+    log->indent() << "Number of group elements = " << rep.size() << std::endl;
+  }
+
   if (!rep.size()) {
+    if (log.has_value()) {
+      log->indent() << std::endl;
+      log->indent() << "No irreps to find." << std::endl << std::endl;
+      log->end_section();
+      log->decrease_indent();
+    }
     return std::vector<IrrepInfo>();
   }
+
+  if (log.has_value()) {
+    log->indent() << "Vector space dimension = " << rep[0].rows() << std::endl
+                  << std::endl;
+  }
+
   int dim = rep[0].rows();
 
   // This method iteratively finds irreducible spaces, which are used to extend
@@ -654,6 +676,12 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
       // The commuter construction method does not currently guarantee that
       // all irreps will be revealed. The caller may have a way to handle this
       // and so this does not throw an exception.
+
+      if (log.has_value()) {
+        log->indent() << std::endl;
+        log->indent() << "Break: All commuters attempted" << std::endl;
+      }
+
       break;
     }
 
@@ -688,6 +716,12 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
         irreps.insert(possible_irrep);
         adapted_subspace = extend(adapted_subspace, possible_irrep.subspace);
         any_new_irreps = true;
+
+        if (log.has_value()) {
+          log->indent() << "Found irrep of dim " << possible_irrep.irrep_dim
+                        << " (" << dim - adapted_subspace.cols() << " / " << dim
+                        << " dim remaining)" << std::endl;
+        }
       }
     }
 
@@ -709,6 +743,18 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
   // high symmetry directions)
   std::vector<IrrepInfo> irrep_info = make_irrep_info(irreps);
 
+  if (log.has_value()) {
+    log->indent() << std::endl;
+    log->indent() << "Found " << irrep_info.size() << " irreps." << std::endl;
+    log->indent() << "Found irreps for " << adapted_subspace.cols() << " / "
+                  << dim << " dimensions." << std::endl;
+    log->indent() << "Complete irrep decomposition: "
+                  << (adapted_subspace.cols() == dim ? "yes" : "no")
+                  << std::endl
+                  << std::endl;
+    log->end_section();
+    log->decrease_indent();
+  }
   return irrep_info;
 }
 
@@ -786,27 +832,42 @@ MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
 std::vector<IrrepInfo> symmetrize_irreps(
     MatrixRep const &subspace_rep, GroupIndices const &head_group,
     std::vector<IrrepInfo> const &irreps,
-    std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
-    std::function<GroupIndicesOrbitSet()> make_all_subgroups_f) {
+    std::function<GroupIndicesOrbitSet()> make_subgroups_f,
+    std::optional<Log> log) {
   std::vector<IrrepInfo> symmetrized_irreps;
   double vec_compare_tol = TOL;
-  bool use_all_subgroups = false;
+
+  Index i_irrep = 1;
   for (const auto &irrep : irreps) {
+    if (log.has_value()) {
+      std::stringstream ss;
+      ss << "Symmetrize irrep " << i_irrep << " / " << irreps.size();
+      log->begin<Log::standard>(ss.str());
+      log->indent() << std::endl;
+      log->indent() << "Irrep dim = " << irrep.irrep_dim << std::endl;
+    }
+
     Eigen::MatrixXcd irrep_subspace = irrep.trans_mat.adjoint();
 
     multivector<Eigen::VectorXcd>::X<2> irrep_special_directions =
         make_irrep_special_directions(subspace_rep, head_group, irrep_subspace,
-                                      vec_compare_tol, make_cyclic_subgroups_f,
-                                      make_all_subgroups_f, use_all_subgroups);
+                                      vec_compare_tol, make_subgroups_f, log);
 
     Eigen::MatrixXcd symmetrizer_matrix = make_irrep_symmetrizer_matrix(
-        irrep_special_directions, irrep_subspace, vec_compare_tol);
+        irrep_special_directions, irrep_subspace, vec_compare_tol, log);
 
     IrrepInfo symmetrized_irrep{irrep};
     symmetrized_irrep.trans_mat =
         (irrep_subspace * symmetrizer_matrix).adjoint();
     symmetrized_irrep.directions = to_real(irrep_special_directions);
     symmetrized_irreps.push_back(symmetrized_irrep);
+
+    i_irrep++;
+  }
+
+  if (log.has_value()) {
+    log->indent() << std::endl;
+    log->end_section();
   }
   return symmetrized_irreps;
 }

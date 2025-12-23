@@ -9,6 +9,7 @@
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/group/Group.hh"
+#include "casm/configuration/group/subgroups.hh"
 #include "casm/configuration/sym_info/factor_group.hh"
 #include "casm/configuration/sym_info/io/json/SymGroup_json_io.hh"
 #include "casm/crystallography/BasicStructure.hh"
@@ -51,6 +52,12 @@ std::shared_ptr<sym_info::SymGroup const> make_symgroup_subgroup(
   }
   return std::make_shared<sym_info::SymGroup>(head_group, *element,
                                               head_group_index);
+}
+
+sym_info::Subset make_subset(
+    std::shared_ptr<sym_info::SymGroup const> const &group,
+    std::set<Index> const &indices) {
+  return sym_info::Subset(group, indices);
 }
 
 }  // namespace CASMpy
@@ -174,7 +181,15 @@ PYBIND11_MODULE(_sym_info, m) {
       .def(
           "conjugacy_classes",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
-            return make_conjugacy_classes(*symgroup);
+            std::vector<std::vector<Index>> conjugacy_classes;
+            for (Index i = 0; i < symgroup->element.size(); ++i) {
+              Index cc = symgroup->class_of(i);
+              if (cc >= conjugacy_classes.size()) {
+                conjugacy_classes.resize(cc + 1);
+              }
+              conjugacy_classes[cc].push_back(i);
+            }
+            return conjugacy_classes;
           },
           R"pbdoc(
           Returns the conjugacy classes
@@ -267,6 +282,23 @@ PYBIND11_MODULE(_sym_info, m) {
           -------
           i_inverse: int
               The index the inverse of the `i`-th element.
+          )pbdoc")
+      .def(
+          "class_of",
+          [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
+             Index i) { return symgroup->class_index[i]; },
+          py::arg("i"), R"pbdoc(
+          Returns the index of the conjugacy class containing an element
+
+          Parameters
+          ----------
+          i: int
+              The element index.
+
+          Returns
+          -------
+          i_class: int
+              The index the conjugacy class containing the `i`-th element.
           )pbdoc")
       .def(
           "brief_cart",
@@ -441,6 +473,181 @@ PYBIND11_MODULE(_sym_info, m) {
 
         )pbdoc",
         py::arg("xtal_prim"), py::arg("factor_group"));
+
+  py::class_<sym_info::Subset>(m, "Subset", R"pbdoc(
+      Data structure specifying a subset of group elements, as indices, which
+      may or may not form a subgroup.
+
+      )pbdoc")
+      .def(py::init(&make_subset), R"pbdoc(
+
+          .. rubric:: Constructor
+
+          Parameters
+          ----------
+          group: SymGroup
+              The group this subset is part of. Must be the head group.
+          indices: list[list[int]]
+              Indices of the elements in the group forming the subset.
+          )pbdoc",
+           py::arg("group"), py::arg("indices"))
+      .def_static(
+          "from_generators",
+          [](std::shared_ptr<sym_info::SymGroup const> const &group,
+             std::set<Index> const &generators) {
+            py::scoped_ostream_redirect redirect;
+            return sym_info::Subset::from_generators(group, generators);
+          },
+          R"pbdoc(
+          Construct a subset from subgroup generators
+
+          Parameters
+          ----------
+          group: SymGroup
+              The group this subset is part of. Must be the head group.
+          generators: set[int]
+              Indices of elements in the head group that generate the
+              a subgroup under closure by multiplication.
+          )pbdoc",
+          py::arg("group"), py::arg("generators"))
+      .def_property_readonly(
+          "indices",
+          [](sym_info::Subset const &subset) { return subset.indices(); },
+          R"pbdoc(
+          set[int]: The indices of elements in the head group that form this subset.
+          )pbdoc")
+      .def_property_readonly(
+          "group",
+          [](sym_info::Subset const &subset) { return subset.group(); },
+          R"pbdoc(
+          SymGroup: The head group this subset belongs to.
+          )pbdoc")
+      .def_property_readonly(
+          "is_group",
+          [](sym_info::Subset const &subset) { return subset.is_group(); },
+          R"pbdoc(
+          Return True if the subset is closed under multiplication and inverses.
+          )pbdoc")
+      .def_property_readonly(
+          "is_normal",
+          [](sym_info::Subset const &subset) { return subset.is_normal(); },
+          R"pbdoc(
+          Return True if the subset is normal (invariant under conjugation).
+
+          A subset, :math:`N`, is called normal if it is invariant under
+          conjugation by elements of the head group, :math:`G`. This means for
+          every element :math:`g` in :math:`G` and every element :math:`n` in
+          :math:`N`, the element :math:`g*n*g^{-1}` is an element in :math:`N`.
+          )pbdoc")
+      .def(
+          "close", [](sym_info::Subset const &subset) { subset.close(); },
+          R"pbdoc(
+          Extend this subset to be the closure under group multiplication
+          and return the result
+          )pbdoc")
+      .def(
+          "extend",
+          [](sym_info::Subset const &subset, sym_info::Subset const &other) {
+            subset.extend(other);
+          },
+          py::arg("other"), R"pbdoc(
+          Extend this subset by adding indices from `other` and return the
+          result.
+          )pbdoc")
+      .def(
+          "extend_and_close",
+          [](sym_info::Subset const &subset, sym_info::Subset const &other) {
+            subset.extend_and_close(other);
+          },
+          py::arg("other"), R"pbdoc(
+          Extend this subset with `other` then close under multiplication and
+          return the result.
+          )pbdoc")
+      .def(
+          "is_proper_subset_of",
+          [](sym_info::Subset const &subset, sym_info::Subset const &other) {
+            return subset.is_proper_subset_of(other);
+          },
+          py::arg("other"), R"pbdoc(
+          Return True if this subset is a proper subset of `other`.
+          )pbdoc")
+      .def(
+          "is_subset_of",
+          [](sym_info::Subset const &subset, sym_info::Subset const &other) {
+            return subset.is_subset_of(other);
+          },
+          py::arg("other"), R"pbdoc(
+          Return True if this subset is a subset of `other` (allowing equality).
+          )pbdoc")
+      .def(
+          "maximal_cyclic_subgroups",
+          [](sym_info::Subset const &subset)
+              -> std::vector<sym_info::Subset> const & {
+            return subset.maximal_cyclic_subgroups();
+          },
+          R"pbdoc(
+          Return a list of maximal cyclic subgroups (each as a Subset).
+
+          These are the cyclic subgroups generated by elements of the subset
+          that are not a subgroup of any other cyclic subgroup of the subset.
+          )pbdoc")
+      .def(
+          "maximal_cyclic_generators",
+          [](sym_info::Subset const &subset) -> std::vector<Index> {
+            return subset.maximal_cyclic_generators();
+          },
+          R"pbdoc(
+          Return the generators of the `maximal_cyclic_subgroups` for this subset.
+
+          All subset elements are included in the cyclic subgroups generated by
+          these elements. Specifically, these are the elements that generated the
+          maximal cyclic subgroups.
+          )pbdoc")
+      .def(
+          "minimal_generators",
+          [](sym_info::Subset const &subset) -> std::set<Index> {
+            return subset.minimal_generators();
+          },
+          R"pbdoc(
+          Return a minimal set of generators for this subset.
+
+          Closure by multiplication starting from these elements can generate
+          all elements of the subset. Specifically, these are the first unique
+          elements of `maximal_cyclic_generators` that generate the entire
+          subset. It may not be the minimum size generating set.
+          )pbdoc")
+      .def(
+          "all_subgroups",
+          [](sym_info::Subset const &subset)
+              -> std::vector<sym_info::Subset> const & {
+            py::scoped_ostream_redirect redirect;
+
+            auto const &result = subset.all_subgroups();
+            std::cout << "# of subgroups: " << result.size() << std::endl;
+            return result;
+          },
+          R"pbdoc(
+          Return a list of all subgroups (each as a Subset) of this subset.
+
+          Uses a depth-first search for combinations of subset elements to use as
+          subgroup generators.
+          )pbdoc")
+      .def(
+          "all_subgroups_generators",
+          [](sym_info::Subset const &subset) -> std::vector<std::set<Index>> {
+            return subset.all_subgroups_generators();
+          },
+          R"pbdoc(
+          Return a list of all subgroups (each as a Subset) of this subset.
+
+          Uses a depth-first search for combinations of subset elements to use as
+          subgroup generators.
+          )pbdoc")
+      .def("__eq__", [](sym_info::Subset const &a,
+                        sym_info::Subset const &b) { return a == b; })
+      .def("__ne__", [](sym_info::Subset const &a, sym_info::Subset const &b) {
+        return a != b;
+      });
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

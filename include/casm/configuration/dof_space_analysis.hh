@@ -17,11 +17,15 @@ namespace config {
 
 struct DoFSpaceAnalysisResults {
   DoFSpaceAnalysisResults(clexulator::DoFSpace _symmetry_adapted_dof_space,
+                          irreps::IrrepDecomposition _irrep_decomposition,
                           irreps::VectorSpaceSymReport _symmetry_report);
 
   /// \brief Symmetry-adapted DoFSpace, with basis formed by
   ///     irrep decomposition
   clexulator::DoFSpace const symmetry_adapted_dof_space;
+
+  /// \brief IrrepDecomposition object
+  irreps::IrrepDecomposition const irrep_decomposition;
 
   /// \brief Summary of data associated with the action of a
   ///     symmetry group on the DoFSpace
@@ -43,6 +47,7 @@ DoFSpaceAnalysisResults dof_space_analysis(
         std::nullopt,
     std::optional<std::map<Index, int>> site_index_to_default_occ =
         std::nullopt,
+    std::string symmetrization = "complete", Index max_iter = 10,
     bool calc_wedges = false, std::optional<Log> log = std::nullopt);
 
 }  // namespace config

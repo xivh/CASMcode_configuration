@@ -9,7 +9,8 @@ namespace irreps {
 
 struct VectorSpaceSymReport;
 
-jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json);
+jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json,
+                    bool include_symop_matrices = true);
 
 }  // namespace irreps
 }  // namespace CASM

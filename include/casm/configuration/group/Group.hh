@@ -1,8 +1,14 @@
 #ifndef CASM_group_Group
 #define CASM_group_Group
 
+#include <algorithm>   // std::find_if, std::min
+#include <functional>  // std::multiplies, std::equal_to
+#include <future>      // std::async, std::future, std::launch
+#include <iostream>    // std::cout
+#include <iterator>    // std::distance
 #include <memory>
 #include <set>
+#include <thread>  // std::thread, std::hardware_concurrency
 
 #include "casm/configuration/group/definitions.hh"
 #include "casm/misc/algorithm.hh"
@@ -62,6 +68,11 @@ struct Group {
   ///       == element[inverse_index[i]] * element[i]
   std::vector<Index> const inverse_index;
 
+  /// \brief Species the conjugacy class of each element
+  ///
+  /// The `i`-th element is in the `cc`-th class, where `cc = class_index[i]`.
+  std::vector<Index> class_index;
+
   /// \brief Use the multiplication table
   ///
   /// \param i,j Element indices
@@ -73,6 +84,12 @@ struct Group {
   /// \param i Element index
   /// \returns i_inv, The index of the inverse element of element i
   Index inv(Index i) const { return inverse_index[i]; }
+
+  /// \brief Get the conjugacy class index of an element
+  ///
+  /// \param i Element index
+  /// \return cc, The index of the conjugacy class containing element i
+  Index class_of(Index i) const { return class_index[i]; }
 };
 
 template <typename ElementType,
@@ -87,6 +104,10 @@ Group<ElementType> make_group(
 template <typename ElementType>
 std::vector<std::vector<Index>> make_conjugacy_classes(
     Group<ElementType> const &group);
+
+/// \brief Make map of element index to conjugacy class index
+template <typename ElementType>
+std::vector<Index> make_element_to_class(Group<ElementType> const &group);
 
 }  // namespace group
 }  // namespace CASM
@@ -212,7 +233,9 @@ Group<ElementType>::Group(std::vector<ElementType> const &_element,
       element(_element),
       head_group_index(Group_impl::_identity_indices(element.size())),
       multiplication_table(_multiplication_table),
-      inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {}
+      inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {
+  class_index = make_element_to_class(*this);
+}
 
 /// \brief Construct a subgroup
 ///
@@ -230,7 +253,9 @@ Group<ElementType>::Group(
       head_group_index(_head_group_index.begin(), _head_group_index.end()),
       multiplication_table(Group_impl::_make_subgroup_multiplication_table(
           _head_group, _head_group_index)),
-      inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {}
+      inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {
+  class_index = make_element_to_class(*this);
+}
 
 /// \brief Construct a subgroup
 ///
@@ -251,33 +276,90 @@ Group<ElementType>::Group(
       head_group_index(_head_group_index.begin(), _head_group_index.end()),
       multiplication_table(Group_impl::_make_subgroup_multiplication_table(
           _head_group, _head_group_index)),
-      inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {}
+      inverse_index(Group_impl::_make_inverse_index(multiplication_table)) {
+  class_index = make_element_to_class(*this);
+}
 
 template <typename ElementType, typename MultiplyFunctionType,
           typename EqualToFunctionType>
 Group<ElementType> make_group(std::vector<ElementType> const &element,
                               MultiplyFunctionType multiply_f,
                               EqualToFunctionType equal_to_f) {
+  std::cout << "Begin make_group" << std::endl;
+  std::cout << "constructing multiplication table..." << std::endl;
   Index size = element.size();
-  MultiplicationTable multiplication_table(size);
+
+  // single-threaded version:
+
+  // MultiplicationTable multiplication_table(size);
+  // auto begin = element.begin();
+  // auto end = element.end();
+  // for (Index i = 0; i < size; ++i) {
+  //   for (Index j = 0; j < size; ++j) {
+  //     ElementType product = multiply_f(element[i], element[j]);
+  //     auto unary_f = [&](ElementType const &lhs) {
+  //       return equal_to_f(lhs, product);
+  //     };
+  //     auto it = std::find_if(begin, end, unary_f);
+  //     if (it == end) {
+  //       throw std::runtime_error(
+  //           "Error in CASM::group::make_group: Failed to construct "
+  //           "multiplication table");
+  //     }
+  //
+  //     multiplication_table[i].push_back(std::distance(begin, it));
+  //   }
+  // }
+
+  // multi-threaded version:
+
+  // preallocate a square table so each thread can safely write to distinct rows
+  MultiplicationTable multiplication_table(size, std::vector<Index>(size));
+
   auto begin = element.begin();
   auto end = element.end();
-  for (Index i = 0; i < size; ++i) {
-    for (Index j = 0; j < size; ++j) {
-      ElementType product = multiply_f(element[i], element[j]);
-      auto unary_f = [&](ElementType const &lhs) {
-        return equal_to_f(lhs, product);
-      };
-      auto it = std::find_if(begin, end, unary_f);
-      if (it == end) {
-        throw std::runtime_error(
-            "Error in CASM::group::make_group: Failed to construct "
-            "multiplication table");
-      }
 
-      multiplication_table[i].push_back(std::distance(begin, it));
-    }
+  unsigned int hw = std::thread::hardware_concurrency();
+  Index n_threads = hw ? static_cast<Index>(hw) : Index(1);
+  std::cout << "- using " << n_threads << " threads" << std::endl;
+  Index chunk = (size + n_threads - 1) / n_threads;
+  std::cout << "- chunk size: " << chunk << std::endl;
+
+  std::vector<std::future<void>> futures;
+  futures.reserve(static_cast<size_t>(n_threads));
+
+  for (Index t = 0; t < n_threads; ++t) {
+    Index start = t * chunk;
+    Index finish = std::min(start + chunk, size);
+    if (start >= finish) break;
+
+    futures.emplace_back(std::async(
+        std::launch::async, [start, finish, size, &element, &multiply_f,
+                             &equal_to_f, &multiplication_table, begin, end]() {
+          for (Index i = start; i < finish; ++i) {
+            for (Index j = 0; j < size; ++j) {
+              ElementType product = multiply_f(element[i], element[j]);
+              auto it = std::find_if(begin, end, [&](ElementType const &lhs) {
+                return equal_to_f(lhs, product);
+              });
+              if (it == end) {
+                throw std::runtime_error(
+                    "Error in CASM::group::make_group: Failed to construct "
+                    "multiplication table");
+              }
+              multiplication_table[i][j] =
+                  static_cast<Index>(std::distance(begin, it));
+            }
+          }
+        }));
   }
+
+  // Propagate any exceptions from worker tasks
+  for (auto &f : futures) {
+    f.get();
+  }
+
+  std::cout << "- multiplication table complete" << std::endl;
   return Group<ElementType>(element, multiplication_table);
 }
 
@@ -313,6 +395,21 @@ std::vector<std::vector<Index>> make_conjugacy_classes(
   }
 
   return conjugacy_classes;
+}
+
+/// \brief Make map of element index to conjugacy class index
+template <typename ElementType>
+std::vector<Index> make_element_to_class(Group<ElementType> const &group) {
+  std::vector<std::vector<Index>> conjugacy_classes =
+      make_conjugacy_classes(group);
+  std::vector<Index> element_to_class(group.element.size());
+  for (Index class_index = 0; class_index < conjugacy_classes.size();
+       ++class_index) {
+    for (Index element_index : conjugacy_classes[class_index]) {
+      element_to_class[element_index] = class_index;
+    }
+  }
+  return element_to_class;
 }
 
 }  // namespace group

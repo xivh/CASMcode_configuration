@@ -11,7 +11,8 @@
 namespace CASM {
 namespace irreps {
 
-jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
+jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json,
+                    bool include_symop_matrices) {
   json["symmetry_representation"] = obj.symgroup_rep;
 
   json["symmetry_adapted_subspace"] = obj.symmetry_adapted_subspace.transpose();
@@ -69,15 +70,17 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
       }
       json["irreducible_representations"]["subspaces"].push_back(subspace_json);
 
-      jsonParser &irrep_matrices =
-          json["irreducible_representations"]["symop_matrices"]
-              [irrep_name];  //.put_array();
-      for (Index o = 0; o < obj.symgroup_rep.size(); ++o) {
-        Eigen::MatrixXd const &op = obj.symgroup_rep[o];
-        std::string op_name =
-            "op_" + to_sequential_string(o + 1, obj.symgroup_rep.size());
-        irrep_matrices[op_name] =
-            (irrep.trans_mat * op * irrep.trans_mat.transpose()).real();
+      if (include_symop_matrices) {
+        jsonParser &irrep_matrices =
+            json["irreducible_representations"]["symop_matrices"]
+                [irrep_name];  //.put_array();
+        for (Index o = 0; o < obj.symgroup_rep.size(); ++o) {
+          Eigen::MatrixXd const &op = obj.symgroup_rep[o];
+          std::string op_name =
+              "op_" + to_sequential_string(o + 1, obj.symgroup_rep.size());
+          irrep_matrices[op_name] =
+              (irrep.trans_mat * op * irrep.trans_mat.transpose()).real();
+        }
       }
 
       {

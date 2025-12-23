@@ -63,9 +63,39 @@ struct IrrepDecomposition {
   IrrepDecomposition(
       MatrixRep const &_fullspace_rep, GroupIndices const &_head_group,
       Eigen::MatrixXd const &_init_subspace,
-      std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
-      std::function<GroupIndicesOrbitSet()> make_all_subgroups_f,
-      bool allow_complex, std::optional<Log> _log = std::nullopt);
+      std::function<GroupIndicesOrbitSet()> _make_cyclic_subgroups_f,
+      std::function<GroupIndicesOrbitSet()> _make_all_subgroups_f,
+      bool allow_complex, std::string _symmetrization = "complete",
+      Index max_iter = 10, std::optional<Log> _log = std::nullopt);
+
+  /// IrrepDecomposition constructor (from existing decomposition)
+  IrrepDecomposition(MatrixRep const &_fullspace_rep,
+                     GroupIndices const &_head_group,
+                     Eigen::MatrixXd const &_init_subspace,
+                     Eigen::MatrixXd const &_subspace,
+                     std::vector<IrrepInfo> const &_irreps,
+                     bool _complete_decomposition,
+                     Eigen::MatrixXd const &_incomplete_subspace,
+                     std::optional<Log> _log = std::nullopt);
+
+  void symmetrize_all_irreps(std::string symmetrization);
+
+  void symmetrize_irrep(Index i, std::string symmetrization);
+
+  /// Type of symmetrization to perform on irrep subspaces
+  /// Options:
+  /// - "none": Leave the irreducible subspace bases as initially found,
+  ///   reducing computation time.
+  /// - "fast": Symmetrize the irreducible subspace bases to align along
+  ///   high-symmetry directions using cyclic subgroups. This may not be a
+  ///   complete symmetrization, but is generally fast.
+  /// - "complete": Symmetrize the irreducible subspace bases to align
+  ///   along high-symmetry directions using all subgroups. For large
+  std::string symmetrization;
+
+  std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f;
+
+  std::function<GroupIndicesOrbitSet()> make_all_subgroups_f;
 
   /// Full space matrix representation
   ///
@@ -76,6 +106,15 @@ struct IrrepDecomposition {
   /// Group (as indices into fullspace_rep) used to find irreps
   GroupIndices head_group;
 
+  /// Input subspace in which irreps are to be found. Will be expanded (column
+  /// space increased) by application of `rep` and orthogonalization to form an
+  /// invariant subspace (i.e. column space dimension is not increased by
+  /// application of elements in head_group)
+  ///
+  /// init_subspace.rows() == full space dimension
+  /// init_subspace.cols() == dimension of input subspace
+  Eigen::MatrixXd init_subspace;
+
   /// Space in which to find irreducible subspaces. This space is formed by
   /// expanding `init_subspace`, if necessary, by application of `rep` and
   /// orthogonalization to form an invariant subspace (i.e. column space does
@@ -84,6 +123,9 @@ struct IrrepDecomposition {
   /// subspace.rows() == full space dimension
   /// subspace.cols() == dimension of invariant subspace
   Eigen::MatrixXd subspace;
+
+  /// The kernel of `subspace`.
+  Eigen::MatrixXd initial_kernel;
 
   /// Irreducible spaces, symmetrized using `make_irrep_special_directions` and
   /// `make_irrep_symmetrizer_matrix` to align the irreducible space bases along
@@ -97,6 +139,13 @@ struct IrrepDecomposition {
   /// symmetry_adapted_subspace.rows() == full space dimension
   /// symmetry_adapted_subspace.cols() == subspace.cols()
   Eigen::MatrixXd symmetry_adapted_subspace;
+
+  /// True if the irrep decomposition successfully decomposed all of the input
+  /// subspace, false otherwise
+  bool complete_decomposition;
+
+  /// Incomplete subspace after irrep decomposition
+  Eigen::MatrixXd incomplete_subspace;
 
   /// If provided, log progress
   std::optional<Log> log;
