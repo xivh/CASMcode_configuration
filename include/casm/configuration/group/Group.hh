@@ -1,16 +1,14 @@
 #ifndef CASM_group_Group
 #define CASM_group_Group
 
-#include <algorithm>   // std::find_if, std::min
-#include <functional>  // std::multiplies, std::equal_to
-#include <future>      // std::async, std::future, std::launch
-#include <iostream>    // std::cout
-#include <iterator>    // std::distance
+#include <algorithm>
+#include <functional>
+#include <iterator>
 #include <memory>
 #include <set>
-#include <thread>  // std::thread, std::hardware_concurrency
 
 #include "casm/configuration/group/definitions.hh"
+#include "casm/global/threads.hh"
 #include "casm/misc/algorithm.hh"
 
 namespace CASM {
@@ -285,81 +283,34 @@ template <typename ElementType, typename MultiplyFunctionType,
 Group<ElementType> make_group(std::vector<ElementType> const &element,
                               MultiplyFunctionType multiply_f,
                               EqualToFunctionType equal_to_f) {
-  std::cout << "Begin make_group" << std::endl;
-  std::cout << "constructing multiplication table..." << std::endl;
   Index size = element.size();
-
-  // single-threaded version:
-
-  // MultiplicationTable multiplication_table(size);
-  // auto begin = element.begin();
-  // auto end = element.end();
-  // for (Index i = 0; i < size; ++i) {
-  //   for (Index j = 0; j < size; ++j) {
-  //     ElementType product = multiply_f(element[i], element[j]);
-  //     auto unary_f = [&](ElementType const &lhs) {
-  //       return equal_to_f(lhs, product);
-  //     };
-  //     auto it = std::find_if(begin, end, unary_f);
-  //     if (it == end) {
-  //       throw std::runtime_error(
-  //           "Error in CASM::group::make_group: Failed to construct "
-  //           "multiplication table");
-  //     }
-  //
-  //     multiplication_table[i].push_back(std::distance(begin, it));
-  //   }
-  // }
 
   // multi-threaded version:
 
   // preallocate a square table so each thread can safely write to distinct rows
   MultiplicationTable multiplication_table(size, std::vector<Index>(size));
 
-  auto begin = element.begin();
-  auto end = element.end();
+  auto worker = [&](Index start, Index end, Index thread_id) {
+    for (Index i = start; i < end; ++i) {
+      for (Index j = 0; j < size; ++j) {
+        ElementType product = multiply_f(element[i], element[j]);
+        auto it = std::find_if(
+            element.begin(), element.end(),
+            [&](ElementType const &lhs) { return equal_to_f(lhs, product); });
+        if (it == element.end()) {
+          request_stop();
+          throw std::runtime_error(
+              "Error in CASM::group::make_group: Failed to construct "
+              "multiplication table");
+        }
+        multiplication_table[i][j] =
+            static_cast<Index>(std::distance(element.begin(), it));
+      }
+    }
+  };
 
-  unsigned int hw = std::thread::hardware_concurrency();
-  Index n_threads = hw ? static_cast<Index>(hw) : Index(1);
-  std::cout << "- using " << n_threads << " threads" << std::endl;
-  Index chunk = (size + n_threads - 1) / n_threads;
-  std::cout << "- chunk size: " << chunk << std::endl;
+  threaded_run(size, worker);
 
-  std::vector<std::future<void>> futures;
-  futures.reserve(static_cast<size_t>(n_threads));
-
-  for (Index t = 0; t < n_threads; ++t) {
-    Index start = t * chunk;
-    Index finish = std::min(start + chunk, size);
-    if (start >= finish) break;
-
-    futures.emplace_back(std::async(
-        std::launch::async, [start, finish, size, &element, &multiply_f,
-                             &equal_to_f, &multiplication_table, begin, end]() {
-          for (Index i = start; i < finish; ++i) {
-            for (Index j = 0; j < size; ++j) {
-              ElementType product = multiply_f(element[i], element[j]);
-              auto it = std::find_if(begin, end, [&](ElementType const &lhs) {
-                return equal_to_f(lhs, product);
-              });
-              if (it == end) {
-                throw std::runtime_error(
-                    "Error in CASM::group::make_group: Failed to construct "
-                    "multiplication table");
-              }
-              multiplication_table[i][j] =
-                  static_cast<Index>(std::distance(begin, it));
-            }
-          }
-        }));
-  }
-
-  // Propagate any exceptions from worker tasks
-  for (auto &f : futures) {
-    f.get();
-  }
-
-  std::cout << "- multiplication table complete" << std::endl;
   return Group<ElementType>(element, multiplication_table);
 }
 
