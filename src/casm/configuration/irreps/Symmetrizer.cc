@@ -5,7 +5,6 @@
 #include "casm/casm_io/container/stream_io.hh"
 #include "casm/configuration/irreps/SimpleOrbit_impl.hh"
 #include "casm/configuration/irreps/VectorSymCompare_v2.hh"
-#include "casm/configuration/irreps/misc.hh"
 #include "casm/global/threads.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
 

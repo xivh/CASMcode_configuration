@@ -16,9 +16,11 @@
 #ifndef CASM_group_definitions
 #define CASM_group_definitions
 
+#include <iomanip>
 #include <memory>
 #include <vector>
 
+#include "casm/casm_io/Log.hh"
 #include "casm/external/Eigen/Dense"
 
 namespace CASM {
@@ -37,6 +39,16 @@ struct Group;
 ///     k = multiplication_table[i][j]
 ///
 typedef std::vector<std::vector<Index>> MultiplicationTable;
+
+inline void append_time(Log &log, int n_newlines) {
+  if (log.print()) {
+    log.ostream() << " - Time: " << std::setprecision(6) << log.time_s()
+                  << " (s)";
+    for (int i = 0; i < n_newlines; ++i) {
+      log.ostream() << std::endl;
+    }
+  }
+}
 
 }  // namespace group
 }  // namespace CASM

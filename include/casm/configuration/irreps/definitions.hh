@@ -15,6 +15,7 @@
 #include <set>
 #include <vector>
 
+#include "casm/configuration/group/definitions.hh"
 #include "casm/configuration/sym_info/definitions.hh"
 #include "casm/container/multivector.hh"
 #include "casm/global/definitions.hh"
@@ -44,6 +45,8 @@ inline Eigen::MatrixXcd complex_I(Index rows, Index cols) {
 inline Eigen::MatrixXcd complex_Zero(Index rows, Index cols) {
   return Eigen::MatrixXcd::Zero(rows, cols);
 }
+
+using group::append_time;
 
 }  // namespace irreps
 }  // namespace CASM
