@@ -1,19 +1,22 @@
 #include "casm/configuration/irreps/Symmetrizer.hh"
 
+#include <vector>
+
 #include "casm/casm_io/container/stream_io.hh"
 #include "casm/configuration/irreps/SimpleOrbit_impl.hh"
 #include "casm/configuration/irreps/VectorSymCompare_v2.hh"
+#include "casm/configuration/irreps/misc.hh"
+#include "casm/global/threads.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
-#include "casm/misc/CASM_math.hh"
-
-// debug
-#include <iostream>
 
 namespace CASM {
 
 namespace irreps {
 
 /// Find high-symmetry directions in a irreducible space
+///
+/// Notes:
+/// - This method is multithreaded, parallelizing the loop over subgroup orbits
 ///
 /// \param rep Matrix representation of head_group, this defines group action
 /// on the underlying vector space
@@ -45,99 +48,120 @@ multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
     Eigen::MatrixXcd const &irrep_subspace, double vec_compare_tol,
     std::function<GroupIndicesOrbitSet()> make_subgroups_f,
     std::optional<Log> log) {
-  if (log.has_value()) {
-    log->indent() << "Get subgroup indices..." << std::endl;
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
+    log->indent() << "Get subgroup indices...";
+    append_time(*log, 1);
   }
 
   GroupIndicesOrbitSet sgroups = make_subgroups_f();
 
-  if (log.has_value()) {
+  // Copy sgroups to a vector for indexed access in parallel tasks
+  std::vector<GroupIndicesOrbit> sgroups_vec;
+  for (const auto &orbit : sgroups) {
+    sgroups_vec.push_back(orbit);
+  }
+
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
     log->indent() << "Get subgroup indices: DONE" << std::endl << std::endl;
-    log->indent() << "Number of subgroups = " << sgroups.size() << std::endl
-                  << std::endl;
+    log->indent() << "Number of subgroup orbits = " << sgroups.size();
+    append_time(*log, 2);
     log->indent() << "Applying Reynolds operator to find special directions... "
                   << std::endl
                   << std::endl;
     log->indent() << "Special directions: ";
   }
 
-  std::vector<Eigen::VectorXcd> tdirs;
-  Eigen::MatrixXd R;
   Index dim = rep[0].rows();
 
-  VectorSymCompare sym_compare{rep, vec_compare_tol};
   std::set<SimpleOrbit<VectorSymCompare>> orbit_result;
+  std::vector<std::set<SimpleOrbit<VectorSymCompare>>> per_thread_orbit_result;
+  per_thread_orbit_result.resize(get_max_threads());
 
-  // Loop over small (i.e., cyclic) subgroups and hope that each special
-  // direction is invariant to at least one small subgroup
-  for (auto const &orbit : sgroups) {
-    // Reynolds for small subgroup *(orbit.begin()) in irrep_subspace i
-    R.setZero(dim, dim);
+  // Define the worker that finds special directions for a chunk of subgroups
+  auto worker = [&](Index start, Index end, Index thread_id) {
+    std::set<SimpleOrbit<VectorSymCompare>> &local_orbit_result =
+        per_thread_orbit_result[thread_id];
+    VectorSymCompare local_sym_compare{rep, vec_compare_tol};
+    Eigen::MatrixXcd local_irrep_subspace = irrep_subspace;
 
-    for (Index element_index : *(orbit.begin())) {
-      R += rep[element_index];
-    }
+    // Local Reynolds matrix
+    Eigen::MatrixXd R_local(dim, dim);
 
-    if ((R * irrep_subspace).norm() < TOL) continue;
+    for (Index orbit_idx = start; orbit_idx < end; ++orbit_idx) {
+      const auto &orbit = sgroups_vec[orbit_idx];
 
-    // Find spanning vectors of column space of R*irrep_space, which is
-    // projection of irrep_space into its invariant component
-    auto QR = (R * irrep_subspace).colPivHouseholderQr();
-    QR.setThreshold(TOL);
-
-    // If only one spanning vector, it is special direction
-    if (QR.rank() > 1) {
-      continue;
-    }
-    Eigen::MatrixXcd Q = QR.matrixQ();
-
-    // Convert from irrep_subspace back to total space and push_back
-    tdirs.push_back(Q.col(0));
-    auto result_1 = orbit_result.emplace(Q.col(0), head_group.begin(),
-                                         head_group.end(), sym_compare);
-    if (result_1.second == true) {
-      if (log.has_value() && log->print()) {
-        log->ostream() << "*";
+      // Build Reynolds operator for this subgroup
+      R_local.setZero(dim, dim);
+      for (Index element_index : *(orbit.begin())) {
+        R_local += rep[element_index];
       }
-    }
 
-    tdirs.push_back(-Q.col(0));
-    auto result_2 = orbit_result.emplace(-Q.col(0), head_group.begin(),
-                                         head_group.end(), sym_compare);
-    if (result_2.second == true) {
-      if (log.has_value() && log->print()) {
-        log->ostream() << "*";
+      // Apply Reynolds operator to irrep subspace
+      Eigen::MatrixXcd projected = R_local * local_irrep_subspace;
+
+      // If projection is (near) zero, skip
+      if (projected.norm() < TOL) return;
+
+      // Find spanning vectors of column space of
+      // R*irrep_space
+      auto QR = projected.colPivHouseholderQr();
+      QR.setThreshold(TOL);
+
+      // If more than one spanning vector, not a
+      // unique special direction
+      if (QR.rank() > 1) continue;
+
+      Eigen::MatrixXcd Q = QR.matrixQ();
+      Eigen::VectorXcd v = Q.col(0);
+
+      local_orbit_result.emplace(v, head_group.begin(), head_group.end(),
+                                 local_sym_compare);
+
+      local_orbit_result.emplace(-v, head_group.begin(), head_group.end(),
+                                 local_sym_compare);
+    }
+  };
+
+  threaded_run(sgroups_vec.size(), worker);
+
+  // Insert local_orbit_result elements into shared orbit_result
+  for (const auto &orbits : per_thread_orbit_result) {
+    for (const auto &orbit : orbits) {
+      orbit_result.insert(orbit);
+      auto res1 = orbit_result.insert(orbit);
+      if (res1.second == true) {
+        if (log.has_value() && log->verbosity() >= Log::verbose &&
+            log->print()) {
+          log->ostream() << "*";
+        }
+      }
+
+      auto res2 = orbit_result.insert(orbit);
+      if (res2.second == true) {
+        if (log.has_value() && log->verbosity() >= Log::verbose &&
+            log->print()) {
+          log->ostream() << "*";
+        }
       }
     }
   }
 
-  if (log.has_value() && log->print()) {
+  if (log.has_value() && log->verbosity() >= Log::verbose && log->print()) {
     log->ostream() << std::endl << std::endl;
   }
 
-  // t_result may contain duplicates, or elements that are equivalent by
-  // symmetry. To discern more info, we need to exclude duplicates and find
-  // the orbit of the directions. this should also
-  // reveal the invariant subgroups.
-
-  // VectorSymCompare sym_compare{rep, vec_compare_tol};
-  // std::set<SimpleOrbit<VectorSymCompare>> orbit_result;
-  // for (Eigen::VectorXcd const &direction : tdirs) {
-  //   orbit_result.emplace(direction, head_group.begin(), head_group.end(),
-  //                        sym_compare);
-  // }
-  multivector<Eigen::VectorXcd>::X<2> result;
+  multivector<Eigen::VectorXcd>::X<2> result_mt;
   for (auto const &orbit : orbit_result) {
-    result.emplace_back(orbit.begin(), orbit.end());
+    result_mt.emplace_back(orbit.begin(), orbit.end());
   }
 
-  if (log.has_value() && log->print()) {
-    log->indent() << "Found " << result.size()
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
+    log->indent() << "Found " << result_mt.size()
                   << " orbits of special directions." << std::endl
                   << std::endl;
   }
 
-  return result;
+  return result_mt;
 }
 
 /// Make an irreducible space symmetrizer matrix using special directions
@@ -166,7 +190,8 @@ Eigen::MatrixXcd make_irrep_symmetrizer_matrix(
   tot_axes.setZero(irrep_subspace.rows(), dim);
 
   // std::cout << "BEGIN MAKE SYMMETRIZED AXES" << std::endl;
-  if (irrep_special_directions.size() && log.has_value()) {
+  if (irrep_special_directions.size() && log.has_value() &&
+      log->verbosity() >= Log::verbose) {
     log->indent() << "Find symmetrized axes using special directions..."
                   << std::endl;
   }
@@ -279,7 +304,7 @@ Eigen::MatrixXcd make_irrep_symmetrizer_matrix(
     result = irrep_subspace.colPivHouseholderQr().solve(axes);
   }
 
-  if (log.has_value()) {
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
     if (i_strategy == 1) {
       log->indent() << "Success: Strategy 1 (Found orthogonal axes using "
                        "directions from a single orbit)"
