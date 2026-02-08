@@ -29,6 +29,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+  "alive-progress",
   "libcasm-global>=2.2.0",
   "libcasm-xtal>=2.2.0",
   "libcasm-clexulator>=2.2.0",
