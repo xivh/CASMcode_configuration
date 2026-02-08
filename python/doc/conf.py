@@ -148,8 +148,8 @@ html_theme_options = {
         "image_light": "_static/small_logo.svg",
         "image_dark": "_static/small_logo_dark.svg",
     },
-    "pygment_light_style": "xcode",
-    "pygment_dark_style": "lightbulb",
+    "pygments_light_style": "xcode",
+    "pygments_dark_style": "lightbulb",
     "icon_links": [
         {
             # Label for this link
