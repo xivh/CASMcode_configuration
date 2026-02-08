@@ -92,22 +92,30 @@ struct PossibleIrrep {
   PossibleIrrep(Eigen::VectorXd const &eigenvalues,
                 Eigen::MatrixXcd const &KV_matrix,
                 std::vector<Eigen::MatrixXcd> const &transformed_rep,
-                Index _head_group_size, double _tol, bool allow_complex,
-                Index _begin, Index _end);
+                bool _is_block_diagonal, Index _head_group_size,
+                bool allow_complex, Index _begin, Index _end);
 
   Index head_group_size;
-  double tol;
   Index begin;      /// col index in eigenvalues/eigvectors for this irrep
   Index end;        /// col index in eigenvalues/eigvectors of next irrep
   Index irrep_dim;  /// irrep dimension / number of equal eigenvalues
-  bool is_block_diagonal;
+
   Eigen::VectorXcd characters;
   double characters_squared_norm;
+
+  /// True if representation matrices are block diagonal
+  ///
+  /// This should be true by construction for the current algorithm
+  bool is_block_diagonal;
 
   /// is_block_diagonal && characters_squared_norm ~= head_group_size;
   bool is_irrep;
 
+  /// Subspace corresponding to this possible irrep
+  ///
   /// (K * V).block(0, begin, K.rows(), irrep_dim)
+  ///
+  /// This is not set if is_irrep==false
   Eigen::MatrixXcd subspace;
 
   /// Check if Irrep is identity
@@ -124,7 +132,8 @@ struct PossibleIrrep {
 /// and construct possible irreps
 std::vector<PossibleIrrep> make_possible_irreps(
     Eigen::MatrixXcd const &commuter, Eigen::MatrixXcd const &kernel,
-    MatrixRep const &rep, GroupIndices const &head_group, bool allow_complex);
+    MatrixRep const &rep, std::vector<Index> const &head_group_vec,
+    bool allow_complex, std::optional<Log> log);
 
 /// Make a vector of IrrepInfo from PossibleIrreps
 std::vector<IrrepInfo> make_irrep_info(std::set<PossibleIrrep> const &irreps);
@@ -171,6 +180,11 @@ Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
                                      GroupIndices const &head_group,
                                      Eigen::MatrixXd const &subspace);
 
+/// Expand subspace by application of group, and orthogonalize
+Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
+                                     std::vector<Index> const &head_group_vec,
+                                     Eigen::MatrixXd const &subspace);
+
 /// \brief Create the subspace rep from the fullspace rep
 MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
                             Eigen::MatrixXd const &subspace);
@@ -180,8 +194,7 @@ MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
 std::vector<IrrepInfo> symmetrize_irreps(
     MatrixRep const &subspace_rep, GroupIndices const &head_group,
     std::vector<IrrepInfo> const &irreps,
-    std::function<GroupIndicesOrbitSet()> make_subgroups_f,
-    std::optional<Log> log);
+    GroupIndicesOrbitSet const &subgroup_orbits, std::optional<Log> log);
 
 }  // namespace IrrepDecompositionImpl
 

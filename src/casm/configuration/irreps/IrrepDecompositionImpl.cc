@@ -1,10 +1,11 @@
 #include "casm/configuration/irreps/IrrepDecompositionImpl.hh"
 
+#include <iomanip>
 #include <iostream>
 
 #include "casm/configuration/irreps/Symmetrizer.hh"
-#include "casm/configuration/irreps/misc.hh"
 #include "casm/configuration/irreps/to_real.hh"
+#include "casm/global/threads.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
 #include "casm/misc/CASM_math.hh"
 
@@ -83,12 +84,69 @@ Eigen::MatrixXcd make_commuter(CommuterParamsCounter const &params,
   auto const &phase = params.phase;
   Eigen::MatrixXcd M_init = phase * col_i * col_j.adjoint() +
                             std::conj(phase) * col_j * col_i.adjoint();
+
+  // If there are no group elements, return zero matrix
+  if (head_group.size() == 0) {
+    return complex_Zero(dim, dim);
+  }
+
   Eigen::MatrixXcd M = complex_Zero(dim, dim);
 
-  // Reynolds operation to symmetrize:
-  for (Index element_index : head_group) {
-    M += rep[element_index] * M_init * rep[element_index].transpose();
+  // Convert head_group into an indexable vector for partitioning
+  std::vector<Index> head_vec;
+  head_vec.reserve(head_group.size());
+  for (Index idx : head_group) head_vec.push_back(idx);
+
+  // Determine number of threads to use
+  unsigned int hw_conc = std::thread::hardware_concurrency();
+  Index max_threads = hw_conc == 0 ? 1 : static_cast<Index>(hw_conc);
+  Index n_threads = std::min<Index>(static_cast<Index>(head_vec.size()),
+                                    std::max<Index>(1, max_threads));
+
+  // If only one thread, do the simple serial loop for minimal overhead
+  if (n_threads == 1) {
+    for (Index element_index : head_group) {
+      M.noalias() +=
+          rep[element_index] * M_init * rep[element_index].transpose();
+    }
+    return M;
   }
+
+  // Prepare per-thread local accumulators
+  std::vector<Eigen::MatrixXcd> local_Ms(n_threads);
+  for (Index t = 0; t < n_threads; ++t) local_Ms[t] = complex_Zero(dim, dim);
+
+  // Partition head_vec into contiguous chunks
+  Index total = static_cast<Index>(head_vec.size());
+  Index chunk = (total + n_threads - 1) / n_threads;
+
+  // Launch threads
+  std::vector<std::thread> threads;
+  threads.reserve(n_threads);
+  for (Index t = 0; t < n_threads; ++t) {
+    Index start = t * chunk;
+    Index end = std::min(start + chunk, total);
+
+    threads.emplace_back([&, start, end, t]() {
+      Eigen::MatrixXcd &local = local_Ms[t];
+      for (Index idx = start; idx < end; ++idx) {
+        Index element_index = head_vec[idx];
+        local.noalias() +=
+            rep[element_index] * M_init * rep[element_index].transpose();
+      }
+    });
+  }
+
+  // Join threads
+  for (auto &th : threads) {
+    if (th.joinable()) th.join();
+  }
+
+  // Sum local accumulators into final matrix
+  for (Index t = 0; t < n_threads; ++t) {
+    M.noalias() += local_Ms[t];
+  }
+
   return M;
 }
 
@@ -191,53 +249,72 @@ Eigen::VectorXd make_characters(std::vector<Eigen::MatrixXd> const &rep) {
 /// Only checks columns and rows in range [begin, end)
 bool make_is_block_diagonal(std::vector<Eigen::MatrixXcd> const &rep,
                             Index begin, Index end, double tol) {
-  Index element_index = 0;
-  for (Eigen::MatrixXcd const &matrix : rep) {
-    // left
-    if (begin != 0) {
-      if (!almost_zero(matrix.block(begin, 0, end - begin, begin), tol)) {
-        return false;
-      }
-    }
-    // right
-    if (end != matrix.cols()) {
-      if (!almost_zero(
-              matrix.block(begin, end, end - begin, matrix.cols() - end),
-              tol)) {
-        return false;
-      }
-    }
-    // top
-    if (begin != 0) {
-      if (!almost_zero(matrix.block(0, begin, begin, end - begin), tol)) {
-        return false;
-      }
-    }
-    // bottom
-    if (end != matrix.rows()) {
-      if (!almost_zero(
-              matrix.block(end, begin, matrix.rows() - end, end - begin),
-              tol)) {
-        return false;
-      }
-    }
+  Index n = rep.size();
+  std::atomic<bool> is_block_diagonal(true);
+  Index len = end - begin;
 
-    ++element_index;
+  auto worker = [&](Index istart, Index iend, Index thread_id) {
+    for (Index element_index = istart; element_index < iend; ++element_index) {
+      Eigen::MatrixXcd const &matrix = rep[element_index];
+      // left
+      if (begin != 0) {
+        if (!matrix.block(begin, 0, len, begin).isZero(tol)) {
+          is_block_diagonal.store(false);
+          return;
+        }
+      }
+      // right
+      if (end != matrix.cols()) {
+        if (!matrix.block(begin, end, len, matrix.cols() - end).isZero(tol)) {
+          is_block_diagonal.store(false);
+          return;
+        }
+      }
+      // top
+      if (begin != 0) {
+        if (!matrix.block(0, begin, begin, len).isZero(tol)) {
+          is_block_diagonal.store(false);
+          return;
+        }
+      }
+      // bottom
+      if (end != matrix.rows()) {
+        if (!matrix.block(end, begin, matrix.rows() - end, len).isZero(tol)) {
+          is_block_diagonal.store(false);
+          return;
+        }
+      }
+      if (!is_block_diagonal.load()) {
+        return;
+      }
+    }
+  };
+
+  threaded_run(n, worker);
+
+  bool result = is_block_diagonal.load();
+
+  if (!result) {
+    throw std::runtime_error(
+        "!!! TEST = Representation is not block diagonal !!!");
   }
-  return true;
+
+  return result;
 }
 
 /// Find characters for block in range [begin, end)
 Eigen::VectorXcd make_irrep_characters(std::vector<Eigen::MatrixXcd> const &rep,
                                        Index begin, Index end) {
-  Eigen::VectorXcd characters(rep.size());
+  Index n = rep.size();
+  Eigen::VectorXcd characters(n);
+  Index len = end - begin;
 
   Index element_index = 0;
   for (Eigen::MatrixXcd const &matrix : rep) {
-    characters(element_index) =
-        matrix.block(begin, begin, end - begin, end - begin).trace();
+    characters(element_index) = matrix.block(begin, begin, len, len).trace();
     ++element_index;
   }
+
   return characters;
 }
 
@@ -297,29 +374,62 @@ Index get_total_dim(std::set<PossibleIrrep> const &irreps) {
   return total_dim;
 }
 
-/// \param begin: col index in `eigenvalues` and `eigenvectors` corresponding
-///     to the beginning of this possible irreducible space
-/// \param begin, end: col indices in `eigenvalues` and `eigenvectors`
-///     corresponding to a range of equal eigenvalues
+/// \brief Constructor
+///
 /// \param eigenvalues Eigenvalues of (K.adjoint() * M_new * K)
 /// \param KV_matrix K * V, where V is the eigenvector matrix of
 ///     (K.adjoint() * M_new * K)
+/// \param transformed_rep Transformed representation matrices
+/// \param _is_block_diagonal True if representation matrices are block diagonal
+/// \param _head_group_size Size of head group
+/// \param allow_complex If true, allow subspace with complex basis vectors. If
+///     false, will make a pseudo irrep subspace that combines two complex
+///     irreps. In this case the irrep is reducible, but this is the most-
+///     reduced representation that has real basis vectors.
+/// \param _begin, _end Range of columns with equal eigenvalues
+/// ///
 PossibleIrrep::PossibleIrrep(
     Eigen::VectorXd const &eigenvalues, Eigen::MatrixXcd const &KV_matrix,
     std::vector<Eigen::MatrixXcd> const &transformed_rep,
-    Index _head_group_size, double _tol, bool allow_complex, Index _begin,
-    Index _end)
+    bool _is_block_diagonal, Index _head_group_size, bool allow_complex,
+    Index _begin, Index _end)
     : head_group_size(_head_group_size),
-      tol(_tol),
       begin(_begin),
       end(_end),
-      irrep_dim(end - begin) {
-  is_block_diagonal = make_is_block_diagonal(transformed_rep, begin, end, tol);
+      irrep_dim(end - begin),
+      is_block_diagonal(_is_block_diagonal) {
+  // Log &log = CASM::log();
+  // log.indent() << "b";
+  // append_time(log, 1);
   characters = make_irrep_characters(transformed_rep, begin, end);
+
+  // log.indent() << "c";
+  // append_time(log, 1);
   characters_squared_norm = make_squared_norm(characters);
-  is_irrep = is_block_diagonal && almost_equal(characters_squared_norm,
-                                               double(head_group_size), tol);
+
+  bool char_squared_norm_is_head_group_size =
+      almost_equal(characters_squared_norm, double(head_group_size), TOL);
+
+  if (!char_squared_norm_is_head_group_size) {
+    is_irrep = false;
+    return;
+  }
+
+  // is_block_diagonal = make_is_block_diagonal(transformed_rep, begin, end,
+  // TOL);
+
+  is_irrep = is_block_diagonal && char_squared_norm_is_head_group_size;
+
+  if (!is_irrep) {
+    return;
+  }
+
+  // log.indent() << "e";
+  // append_time(log, 1);
   subspace = make_irrep_subspace(KV_matrix, begin, end, allow_complex);
+
+  // log.indent() << "f";
+  // append_time(log, 2);
 }
 
 /// Check if Irrep is identity
@@ -407,50 +517,109 @@ bool PossibleIrrep::operator<(PossibleIrrep const &other) const {
 /// corresponds to a possible irrep, which can be checked by characters value.
 std::vector<PossibleIrrep> make_possible_irreps(
     Eigen::MatrixXcd const &commuter, Eigen::MatrixXcd const &kernel,
-    MatrixRep const &rep, GroupIndices const &head_group, double is_irrep_tol,
-    bool allow_complex) {
+    MatrixRep const &rep, std::vector<Index> const &head_group_vec,
+    bool allow_complex, std::optional<Log> log) {
   // magnify the range of eigenvalues to be (I think) independent of
-  // matrix dimension by multiplying by dim^{3/2}
+  // matrix dimension by multiplying to dim^{3/2}
   //
   // solve for eigenvalues and eigenvectors of:
   //    dim^(3/2) * kernel.adjoint() * M * kernel
+
   //
+
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
+    log->indent() << "Begin eigenvalue decomposition";
+    append_time(*log, 1);
+  }
+
   double dim = kernel.rows();
   Eigen::SelfAdjointEigenSolver<Eigen::MatrixXcd> esolve;
   double scale = dim * sqrt(dim);
   esolve.compute(scale * kernel.adjoint() * commuter * kernel);
   Eigen::MatrixXd eigenvalues = esolve.eigenvalues();
   Eigen::MatrixXcd KV_matrix = kernel * esolve.eigenvectors();
+  Eigen::MatrixXcd KV_adj = KV_matrix.adjoint();
 
   // Columns of KV_matrix are orthonormal eigenvectors of commuter in terms of
   // natural basis (they were calculated in terms of kernel as basis)
 
   // When the matrix representation is transformed to operate on coordinates
   // with KV_matrix basis, it becomes block diagonalized
-  std::vector<Eigen::MatrixXcd> transformed_rep;
-  transformed_rep.reserve(head_group.size());
-  for (auto const &element_index : head_group) {
-    transformed_rep.push_back(KV_matrix.adjoint() * rep[element_index] *
-                              KV_matrix);
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
+    log->indent() << "Begin block diagonalization";
+    append_time(*log, 1);
   }
+
+  // This vector holds the transformed representation matrices for each
+  // element indicated by `head_group_vec`, sequentially
+  std::vector<Eigen::MatrixXcd> transformed_rep;
+  transformed_rep.resize(head_group_vec.size());
+
+  auto worker = [&](Index start, Index end, Index thread_id) {
+    Eigen::MatrixXcd temp;
+    for (Index idx = start; idx < end; ++idx) {
+      Index element_index = head_group_vec[idx];
+      temp.noalias() = rep[element_index] * KV_matrix;
+      transformed_rep[idx].noalias() = KV_adj * temp;
+    }
+  };
+
+  threaded_run(head_group_vec.size(), worker);
 
   // make possible irreps:
   // - The possible irrep corresponds to a range eigenvectors with equal
   //   eigenvalues, could be irrep or could be reducible with degenerate
   //   eigenvalues
-  // - When the possible irrep for a range of equal eigenvectors is constructed,
+  // - When the possible irrep for a range of equal eigenvectors is
+  // constructed,
   //   its characters vector is constructed, and if the squared norm of the
   //   characters vectors equals the head group size, then the corresponding
   //   columns of the KV_matrix are an irrep subspace
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
+    log->indent() << "Begin irrep identification";
+    append_time(*log, 1);
+  }
+
   std::vector<PossibleIrrep> possible_irreps;
   Index begin = 0;
   do {
-    Index end = find_end_of_equal_eigenvalues(begin, eigenvalues);
+    double max_eigenvalue = eigenvalues.cwiseAbs().maxCoeff();
+    Eigen::VectorXd normalized_eigenvalues = eigenvalues;
+    if (max_eigenvalue > 1.0) {
+      normalized_eigenvalues /= max_eigenvalue;
+    }
+
+    Index end = find_end_of_equal_eigenvalues(begin, normalized_eigenvalues);
+
+    if (log.has_value() && log->verbosity() >= Log::verbose) {
+      log->indent() << "- Checking cols [" << begin << ", " << end
+                    << ") with eigenvalue = " << std::setprecision(16)
+                    << eigenvalues(begin)
+                    << " (normalized = " << normalized_eigenvalues(begin)
+                    << ")";
+      append_time(*log, 1);
+    }
+
+    // Should be true by construction for this method
+    bool is_block_diagonal = true;
+
     possible_irreps.emplace_back(eigenvalues, KV_matrix, transformed_rep,
-                                 head_group.size(), is_irrep_tol, allow_complex,
-                                 begin, end);
+                                 is_block_diagonal, head_group_vec.size(),
+                                 allow_complex, begin, end);
+
+    if (log.has_value() && log->verbosity() >= Log::verbose) {
+      log->indent() << "  - Is irrep = " << std::boolalpha
+                    << possible_irreps.back().is_irrep;
+      append_time(*log, 1);
+    }
+
     begin = end;
   } while (begin != eigenvalues.size());
+
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
+    log->indent() << "DONE";
+    append_time(*log, 2);
+  }
 
   return possible_irreps;
 }
@@ -489,11 +658,13 @@ std::vector<IrrepInfo> make_irrep_info(std::set<PossibleIrrep> const &irreps) {
 /// \brief Transforms IrrepInfo constructed for a subspace to be IrrepInfo
 /// appropriate for the full space (full space dimension == subspace.rows())
 ///
-/// \param irrep IrrepInfo constructed for a subspace (irrep.trans_mat shape is
+/// \param irrep IrrepInfo constructed for a subspace (irrep.trans_mat shape
+/// is
 ///     (subspace.cols() x subspace.rows())
 /// \param subspace The subspace that subspace_irrep was constructed for
 ///
-/// \result IrrepInfo constructed for the full space (result.trans_mat shape is
+/// \result IrrepInfo constructed for the full space (result.trans_mat shape
+/// is
 ///     (subspace.cols() x subspace.cols())
 ///
 IrrepInfo subspace_to_full_space(IrrepInfo const &subspace_irrep,
@@ -531,11 +702,11 @@ bool is_irrep(MatrixRep const &rep, GroupIndices const &head_group) {
   return almost_equal(characters_squared_norm, double(head_group.size()), TOL);
 }
 
-/// IrrepDecomposition proceeds by constructing "commuters", M_k, which commute
-/// (M_k * R(r) = R(r) * M_k) with all of the matrix representations, R(r), of
-/// the group. The commuters are constructed to reveal irreducible vector
-/// spaces (via application of a Reynolds operator), and be orthonormal to
-/// existing commuters (via Gram-Shmidt). The commuters are found via a
+/// IrrepDecomposition proceeds by constructing "commuters", M_k, which
+/// commute (M_k * R(r) = R(r) * M_k) with all of the matrix representations,
+/// R(r), of the group. The commuters are constructed to reveal irreducible
+/// vector spaces (via application of a Reynolds operator), and be orthonormal
+/// to existing commuters (via Gram-Shmidt). The commuters are found via a
 /// process which constructs a candidate commuter which is either the Zero
 /// matrix, and then skipped, or else it is a useful non-zero commuter which
 /// will block diagonalize :
@@ -546,20 +717,20 @@ bool is_irrep(MatrixRep const &rep, GroupIndices const &head_group) {
 ///
 /// where:
 /// - K: kernel matrix, the null space of the already found irreducible vector
-/// spaces. The kernel matrix is initialized as a full rank matrix and over the
-/// course of the IrrepDecomposition the kernel shrinks as the irreducible
+/// spaces. The kernel matrix is initialized as a full rank matrix and over
+/// the course of the IrrepDecomposition the kernel shrinks as the irreducible
 /// vector spaces are found.
 /// - candidate commuting matrices, M_candidate, are built from the outer
-/// product of two columns, i, and j, of the kernel matrix, and a complex phase
-/// parameter (1 or i)
+/// product of two columns, i, and j, of the kernel matrix, and a complex
+/// phase parameter (1 or i)
 /// - R(r): is the matrix representation for element r of the head_group
 /// - M_k: previously found commuting matrices
 ///
 /// Once a new non-zero commuter is found, possible irreducible subspaces are
 /// found and checked. A possible irreducible subspace is each
 /// K*V_equal_eigenvalue_set[i], where V_equal_eigenvalue_set[i] is the vector
-/// space corresponding to eigenvectors of (K.adjoint() * M_new * K) with equal
-/// eigenvalues.
+/// space corresponding to eigenvectors of (K.adjoint() * M_new * K) with
+/// equal eigenvalues.
 ///
 /// Eigenvalue decomposition:
 ///
@@ -584,12 +755,13 @@ bool is_irrep(MatrixRep const &rep, GroupIndices const &head_group) {
 ///
 /// - `characters`: Vector of complex characters. The character of a matrix
 ///   representation is the trace of the representation.
-/// - `characters_squared_norm`: For an irreducible representation, the squared
+/// - `characters_squared_norm`: For an irreducible representation, the
+/// squared
 ///   norm of the characters vector is equal the size of the group.
 /// - `symmetrizer`: A pair with, symmetrizer.first being a MatrixXcd, which
-///   defines a rotation of the irreducible subspace that aligns its components
-///   along high-symmetry directions, and symmetrizer.second being a vector of
-///   orbits of high-symmetry directions
+///   defines a rotation of the irreducible subspace that aligns its
+///   components along high-symmetry directions, and symmetrizer.second being
+///   a vector of orbits of high-symmetry directions
 ///
 /// For each PossibleIrrep, check if it extends adapted_subspace. If it
 /// does, then symmetrize and save the irrep. For all new irreps, extend
@@ -624,9 +796,11 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
                                            bool allow_complex,
                                            std::optional<Log> log) {
   if (log.has_value()) {
-    log->increase_indent();
     log->begin<Log::standard>("Find irreps");
     log->indent() << std::endl;
+
+    log->indent() << "Using " << max_threads() << " threads" << std::endl
+                  << std::endl;
     log->indent() << "Number of group elements = " << rep.size() << std::endl;
   }
 
@@ -634,11 +808,13 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
     if (log.has_value()) {
       log->indent() << std::endl;
       log->indent() << "No irreps to find." << std::endl << std::endl;
-      log->end_section();
-      log->decrease_indent();
     }
     return std::vector<IrrepInfo>();
   }
+
+  std::vector<Index> head_group_vec;
+  head_group_vec.reserve(head_group.size());
+  for (Index idx : head_group) head_group_vec.push_back(idx);
 
   if (log.has_value()) {
     log->indent() << "Vector space dimension = " << rep[0].rows() << std::endl
@@ -647,11 +823,11 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
 
   int dim = rep[0].rows();
 
-  // This method iteratively finds irreducible spaces, which are used to extend
-  // the "adapted_subspace" (combined space of found irreducible spaces). The
-  // "adapted_subspace" is not aligned along high symmetry directions by this
-  // function. When the "adapted_subspace" is of dimenions equal to `dim`, all
-  // irreps have been found.
+  // This method iteratively finds irreducible spaces, which are used to
+  // extend the "adapted_subspace" (combined space of found irreducible
+  // spaces). The "adapted_subspace" is not aligned along high symmetry
+  // directions by this function. When the "adapted_subspace" is of dimenions
+  // equal to `dim`, all irreps have been found.
 
   // start with all kernel, end with all adapted_subspace
   Eigen::MatrixXcd kernel = complex_I(dim, dim);
@@ -664,11 +840,10 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
   std::set<PossibleIrrep> irreps;
 
   // count over possible commuter matrices for this kernel:
-  // - kernel column pairs (i,j), j>=i & phase = [1, i]; skips i==j if phase==i
+  // - kernel column pairs (i,j), j>=i & phase = [1, i]; skips i==j if
+  // phase==i
   CommuterParamsCounter commuter_params;
   commuter_params.reset(kernel);
-
-  double is_irrep_tol = TOL;
 
   do {  // while adapated_subspace.cols() != dim
 
@@ -684,27 +859,40 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
 
       break;
     }
+    if (log.has_value() && log->verbosity() >= Log::verbose) {
+      log->indent() << "Make commuter... ";
+      append_time(*log, 1);
+    }
 
     // make next commuter, M, and check if not zero
     Eigen::MatrixXcd commuter =
         make_commuter(commuter_params, rep, head_group, kernel);
 
     if (almost_equal(frobenius_product(commuter).real(), 0., TOL)) {
+      if (log.has_value() && log->verbosity() >= Log::verbose) {
+        log->indent() << "Frobenius product is zero. Skipping... ";
+        append_time(*log, 1);
+      }
       commuter_params.increment();
       continue;
     }
 
     // make possible irreps:
     //
-    // Given kernel, K, and commuter matrix, M, perform eigenvalue decomposition
+    // Given kernel, K, and commuter matrix, M, perform eigenvalue
+    // decomposition
     //     K.adjoint() * M * K = V * D * V.inverse()
     // and construct matrix representation that acts on vectors in the K*V
     // basis, which will be block diagonalized and sorted by eigenvalue. Each
     // block corresponds to a possible irrep, which can be checked by its
     // characters. The columns in K*V corresponding to an irrep are the irrep
     // subspace.
+    if (log.has_value() && log->verbosity() >= Log::verbose) {
+      log->indent() << "Make possible irreps...";
+      append_time(*log, 1);
+    }
     std::vector<PossibleIrrep> possible_irreps = make_possible_irreps(
-        commuter, kernel, rep, head_group, is_irrep_tol, allow_complex);
+        commuter, kernel, rep, head_group_vec, allow_complex, log);
 
     // save any possible irrep that:
     // - i) is an irrep,
@@ -720,7 +908,8 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
         if (log.has_value()) {
           log->indent() << "Found irrep of dim " << possible_irrep.irrep_dim
                         << " (" << dim - adapted_subspace.cols() << " / " << dim
-                        << " dim remaining)" << std::endl;
+                        << " dim remaining)";
+          append_time(*log, 1);
         }
       }
     }
@@ -734,6 +923,15 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
         throw std::runtime_error(
             "Unknown error finding irreps: dimension mismatch");
       }
+
+      // Restart after finding any irreps
+      if (log.has_value()) {
+        log->indent() << std::endl;
+        log->indent() << "Break: irreps found" << std::endl;
+      }
+
+      break;
+
     } else {
       commuter_params.increment();
     }
@@ -752,8 +950,6 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
                   << (adapted_subspace.cols() == dim ? "yes" : "no")
                   << std::endl
                   << std::endl;
-    log->end_section();
-    log->decrease_indent();
   }
   return irrep_info;
 }
@@ -762,8 +958,8 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
 ///
 /// \param subspace_irreps Irreducible spaces in the subspace
 /// (subspace_irreps[i].trans_mat.rows() == subspace dimension,
-/// subspace_irreps[i].trans_mat.cols() == fullspace dimensino) \param subspace
-/// Basis for a subspace (subspace.rows() == fullspace
+/// subspace_irreps[i].trans_mat.cols() == fullspace dimensino) \param
+/// subspace Basis for a subspace (subspace.rows() == fullspace
 ///     dimension, subspace.cols() == subspace dimension)
 std::vector<IrrepInfo> make_fullspace_irreps(
     std::vector<IrrepInfo> const &subspace_irreps,
@@ -776,26 +972,104 @@ std::vector<IrrepInfo> make_fullspace_irreps(
   return fullspace_irreps;
 }
 
-/// Expand subspace by application of group, and orthogonalize
+/// Find the invariant subspace generated by applying group to subspace
+/// using modified Gram-Schmidt (multithreaded)
 Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
                                      GroupIndices const &head_group,
                                      Eigen::MatrixXd const &subspace) {
-  if (!subspace.isIdentity()) {
-    Eigen::MatrixXd symspace(subspace.rows(),
-                             subspace.cols() * head_group.size());
-    Index l = 0;
-    for (Index element_index : head_group) {
-      symspace.block(0, l, subspace.rows(), subspace.cols()) =
-          rep[element_index] * subspace;
-      l += subspace.cols();
-    }
-    Eigen::ColPivHouseholderQR<Eigen::MatrixXd> colqr(symspace);
-    colqr.setThreshold(TOL);
-    Eigen::MatrixXd Q = colqr.householderQ();
-    Eigen::MatrixXd result = Q.leftCols(colqr.rank());
-    return result;
+  std::vector<Index> head_group_vec;
+  head_group_vec.reserve(head_group.size());
+  for (Index idx : head_group) head_group_vec.push_back(idx);
+  return make_invariant_space(rep, head_group_vec, subspace);
+}
+
+/// Find the invariant subspace generated by applying group to subspace
+/// using modified Gram-Schmidt (multithreaded)
+Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
+                                     std::vector<Index> const &head_group_vec,
+                                     Eigen::MatrixXd const &subspace) {
+  if (subspace.isIdentity()) {
+    return subspace;
   }
-  return subspace;
+
+  const double tol = TOL;
+  Index n = subspace.rows();
+  Index k = subspace.cols();
+
+  // If there are no group elements, return empty basis
+  if (head_group_vec.size() == 0 || k == 0) {
+    return Eigen::MatrixXd(n, 0);
+  }
+
+  Index n_threads = max_threads();
+
+  // Prepare per-thread local bases
+  std::vector<Eigen::MatrixXd> local_bases;
+  local_bases.resize(n_threads);
+
+  auto worker = [&](Index start, Index end, Index t) {
+    Eigen::MatrixXd &basis = local_bases[t];
+    basis.resize(n, 0);
+
+    for (Index idx = start; idx < end; ++idx) {
+      Index element_index = head_group_vec[idx];
+
+      Eigen::MatrixXd transformed = rep[element_index] * subspace;  // (n x k)
+
+      for (Index c = 0; c < k; ++c) {
+        Eigen::VectorXd v = transformed.col(c);
+        // Modified Gram-Schmidt against thread-local basis
+        for (Index j = 0; j < basis.cols(); ++j) {
+          double proj = basis.col(j).dot(v);
+          v.noalias() -= proj * basis.col(j);
+        }
+
+        double norm = v.norm();
+        if (norm > tol) {
+          v /= norm;
+          Index old_cols = basis.cols();
+          basis.conservativeResize(n, old_cols + 1);
+          basis.col(old_cols) = std::move(v);
+        }
+      }
+    }
+  };
+
+  threaded_run(head_group_vec.size(), worker);
+
+  // Combine local bases into a single global basis using Modified
+  // Gram-Schmidt
+  Eigen::MatrixXd basis(n, 0);
+  for (Index t = 0; t < n_threads; ++t) {
+    Eigen::MatrixXd const &lb = local_bases[t];
+    for (Index col = 0; col < lb.cols(); ++col) {
+      Eigen::VectorXd v = lb.col(col);
+
+      // MGS against current global basis
+      for (Index j = 0; j < basis.cols(); ++j) {
+        double proj = basis.col(j).dot(v);
+        v.noalias() -= proj * basis.col(j);
+      }
+
+      double norm = v.norm();
+      if (norm > tol) {
+        v /= norm;
+        Index old_cols = basis.cols();
+        basis.conservativeResize(n, old_cols + 1);
+        basis.col(old_cols) = std::move(v);
+      }
+    }
+  }
+
+  if (basis.cols() == 0) {
+    return Eigen::MatrixXd(n, 0);
+  }
+
+  // Clean up near-linear dependencies / ensure orthonormal columns
+  Eigen::ColPivHouseholderQR<Eigen::MatrixXd> colqr(basis);
+  colqr.setThreshold(tol);
+  Eigen::MatrixXd Q = colqr.householderQ();
+  return Q.leftCols(colqr.rank());
 }
 
 /// \brief Create the subspace rep from the fullspace rep
@@ -804,26 +1078,50 @@ Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
 /// on coordinates with `subspace` columns as a basis. Matrices in
 /// `subspace_rep` are shape (subspace.cols() x subspace.cols())
 ///
-/// \param fullspace_rep Matrix representation for transforming unrolled vectors
-/// in
-///     the prim basis
+/// Notes: This function uses threads to parallelize the construction of the
+/// subspace representation matrices.
+///
+//// \param fullspace_rep Matrix representation for transforming unrolled
+/// vectors in the prim basis
 /// \param subspace A subspace basis, x_fullspace = subspace * x_subspace.
-/// Subspace
-///     basis vectors must be unit length and orthogonal.
-/// \return subspace_rep, The matrix representation for transforming vectors in
-/// the
-///     subspace
+/// Subspace basis vectors must be orthonormal.
+///
+/// \return subspace_rep, The matrix representation for transforming vectors
+/// in the subspace
 MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
                             Eigen::MatrixXd const &subspace) {
-  Eigen::MatrixXd trans_mat = subspace.transpose();
-  Eigen::MatrixXd rightmat =
-      subspace.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
-          .solve(Eigen::MatrixXd::Identity(trans_mat.cols(), trans_mat.cols()))
-          .transpose();
+  // x_f' = M_f * x_f
+  // x_f = B * x_s
+  // where:
+  // - x_f: vector in full space
+  // - M_f: full space matrix representation
+  // - x_s: vector in subspace
+  // - B: subspace basis matrix (fullspace_dim x subspace_dim)
+
+  // therefore, the subspace representation is:
+  //     x_s' = M_s * x_s,
+  //     M_s = B_pinv * M_f * B
+
+  // this function assumes B is orthonormal, so B_pinv = B.transpose()
+
+  Index const n = static_cast<Index>(fullspace_rep.size());
   MatrixRep subspace_rep;
-  for (Index i = 0; i < fullspace_rep.size(); ++i) {
-    subspace_rep.push_back(trans_mat * fullspace_rep[i] * rightmat);
-  }
+  if (n == 0) return subspace_rep;
+
+  // Pre-size result to avoid reallocations during parallel writes
+  subspace_rep.resize(n);
+
+  // Define the worker lambda that fills subspace_rep for indices [start,end)
+  auto worker = [&](Index start, Index end, Index /*thread_id*/) {
+    Eigen::MatrixXd temp;
+    for (Index i = start; i < end; ++i) {
+      temp.noalias() = fullspace_rep[i] * subspace;
+      subspace_rep[i].noalias() = subspace.transpose() * temp;
+    }
+  };
+
+  threaded_run(n, worker);
+
   return subspace_rep;
 }
 
@@ -832,26 +1130,30 @@ MatrixRep make_subspace_rep(MatrixRep const &fullspace_rep,
 std::vector<IrrepInfo> symmetrize_irreps(
     MatrixRep const &subspace_rep, GroupIndices const &head_group,
     std::vector<IrrepInfo> const &irreps,
-    std::function<GroupIndicesOrbitSet()> make_subgroups_f,
-    std::optional<Log> log) {
+    GroupIndicesOrbitSet const &subgroup_orbits, std::optional<Log> log) {
   std::vector<IrrepInfo> symmetrized_irreps;
   double vec_compare_tol = TOL;
 
   Index i_irrep = 1;
   for (const auto &irrep : irreps) {
-    if (log.has_value()) {
-      std::stringstream ss;
-      ss << "Symmetrize irrep " << i_irrep << " / " << irreps.size();
-      log->begin<Log::standard>(ss.str());
-      log->indent() << std::endl;
-      log->indent() << "Irrep dim = " << irrep.irrep_dim << std::endl;
+    if (log.has_value() && log->print()) {
+      if (log->verbosity() >= Log::verbose) {
+        std::stringstream ss;
+        ss << "Symmetrize irrep " << i_irrep << " / " << irreps.size();
+        log->begin<Log::standard>(ss.str());
+        log->indent() << std::endl;
+        log->indent() << "Irrep dim = " << irrep.irrep_dim << std::endl;
+      } else {
+        log->indent() << "Irrep " << i_irrep << " / " << irreps.size()
+                      << ":  dim = " << irrep.irrep_dim;
+      }
     }
 
     Eigen::MatrixXcd irrep_subspace = irrep.trans_mat.adjoint();
 
     multivector<Eigen::VectorXcd>::X<2> irrep_special_directions =
         make_irrep_special_directions(subspace_rep, head_group, irrep_subspace,
-                                      vec_compare_tol, make_subgroups_f, log);
+                                      vec_compare_tol, subgroup_orbits, log);
 
     Eigen::MatrixXcd symmetrizer_matrix = make_irrep_symmetrizer_matrix(
         irrep_special_directions, irrep_subspace, vec_compare_tol, log);
@@ -862,12 +1164,21 @@ std::vector<IrrepInfo> symmetrize_irreps(
     symmetrized_irrep.directions = to_real(irrep_special_directions);
     symmetrized_irreps.push_back(symmetrized_irrep);
 
+    if (log.has_value() && log->print()) {
+      if (log->verbosity() < Log::verbose) {
+        log->indent() << "  orbits of special directions = "
+                      << irrep_special_directions.size() << " ";
+        append_time(*log, 1);
+      }
+    }
+
     i_irrep++;
   }
 
-  if (log.has_value()) {
-    log->indent() << std::endl;
-    log->end_section();
+  if (log.has_value() && log->print()) {
+    if (log->verbosity() >= Log::verbose) {
+      log->indent() << std::endl;
+    }
   }
   return symmetrized_irreps;
 }

@@ -150,6 +150,7 @@ set(
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/group/definitions.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/group/subgroups.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/group/orbits.hh
+  ${PROJECT_SOURCE_DIR}/include/casm/configuration/group/io/json/GenericGroup_json_io.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/enumeration/OccEventInfo.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/enumeration/background_configuration.hh
   ${PROJECT_SOURCE_DIR}/include/casm/configuration/enumeration/MakeOccEventStructures.hh
@@ -224,6 +225,7 @@ set(
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/occ_events/io/json/OccSystem_json_io.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/occ_events/io/json/OccEvent_json_io.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/occ_events/io/json/OccEventCounter_json_io.cc
+  ${PROJECT_SOURCE_DIR}/src/casm/configuration/group/io/json/GenericGroup_json_io.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/enumeration/background_configuration.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/enumeration/OccEventInfo.cc
   ${PROJECT_SOURCE_DIR}/src/casm/configuration/enumeration/ConfigurationFilter.cc
@@ -353,6 +355,24 @@ find_package(pybind11)
 # - the casm_clexulator library
 # - the casm_configuration library
 # They can be found by setting a relative rpath
+
+### libcasm.group._group ###
+pybind11_add_module(_group MODULE
+                  "${PROJECT_SOURCE_DIR}/python/src/group.cpp")
+target_link_libraries(_group PRIVATE
+CASM::casm_global
+CASM::casm_crystallography
+CASM::casm_clexulator
+casm_configuration
+)
+install(TARGETS _group DESTINATION group)
+if(APPLE)
+set_target_properties(
+  _group PROPERTIES INSTALL_RPATH "@loader_path/../lib")
+else()
+set_target_properties(
+  _group PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
+endif()
 
 ### libcasm.clusterography._clusterography ###
 pybind11_add_module(_clusterography MODULE

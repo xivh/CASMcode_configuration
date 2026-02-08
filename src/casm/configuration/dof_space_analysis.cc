@@ -6,6 +6,7 @@
 #include "casm/configuration/SupercellSymOp.hh"
 #include "casm/configuration/canonical_form.hh"
 #include "casm/configuration/group/subgroups.hh"
+#include "casm/crystallography/io/SymInfo_stream_io.hh"
 
 namespace CASM {
 namespace config {
@@ -64,8 +65,8 @@ DoFSpaceAnalysisResults dof_space_analysis(
     bool include_default_occ_modes,
     std::optional<std::map<int, int>> sublattice_index_to_default_occ,
     std::optional<std::map<Index, int>> site_index_to_default_occ,
-    std::string symmetrization, Index max_iter, bool calc_wedges,
-    std::optional<Log> log) {
+    std::string symmetrization, bool calc_wedges, std::optional<Log> log) {
+  // throw std::runtime_error("dof_space_analysis check.");
   if (log.has_value()) {
     log->begin<Log::standard>("DoF space analysis");
     log->indent() << std::endl;
@@ -94,6 +95,7 @@ DoFSpaceAnalysisResults dof_space_analysis(
     log->indent() << "Initial DoF space dim: " << dof_space_in.basis.cols()
                   << std::endl;
   }
+  bool modified_dof_space = false;
 
   clexulator::DoFSpace dof_space_pre1 =
       exclude_homogeneous_mode_space(dof_space_in, exclude_homogeneous_modes);
@@ -103,8 +105,9 @@ DoFSpaceAnalysisResults dof_space_analysis(
         << "After excluding homogeneous mode space: basis.cols() == 0";
     throw dof_space_analysis_error(msg.str());
   }
-  if (log.has_value()) {
-    if (dof_space_pre1.basis.cols() != dof_space_in.basis.cols()) {
+  if (dof_space_pre1.basis.cols() != dof_space_in.basis.cols()) {
+    modified_dof_space = true;
+    if (log.has_value()) {
       log->indent() << "Exclude homogeneous modes." << std::endl;
     }
   }
@@ -118,16 +121,25 @@ DoFSpaceAnalysisResults dof_space_analysis(
         << "After excluding default occ modes: basis.cols() == 0";
     throw dof_space_analysis_error(msg.str());
   }
-  if (log.has_value()) {
-    if (dof_space.basis.cols() != dof_space_pre1.basis.cols()) {
+  if (dof_space.basis.cols() != dof_space_pre1.basis.cols()) {
+    modified_dof_space = true;
+    if (log.has_value()) {
       log->indent() << "Exclude default occupation modes." << std::endl;
     }
-    log->indent() << "Final DoF space dim: " << dof_space.basis.cols()
-                  << std::endl
-                  << std::endl;
   }
 
-  // construct symmetry group based on invariance of dof_space and configuration
+  if (log.has_value()) {
+    if (modified_dof_space) {
+      log->indent() << "Final DoF space dim: " << dof_space.basis.cols()
+                    << std::endl
+                    << std::endl;
+    } else {
+      log->indent() << std::endl;
+    }
+  }
+
+  // construct symmetry group based on invariance of dof_space and
+  // configuration
   if (log.has_value()) {
     log->custom<Log::standard>("Construct symmetry group");
     log->indent() << std::endl;
@@ -188,25 +200,6 @@ DoFSpaceAnalysisResults dof_space_analysis(
   std::vector<Eigen::MatrixXd> matrix_rep = make_matrix_rep(
       group, dof_space.dof_key, dof_space.sites, symgroup, make_symgroup);
 
-  if (symmetrization != "none") {
-    log->indent() << "Make Minimal generators... " << std::endl;
-    log->indent() << "- Number of elements: " << symgroup->element.size()
-                  << std::endl;
-    std::set<Index> indices;
-    for (Index i = 0; i < symgroup->element.size(); ++i) {
-      indices.insert(i);
-    }
-    group::MakeMinimalSubsetGenerators<xtal::SymOp> x(*symgroup, indices);
-    std::set<Index> minimal_generators = x.generators;
-    log->indent() << "- Number of generators: " << minimal_generators.size()
-                  << std::endl;
-    log->indent() << "- Generators: ";
-    for (Index j : minimal_generators) {
-      log->ostream() << j << " ";
-    }
-    log->ostream() << std::endl;
-  }
-
   // use the entire group for irrep decomposition
   std::set<Index> group_indices;
   for (Index i = 0; i < matrix_rep.size(); ++i) {
@@ -217,18 +210,37 @@ DoFSpaceAnalysisResults dof_space_analysis(
     log->indent() << "Matrix representation: DONE" << std::endl << std::endl;
   }
 
-  // functions to construct sub groups, used to find high symmetry directions
-  std::function<irreps::GroupIndicesOrbitSet()> make_cyclic_subgroups_f =
-      group::MakeCyclicSubgroups<xtal::SymOp>(symgroup);
-  std::function<irreps::GroupIndicesOrbitSet()> make_all_subgroups_f =
-      group::MakeAllSubgroups<xtal::SymOp>(symgroup);
+  std::optional<group::GroupIndicesOrbitSet> subgroup_orbits;
+  if (symmetrization == "fast" || symmetrization == "complete") {
+    if (symmetrization == "fast") {
+      if (log.has_value()) {
+        log->indent() << "Generating cyclic subgroups...";
+        irreps::append_time(*log, 1);
+      }
+      group::MakeCyclicSubgroups f(symgroup);
+      subgroup_orbits = f();
+    } else if (symmetrization == "complete") {
+      if (log.has_value()) {
+        log->indent() << "Generating all subgroups...";
+        irreps::append_time(*log, 1);
+      }
+      group::MakeAllSubgroups f(symgroup);
+      subgroup_orbits = f();
+    }
+    if (log.has_value()) {
+      log->indent() << std::endl;
+      log->indent() << "DONE";
+      irreps::append_time(*log, 1);
+      log->indent() << std::endl;
+    }
+  }
 
   bool allow_complex = true;
 
   // Note: this is logged internally
   irreps::IrrepDecomposition irrep_decomposition(
-      matrix_rep, group_indices, dof_space.basis, make_cyclic_subgroups_f,
-      make_all_subgroups_f, allow_complex, symmetrization, max_iter, log);
+      matrix_rep, group_indices, dof_space.basis, subgroup_orbits,
+      allow_complex, log);
 
   // Generate report, based on constructed inputs
   if (log.has_value()) {

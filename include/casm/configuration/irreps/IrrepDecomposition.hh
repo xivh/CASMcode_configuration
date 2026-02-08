@@ -60,42 +60,12 @@ Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps);
 /// Performs irreducible subspace construction and symmetrization
 struct IrrepDecomposition {
   /// IrrepDecomposition constructor
-  IrrepDecomposition(
-      MatrixRep const &_fullspace_rep, GroupIndices const &_head_group,
-      Eigen::MatrixXd const &_init_subspace,
-      std::function<GroupIndicesOrbitSet()> _make_cyclic_subgroups_f,
-      std::function<GroupIndicesOrbitSet()> _make_all_subgroups_f,
-      bool allow_complex, std::string _symmetrization = "complete",
-      Index max_iter = 10, std::optional<Log> _log = std::nullopt);
-
-  /// IrrepDecomposition constructor (from existing decomposition)
   IrrepDecomposition(MatrixRep const &_fullspace_rep,
                      GroupIndices const &_head_group,
                      Eigen::MatrixXd const &_init_subspace,
-                     Eigen::MatrixXd const &_subspace,
-                     std::vector<IrrepInfo> const &_irreps,
-                     bool _complete_decomposition,
-                     Eigen::MatrixXd const &_incomplete_subspace,
+                     std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
+                     bool allow_complex,
                      std::optional<Log> _log = std::nullopt);
-
-  void symmetrize_all_irreps(std::string symmetrization);
-
-  void symmetrize_irrep(Index i, std::string symmetrization);
-
-  /// Type of symmetrization to perform on irrep subspaces
-  /// Options:
-  /// - "none": Leave the irreducible subspace bases as initially found,
-  ///   reducing computation time.
-  /// - "fast": Symmetrize the irreducible subspace bases to align along
-  ///   high-symmetry directions using cyclic subgroups. This may not be a
-  ///   complete symmetrization, but is generally fast.
-  /// - "complete": Symmetrize the irreducible subspace bases to align
-  ///   along high-symmetry directions using all subgroups. For large
-  std::string symmetrization;
-
-  std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f;
-
-  std::function<GroupIndicesOrbitSet()> make_all_subgroups_f;
 
   /// Full space matrix representation
   ///

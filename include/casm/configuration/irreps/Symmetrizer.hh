@@ -11,8 +11,7 @@ namespace irreps {
 multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
     MatrixRep const &rep, GroupIndices const &head_group,
     Eigen::MatrixXcd const &irrep_subspace, double vec_compare_tol,
-    std::function<GroupIndicesOrbitSet()> make_subgroups_f,
-    std::optional<Log> log);
+    GroupIndicesOrbitSet const &subgroup_orbits, std::optional<Log> log);
 
 /// Make an irreducible space symmetrizer matrix using special directions
 Eigen::MatrixXcd make_irrep_symmetrizer_matrix(

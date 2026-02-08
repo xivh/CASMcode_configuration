@@ -17,14 +17,15 @@
 #include <memory>
 #include <vector>
 
+#include "casm/configuration/group/definitions.hh"
 #include "casm/global/eigen.hh"
 
 namespace CASM {
 
 namespace group {
+struct GenericGroup;
 template <typename ElementType>
 struct Group;
-template <typename ElementType>
 class Subset;
 }  // namespace group
 
@@ -53,7 +54,7 @@ typedef std::string DoFKey;
 typedef group::Group<SymOp> SymGroup;
 
 /// \brief A subset of elements in SymGroup
-typedef group::Subset<SymOp> Subset;
+typedef group::Subset Subset;
 
 /// \brief Describes how sites are permuted
 typedef std::vector<UnitCellCoordRep> UnitCellCoordSymGroupRep;

@@ -31,10 +31,13 @@
 #include "casm/configuration/make_simple_structure.hh"
 #include "casm/crystallography/SimpleStructure.hh"
 #include "casm/crystallography/SymInfo.hh"
+#include "casm/crystallography/SymType.hh"
+#include "casm/crystallography/SymTypeComparator.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "casm/crystallography/io/BasicStructureIO.hh"
 #include "casm/crystallography/io/SymInfo_json_io.hh"
 #include "casm/crystallography/io/SymInfo_stream_io.hh"
+#include "casm/global/pybind11_helpers.hh"
 #include "pybind11_json/pybind11_json.hpp"
 
 #define STRINGIFY(x) #x
@@ -1161,6 +1164,39 @@ PYBIND11_MODULE(_configuration, m) {
           When permuting site occupants, the following convention is
           used, `after[l] = before[permutation[l]]`. Has value None for large
           supercells (when `n_unitcells` > `max_n_translation_permutations`).
+          )pbdoc")
+      .def(
+          "symgroup",
+          [](std::shared_ptr<config::Supercell const> const &supercell) {
+            std::vector<config::SupercellSymOp> group(
+                config::SupercellSymOp::begin(supercell),
+                config::SupercellSymOp::end(supercell));
+
+            Index n = static_cast<Index>(group.size());
+            std::vector<xtal::SymOp> element(n, xtal::SymOp::identity());
+            for (Index i = 0; i < n; ++i) {
+              element[i] = group[i].to_symop();
+            }
+
+            std::multiplies<xtal::SymOp> multiply_f;
+            double xtal_tol = supercell->prim->basicstructure->lattice().tol();
+            xtal::SymOpPeriodicCompare_f equal_to_f(
+                supercell->superlattice.superlattice(), xtal_tol);
+            auto symgroup = std::make_shared<sym_info::SymGroup const>(
+                group::make_group(element, multiply_f, equal_to_f));
+
+            return symgroup;
+          },
+          R"pbdoc(
+          Returns a new SymGroup containing all combinations of supercell factor
+          group operations and translations within the supercell.
+
+          Returns
+          -------
+          symgroup: libcasm.sym_info.SymGroup
+              All combinations of supercell factor group operations and
+              unit cell translations within the supercell.
+
           )pbdoc")
       .def(
           "symgroup_rep",
@@ -2975,8 +3011,7 @@ PYBIND11_MODULE(_configuration, m) {
              bool include_default_occ_modes,
              std::optional<std::map<int, int>> sublattice_index_to_default_occ,
              std::optional<std::map<Index, int>> site_index_to_default_occ,
-             std::string symmetrization, Index max_iter,
-             bool calc_wedges) -> py::tuple {
+             std::string symmetrization, bool calc_wedges) -> py::tuple {
             if (!symmetry_adapted) {
               clexulator::DoFSpace dof_space_in(
                   dof_key, self.supercell->prim->basicstructure,
@@ -3015,12 +3050,12 @@ PYBIND11_MODULE(_configuration, m) {
               std::optional<Log> log = std::nullopt;
               // std::optional<Log> log = Log(std::cout, Log::debug, true);
               config::DoFSpaceAnalysisResults results =
-                  config::dof_space_analysis(
-                      *dof_space, self.supercell->prim, self,
-                      exclude_homogeneous_modes, include_default_occ_modes,
-                      sublattice_index_to_default_occ,
-                      site_index_to_default_occ, symmetrization, max_iter,
-                      calc_wedges, log);
+                  config::dof_space_analysis(*dof_space, self.supercell->prim,
+                                             self, exclude_homogeneous_modes,
+                                             include_default_occ_modes,
+                                             sublattice_index_to_default_occ,
+                                             site_index_to_default_occ,
+                                             symmetrization, calc_wedges, log);
               return py::make_tuple(
                   std::make_shared<clexulator::DoFSpace>(
                       std::move(results.symmetry_adapted_dof_space)),
@@ -3088,12 +3123,6 @@ PYBIND11_MODULE(_configuration, m) {
                 all subgroups. For large spaces, finding all
                 subgroups is slow.
 
-          max_iter: int = 10
-              Maximum number of iterations to use when finding irreducible
-              subspaces. If a non-irreducible subspace cannot be decomposed
-              within this number of iterations, `complete_decomposition` will
-              be set to False. Starting with a different `init_subspace` may
-              result in a complete decomposition.
           calc_wedges : bool = False
               If True, calculate the irreducible wedges for the vector space.
               This may take a long time, but provides the symmetrically unique
@@ -3116,7 +3145,7 @@ PYBIND11_MODULE(_configuration, m) {
           py::arg("include_default_occ_modes") = false,
           py::arg("sublattice_index_to_default_occ") = std::nullopt,
           py::arg("site_index_to_default_occ") = std::nullopt,
-          py::arg("symmetrization") = "complete", py::arg("max_iter") = 10,
+          py::arg("symmetrization") = "complete",
           py::arg("calc_wedges") = false)
       .def(
           "order_parameters",
@@ -4435,6 +4464,28 @@ PYBIND11_MODULE(_configuration, m) {
         )pbdoc",
         py::arg("group"));
 
+  m.def("make_symgroup_multiplication_table",
+        &config::make_symgroup_multiplication_table,
+        R"pbdoc(
+        Make the multiplication table for a group of SupercellSymOp
+
+        Parameters
+        ----------
+        group: list[:class:`~libcasm.configuration.SupercellSymOp`]
+            The symmetry group, as a list of SupercellSymOp. The group must be
+            closed.
+
+        Returns
+        -------
+        multiplication_table: list[list[int]]
+            The multiplication table element
+              `multiplication_table[i][j] == k` represents that
+              ``group[k] == group[i] * group[j]``.
+
+
+        )pbdoc",
+        py::arg("group"));
+
   //
   py::class_<config::ConfigSpaceAnalysisResults>(m,
                                                  "ConfigSpaceAnalysisResults",
@@ -4622,15 +4673,17 @@ PYBIND11_MODULE(_configuration, m) {
          bool include_default_occ_modes,
          std::optional<std::map<int, int>> sublattice_index_to_default_occ,
          std::optional<std::map<Index, int>> site_index_to_default_occ,
-         std::string symmetrization, Index max_iter, bool calc_wedges,
+         std::string symmetrization, bool calc_wedges,
          std::optional<std::string> verbosity)
           -> config::DoFSpaceAnalysisResults {
-        std::optional<Log> log = make_log(verbosity);
-        return config::dof_space_analysis(
-            dof_space, prim, configuration, exclude_homogeneous_modes,
-            include_default_occ_modes, sublattice_index_to_default_occ,
-            site_index_to_default_occ, symmetrization, max_iter, calc_wedges,
-            log);
+        return run_with_sigint_handler(
+            [&]() -> config::DoFSpaceAnalysisResults {
+              std::optional<Log> log = make_log(verbosity);
+              return config::dof_space_analysis(
+                  dof_space, prim, configuration, exclude_homogeneous_modes,
+                  include_default_occ_modes, sublattice_index_to_default_occ,
+                  site_index_to_default_occ, symmetrization, calc_wedges, log);
+            });
       },
       R"pbdoc(
       Construct symmetry adapted bases in a DoFSpace
@@ -4693,12 +4746,6 @@ PYBIND11_MODULE(_configuration, m) {
             all subgroups. For large spaces, finding all
             subgroups is slow.
 
-      max_iter: int = 10
-          Maximum number of iterations to use when finding irreducible
-          subspaces. If a non-irreducible subspace cannot be decomposed
-          within this number of iterations, `complete_decomposition` will
-          be set to False. Starting with a different `init_subspace` may
-          result in a complete decomposition.
       calc_wedges : bool = False
           If True, calculate the irreducible wedges for the vector space.
           This may take a long time, but provides the symmetrically unique
@@ -4722,8 +4769,8 @@ PYBIND11_MODULE(_configuration, m) {
       py::arg("include_default_occ_modes") = false,
       py::arg("sublattice_index_to_default_occ") = std::nullopt,
       py::arg("site_index_to_default_occ") = std::nullopt,
-      py::arg("symmetrization") = "complete", py::arg("max_iter") = 10,
-      py::arg("calc_wedges") = false, py::arg("verbosity") = std::nullopt);
+      py::arg("symmetrization") = "complete", py::arg("calc_wedges") = false,
+      py::arg("verbosity") = std::nullopt);
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

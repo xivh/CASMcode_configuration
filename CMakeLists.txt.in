@@ -200,6 +200,24 @@ find_package(pybind11)
 # - the casm_configuration library
 # They can be found by setting a relative rpath
 
+### libcasm.group._group ###
+pybind11_add_module(_group MODULE
+                  "${PROJECT_SOURCE_DIR}/python/src/group.cpp")
+target_link_libraries(_group PRIVATE
+CASM::casm_global
+CASM::casm_crystallography
+CASM::casm_clexulator
+casm_configuration
+)
+install(TARGETS _group DESTINATION group)
+if(APPLE)
+set_target_properties(
+  _group PROPERTIES INSTALL_RPATH "@loader_path/../lib")
+else()
+set_target_properties(
+  _group PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
+endif()
+
 ### libcasm.clusterography._clusterography ###
 pybind11_add_module(_clusterography MODULE
                   "${PROJECT_SOURCE_DIR}/python/src/clusterography.cpp")

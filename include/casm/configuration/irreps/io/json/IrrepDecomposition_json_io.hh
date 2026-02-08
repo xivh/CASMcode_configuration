@@ -32,18 +32,6 @@ struct jsonConstructor<irreps::IrrepInfo> {
 /// \brief Parse IrrepInfo from JSON with error messages
 void parse(InputParser<irreps::IrrepInfo> &parser);
 
-/// \brief Represent IrrepDecomposition as JSON
-jsonParser &to_json(irreps::IrrepDecomposition const &obj, jsonParser &json);
-
-template <>
-struct jsonConstructor<irreps::IrrepDecomposition> {
-  /// Read irreps::IrrepDecomposition from JSON
-  static irreps::IrrepDecomposition from_json(jsonParser const &json);
-};
-
-/// \brief Parse IrrepDecomposition from JSON with error messages
-void parse(InputParser<irreps::IrrepDecomposition> &parser);
-
 }  // namespace CASM
 
 #endif

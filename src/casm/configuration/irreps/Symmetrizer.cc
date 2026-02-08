@@ -20,16 +20,17 @@ namespace irreps {
 /// \param rep Matrix representation of head_group, this defines group action
 /// on the underlying vector space
 /// \param head_group Group for which the irreps are to be found
-/// \param subspace A column vector matrix representing a basis of the
+/// \param irrep_subspace A column vector matrix representing a basis of the
 ///     irreducible space in which high symmetry directions will be found. The
 ///     number of rows must equal `rep.dim()`, the number of columns is equal to
 ///     the dimension of the irreducible space.
 /// \param vec_compare_tol Tolerance for elementwise floating-point comparisons
 ///     of vectors
-/// \param all_subgroups Denotes whether all subgroups of head_group should be
-///     used for symmetry analysis (if true), or only cyclic subgroups (if
-///     false). Cyclic subgroups are those found by taking a group element and
-///     multiplying it by itself until a group is generated.
+/// \param subgroup_orbits Orbits of subgroups of `head_group`, where each
+///     subgroup is represented as a set of indices into `rep`. The vector
+///     `subgroup_orbits[i][j]` contains the indices of elements in the `j`-th
+///     subgroup of the `i`-th orbit of equivalent subgroups.
+/// \param log Optional Log object for logging progress
 ///
 /// \result Set of directions in the vector space on which 'rep' is defined,
 /// such that each direction is invariant to a unique subgroup of 'head_group'
@@ -45,14 +46,13 @@ namespace irreps {
 multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
     MatrixRep const &rep, GroupIndices const &head_group,
     Eigen::MatrixXcd const &irrep_subspace, double vec_compare_tol,
-    std::function<GroupIndicesOrbitSet()> make_subgroups_f,
-    std::optional<Log> log) {
+    GroupIndicesOrbitSet const &subgroup_orbits, std::optional<Log> log) {
   if (log.has_value() && log->verbosity() >= Log::verbose) {
     log->indent() << "Get subgroup indices...";
     append_time(*log, 1);
   }
 
-  GroupIndicesOrbitSet sgroups = make_subgroups_f();
+  GroupIndicesOrbitSet const &sgroups = subgroup_orbits;
 
   // Copy sgroups to a vector for indexed access in parallel tasks
   std::vector<GroupIndicesOrbit> sgroups_vec;
@@ -74,7 +74,7 @@ multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
 
   std::set<SimpleOrbit<VectorSymCompare>> orbit_result;
   std::vector<std::set<SimpleOrbit<VectorSymCompare>>> per_thread_orbit_result;
-  per_thread_orbit_result.resize(get_max_threads());
+  per_thread_orbit_result.resize(max_threads());
 
   // Define the worker that finds special directions for a chunk of subgroups
   auto worker = [&](Index start, Index end, Index thread_id) {

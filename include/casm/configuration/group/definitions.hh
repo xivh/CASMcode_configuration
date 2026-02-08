@@ -18,6 +18,7 @@
 
 #include <iomanip>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "casm/casm_io/Log.hh"
@@ -27,6 +28,19 @@ namespace CASM {
 namespace group {
 
 typedef long Index;
+
+typedef std::vector<Eigen::MatrixXd> MatrixRep;
+typedef std::set<Index> GroupIndices;
+typedef std::set<GroupIndices> GroupIndicesOrbit;
+typedef std::set<GroupIndicesOrbit> GroupIndicesOrbitSet;
+typedef std::vector<std::vector<std::vector<Index>>> GroupIndicesOrbitVec;
+
+typedef std::set<Index> SubgroupIndices;
+typedef std::set<SubgroupIndices> SubgroupOrbit;
+typedef std::set<SubgroupOrbit> SubgroupOrbitSet;
+typedef std::vector<std::vector<std::vector<Index>>> SubgroupOrbitVec;
+
+struct GenericGroup;
 
 template <typename ElementType>
 struct Group;

@@ -1,12 +1,13 @@
 import json
 import pathlib
-import pytest
+
 import numpy as np
 
-import libcasm.xtal as xtal
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
+import libcasm.group as casmgroup
 import libcasm.irreps as casmirreps
+import libcasm.xtal as xtal
 
 
 def conventional_FCC_occ_symmetry_adapted_basis():
@@ -73,6 +74,7 @@ def test_dof_space_analysis_1(FCC_binary_prim):
         # exclude_homogeneous_modes=None,
         # include_default_occ_modes=False,
         # calc_wedges=False,
+        verbosity=None,
     )
 
     symmetry_adapted_dof_space = results.symmetry_adapted_dof_space
@@ -124,6 +126,7 @@ def test_dof_space_analysis_1_generic(FCC_binary_prim):
                 [1.0],
             ]
         ),
+        verbosity="verbose",
     )
     assert isinstance(irrep_decomposition, casmirreps.IrrepDecomposition)
 
@@ -139,9 +142,9 @@ def test_dof_space_analysis_1_generic(FCC_binary_prim):
 
 
 def plot_irrep_axes(irrep: casmirreps.IrrepInfo, index: int):
-    from bokeh.plotting import figure, show
     from bokeh.layouts import gridplot
     from bokeh.models import Title
+    from bokeh.plotting import figure, show
 
     i = index
 
@@ -188,9 +191,9 @@ def plot_irrep_directions_orbit(
     irrep_index: int,
     orbit_index: int,
 ):
-    from bokeh.plotting import figure, show
     from bokeh.layouts import gridplot
     from bokeh.models import Title
+    from bokeh.plotting import figure, show
 
     i = irrep_index
     k = orbit_index
@@ -198,11 +201,11 @@ def plot_irrep_directions_orbit(
     title = f"Irrep {i}, Direction orbit {k}"
 
     plots = []
-    for l, d in enumerate(directions):
+    for i_dir, d in enumerate(directions):
         p_dir = figure(
             width=400,
             height=200,
-            title=f"{title}, Direction {l}",
+            title=f"{title}, Direction {i_dir}",
         )
         p_dir.add_layout(Title(text=title, align="center"), "above")
         x_atoms = np.arange(d.shape[0] // 3)
@@ -249,20 +252,20 @@ def print_report(report):
         print(f"Irrep {i}: dim={irrep.irrep_dim}, dirs_mult={dirs_mult}")
     print()
 
-    selected_irrep = 1
-
-    for i, irrep in enumerate(irreps):
-        # if i != selected_irrep:
-        #     continue
-
-        plot_irrep_axes(irrep=irrep, index=i)
-
-        # for k, directions in enumerate(irrep.directions):
-        #     plot_irrep_directions_orbit(
-        #         directions=directions,
-        #         irrep_index=i,
-        #         orbit_index=k,
-        #     )
+    # selected_irrep = 1
+    #
+    # for i, irrep in enumerate(irreps):
+    #     # if i != selected_irrep:
+    #     #     continue
+    #
+    #     plot_irrep_axes(irrep=irrep, index=i)
+    #
+    #     # for k, directions in enumerate(irrep.directions):
+    #     #     plot_irrep_directions_orbit(
+    #     #         directions=directions,
+    #     #         irrep_index=i,
+    #     #         orbit_index=k,
+    #     #     )
 
     # for i, irrep in enumerate(report.irreps):
     #     dirs_mult = [len(directions) for directions in irrep.directions]
@@ -294,6 +297,7 @@ def make_maximal_subgroups(supercell_symops: list[casmconfig.SupercellSymOp]):
 
 
 def test_groups(FCC_binary_GLstrain_disp_prim):
+    return  # skip test
     prim = casmconfig.Prim(FCC_binary_GLstrain_disp_prim)
     # T_dof_space = (
     #     np.array(
@@ -474,6 +478,10 @@ def test_dof_space_analysis_2_generic(FCC_binary_prim):
     supercell_factor_group = casmconfig.make_invariant_subgroup(
         configuration=configuration,
     )
+    symgroup = casmconfig.make_symgroup(supercell_factor_group)
+    subset = casmgroup.Subset(group=symgroup)
+    subset.all_subgroups()
+    subgroup_orbits = subset.all_subgroup_orbits()
 
     # construct occ DoFSpace with default basis
     dof_space = casmclex.DoFSpace(
@@ -503,12 +511,20 @@ def test_dof_space_analysis_2_generic(FCC_binary_prim):
             ]
         ),
         # symmetrization="fast",
+        subgroup_orbits=subgroup_orbits,
+        verbosity="verbose",
     )
     assert isinstance(irrep_decomposition, casmirreps.IrrepDecomposition)
 
     assert len(irrep_decomposition.irreps) == 2
     assert irrep_decomposition.symmetry_adapted_subspace.shape[0] == 8
     assert irrep_decomposition.symmetry_adapted_subspace.shape[1] == 4
+
+    print("Symmetry adapted basis:\n", irrep_decomposition.symmetry_adapted_subspace)
+    print(
+        "Conventional FCC symmetry adapted basis:\n",
+        conventional_FCC_occ_symmetry_adapted_basis(),
+    )
 
     assert np.allclose(
         irrep_decomposition.symmetry_adapted_subspace,

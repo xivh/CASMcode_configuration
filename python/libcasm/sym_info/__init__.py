@@ -17,7 +17,6 @@ The :py:mod:`libcasm.sym_info` module only has a dependency on
 """
 
 from ._sym_info import (
-    Subset,
     SymGroup,
     make_factor_group,
     make_point_group,

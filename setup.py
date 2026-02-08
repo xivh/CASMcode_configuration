@@ -9,6 +9,7 @@ setup(
         "libcasm.configuration",
         "libcasm.configuration.io",
         "libcasm.enumerate",
+        "libcasm.group",
         "libcasm.irreps",
         "libcasm.local_configuration",
         "libcasm.occ_events",

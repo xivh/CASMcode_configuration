@@ -47,8 +47,8 @@ DoFSpaceAnalysisResults dof_space_analysis(
         std::nullopt,
     std::optional<std::map<Index, int>> site_index_to_default_occ =
         std::nullopt,
-    std::string symmetrization = "complete", Index max_iter = 10,
-    bool calc_wedges = false, std::optional<Log> log = std::nullopt);
+    std::string symmetrization = "complete", bool calc_wedges = false,
+    std::optional<Log> log = std::nullopt);
 
 }  // namespace config
 }  // namespace CASM

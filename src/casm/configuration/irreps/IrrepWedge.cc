@@ -147,6 +147,11 @@ std::vector<IrrepWedge> make_irrep_wedges(
       // std::cout << "Irrep direction orbit" << i << " : " <<
       // irrep.directions[i].size() << std::endl; std::cout << "Irrep direction:
       // " << irrep.directions[i][0].transpose() << std::endl;
+      if (i >= irrep.directions.size()) {
+        throw std::runtime_error(
+            "Error in make_irrep_wedges: irrep.directions.size is smaller than "
+            "irrep dimension");
+      }
       Index j_best = 0;
       best_proj =
           (wedges.back().axes.transpose() * irrep.directions[i][0]).sum();
