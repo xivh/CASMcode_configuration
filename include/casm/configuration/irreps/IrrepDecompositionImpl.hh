@@ -1,6 +1,8 @@
 #ifndef CASM_irreps_IrrepDecompositionImpl
 #define CASM_irreps_IrrepDecompositionImpl
 
+#include <random>
+
 #include "casm/configuration/irreps/IrrepDecomposition.hh"
 
 namespace CASM {
@@ -34,6 +36,12 @@ Eigen::MatrixXcd make_commuter(CommuterParamsCounter const &params,
                                MatrixRep const &rep,
                                GroupIndices const &head_group,
                                Eigen::MatrixXcd const &kernel);
+
+Eigen::MatrixXcd make_random_commuter(MatrixRep const &rep,
+                                      GroupIndices const &head_group,
+                                      Eigen::MatrixXcd const &kernel,
+                                      std::mt19937 &gen,
+                                      bool use_complex_seed = false);
 
 Eigen::MatrixXcd make_kernel(Eigen::MatrixXcd const &subspace);
 Eigen::MatrixXd make_kernel(Eigen::MatrixXd const &subspace);
@@ -165,10 +173,11 @@ IrrepInfo make_dummy_irrep_info(Eigen::MatrixXcd const &trans_mat);
 bool is_irrep(MatrixRep const &rep, GroupIndices const &head_group);
 
 /// Finds irreducible subspaces that comprise an underlying subspace
-std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
-                                           GroupIndices const &head_group,
-                                           bool allow_complex,
-                                           std::optional<Log> log);
+std::vector<IrrepInfo> irrep_decomposition(
+    MatrixRep const &rep, GroupIndices const &head_group, bool allow_complex,
+    std::optional<Log> log,
+    CommuterMethod method = CommuterMethod::deterministic,
+    bool start_with_real_seed = true);
 
 /// Convert irreps generated for a subspace to full space dimension
 std::vector<IrrepInfo> make_fullspace_irreps(

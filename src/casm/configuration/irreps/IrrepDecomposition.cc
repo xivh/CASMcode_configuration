@@ -68,8 +68,14 @@ IrrepInfo make_dummy_irrep_info(Eigen::MatrixXd const &trans_mat) {
   return IrrepInfo(trans_mat.template cast<std::complex<double>>(), tchar);
 }
 
-/// \brief Assumes that irreps are real, and concatenates their individual
-/// trans_mats to form larger trans_mat
+/// \brief Combine individual possibly complex irrep trans_mat to form one
+/// larger real trans_mat
+///
+/// For allow_complex=false, simply concatenate the real parts of the individual
+/// trans_mats. For allow_complex=true, add the original Re and Im parts of the
+/// individual trans_mats, but avoid duplication from complex conjugate pairs
+/// by checking if the real subspace of a complex irrep is already covered by
+/// previously added irreps.
 Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps,
                                bool allow_complex) {
   Index row = 0;
@@ -91,63 +97,72 @@ Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps,
     return trans_mat;
   }
 
-  // Store -v_imag if v_imag is not approximately zero. Use this to check if
-  // the complex conjugate of an irrep has already been included in the
-  // result.
-  std::vector<Eigen::VectorXd> real_axes;
-  std::vector<Eigen::VectorXd> conj_imag_axes;
-  std::vector<bool> found_conj_imag;
+  // For allow_complex=true:
+  // Complex conjugate irrep pairs span the same real subspace. For each
+  // complex irrep, check if its real subspace is already covered; if not,
+  // add the original Re and Im parts of its rows (preserving symmetrized
+  // axes). Skip conjugate partners whose subspace is already covered.
+  using IrrepDecompositionImpl::extend;
+  using IrrepDecompositionImpl::is_extended_by;
 
-  auto add_vector = [&](Eigen::VectorXd const &v) {
-    if (row >= trans_mat.rows()) {
-      throw std::runtime_error(
-          "Error in full_trans_mat: row out of range error");
-    }
-    trans_mat.block(row, 0, 1, col) = v.transpose();
-    row += 1;
-  };
+  // Track covered complex subspace (columns are orthonormal basis vectors)
+  Eigen::MatrixXcd covered(col, 0);
 
-  double tol = TOL;
   for (auto const &irrep : irreps) {
-    for (Index i = 0; i < irrep.irrep_dim; ++i) {
-      Eigen::VectorXd v_imag = irrep.trans_mat.row(i).imag().cast<double>();
-      v_imag.normalize();
-      Eigen::VectorXd v_real = irrep.trans_mat.row(i).real().cast<double>();
-      v_real.normalize();
-
-      double imag_norm = v_imag.norm();
-
-      if (imag_norm > tol) {
-        bool found = false;
-        for (Index j = 0; j < conj_imag_axes.size(); ++j) {
-          if (almost_equal(v_imag, conj_imag_axes[j], tol) &&
-              almost_equal(v_real, real_axes[j], tol)) {
-            found = true;
-            found_conj_imag[j] = true;
-            break;
-          }
-        }
-        if (!found) {
-          real_axes.push_back(v_real);
-          conj_imag_axes.push_back(-v_imag);
-          found_conj_imag.push_back(false);
-          add_vector(v_real);
-          add_vector(v_imag);
-        }
-      } else {
-        add_vector(v_real);
+    if (!irrep.complex) {
+      // Real irrep: add trans_mat rows directly
+      trans_mat.block(row, 0, irrep.irrep_dim, irrep.vector_dim) =
+          irrep.trans_mat.real();
+      row += irrep.irrep_dim;
+    } else {
+      // Complex irrep: collect Re and Im parts of all rows as column
+      // vectors, then orthogonalize to build a basis for the subspace check
+      Eigen::MatrixXd parts(col, 2 * irrep.irrep_dim);
+      for (Index i = 0; i < irrep.irrep_dim; ++i) {
+        parts.col(2 * i) =
+            Eigen::VectorXd(irrep.trans_mat.row(i).real().transpose());
+        parts.col(2 * i + 1) =
+            Eigen::VectorXd(irrep.trans_mat.row(i).imag().transpose());
       }
+
+      // Orthogonalize for subspace check only
+      Eigen::ColPivHouseholderQR<Eigen::MatrixXd> colqr(parts);
+      colqr.setThreshold(TOL);
+      Index rank = colqr.rank();
+
+      Eigen::HouseholderQR<Eigen::MatrixXd> qr(parts);
+      Eigen::MatrixXd Q = Eigen::MatrixXd(qr.householderQ()).leftCols(rank);
+
+      // Check if this real subspace extends the covered subspace.
+      // Conjugate partners span the same real subspace, so the second
+      // one encountered will not extend and will be skipped.
+      Eigen::MatrixXcd Q_complex = Q.cast<std::complex<double>>();
+      if (is_extended_by(covered, Q_complex)) {
+        // New subspace: add original Re and Im parts, preserving the
+        // symmetrized axis selection exactly
+        for (Index i = 0; i < irrep.irrep_dim; ++i) {
+          if (row + 1 >= trans_mat.rows()) {
+            throw std::runtime_error(
+                "Error in full_trans_mat: row out of range error");
+          }
+          trans_mat.block(row, 0, 1, col) =
+              irrep.trans_mat.row(i).real().template cast<double>();
+          row += 1;
+          trans_mat.block(row, 0, 1, col) =
+              irrep.trans_mat.row(i).imag().template cast<double>();
+          row += 1;
+        }
+        covered = extend(covered, Q_complex);
+      }
+      // else: conjugate partner already covered, skip
     }
   }
 
-  /// Check that all complex conjugate pairs of irrep vectors have been included
-  /// in the result
-  for (Index i = 0; i < conj_imag_axes.size(); ++i) {
-    if (!found_conj_imag[i]) {
-      throw std::runtime_error(
-          "Error in full_trans_mat: did not find conjugate pair for all "
-          "complex irrep vectors");
-    }
+  if (row != trans_mat.rows()) {
+    std::stringstream msg;
+    msg << "Error in full_trans_mat: expected " << trans_mat.rows()
+        << " rows but got " << row;
+    throw std::runtime_error(msg.str());
   }
 
   return trans_mat;
@@ -178,7 +193,8 @@ struct SubspaceIrrepDecomposition {
 
   void solve(MatrixRep const &fullspace_rep, GroupIndices const &head_group,
              std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
-             bool allow_complex, std::optional<Log> log);
+             bool allow_complex, std::optional<Log> log,
+             CommuterMethod method = CommuterMethod::deterministic);
 };
 
 /// \brief Solve for irrep subspaces of a subspace
@@ -202,7 +218,7 @@ struct SubspaceIrrepDecomposition {
 void SubspaceIrrepDecomposition::solve(
     MatrixRep const &fullspace_rep, GroupIndices const &head_group,
     std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
-    bool allow_complex, std::optional<Log> log) {
+    bool allow_complex, std::optional<Log> log, CommuterMethod method) {
   using namespace IrrepDecompositionImpl;
 
   // expand the initial subspace into an invariant subspace
@@ -217,22 +233,23 @@ void SubspaceIrrepDecomposition::solve(
   // In some cases the `irrep_decomposition` method does not find all irreps.
   // As long as it finds at least one, this loop will try again in the
   // remaining subspace.
-  Index i = 1;
+  Index iteration_index = 1;
   Index rotation_count = 0;
   while (true) {
     if (log.has_value()) {
       std::stringstream ss;
-      ss << "Iteration " << i;
+      ss << "Iteration " << iteration_index;
       log->begin<Log::standard>(ss.str());
       log->increase_indent();
       log->indent() << std::endl;
 
-      log->indent() << "Subspace:" << std::endl;
-      for (Index j = 0; j < subspace.cols(); ++j) {
-        log->indent() << "- " << j << ": "
-                      << pretty(subspace.col(j)).transpose() << std::endl;
-      }
-      log->indent() << std::endl;
+      // log->indent() << "Incomplete subspace:" << std::endl;
+      // for (Index j = 0; j < incomplete_subspace.cols(); ++j) {
+      //   log->indent() << "- " << j << ": "
+      //                 << pretty(incomplete_subspace.col(j)).transpose()
+      //                 << std::endl;
+      // }
+      // log->indent() << std::endl;
     }
 
     // Irreps are found in a subspace specified via the subspace matrix rep
@@ -249,8 +266,12 @@ void SubspaceIrrepDecomposition::solve(
       append_time(*log, 2);
     }
 
+    // iteration_index start at 1 ->
+    // start with real seed for iteration 1, complex seed for iteration 2, etc.
+    bool start_with_real_seed = (iteration_index % 2 == 1);
     std::vector<IrrepInfo> subspace_irreps_i =
-        irrep_decomposition(subspace_rep_i, head_group, allow_complex, log);
+        irrep_decomposition(subspace_rep_i, head_group, allow_complex, log,
+                            method, start_with_real_seed);
 
     // If no irreps found in the subspace,
     // then we stop with an incomplete decomposition
@@ -353,12 +374,13 @@ void SubspaceIrrepDecomposition::solve(
     incomplete_subspace = make_kernel(finished_subspace);
 
     if (log.has_value()) {
-      log->indent() << "Iteration " << i << ": DONE." << std::endl << std::endl;
+      log->indent() << "Iteration " << iteration_index << ": DONE." << std::endl
+                    << std::endl;
       log->decrease_indent();
     }
 
     // Update iteration count
-    ++i;
+    ++iteration_index;
   }
 }
 
@@ -381,7 +403,7 @@ IrrepDecomposition::IrrepDecomposition(
     MatrixRep const &_fullspace_rep, GroupIndices const &_head_group,
     Eigen::MatrixXd const &init_subspace,
     std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
-    bool allow_complex, std::optional<Log> _log)
+    bool allow_complex, std::optional<Log> _log, CommuterMethod method)
     : init_subspace(init_subspace),
       fullspace_rep(_fullspace_rep),
       head_group(_head_group),
@@ -437,10 +459,10 @@ IrrepDecomposition::IrrepDecomposition(
   // As long as it finds at least one, this loop will try again in the
   // remaining subspace.
   incomplete_subspace = subspace;
-  Index i = 1;
+  Index iteration_index = 1;
   while (true) {
     if (log.has_value()) {
-      log->indent() << "-- Begin iteration " << i;
+      log->indent() << "-- Begin iteration " << iteration_index;
       append_time(*log, 2);
     }
 
@@ -457,8 +479,10 @@ IrrepDecomposition::IrrepDecomposition(
       append_time(*log, 2);
     }
 
+    bool start_with_real_seed = (iteration_index % 2 == 1);
     std::vector<IrrepInfo> subspace_irreps_i =
-        irrep_decomposition(subspace_rep_i, head_group, allow_complex, log);
+        irrep_decomposition(subspace_rep_i, head_group, allow_complex, log,
+                            method, start_with_real_seed);
     if (log.has_value()) {
       print_irreps<Log::debug>(*log, "Irreps, as found", subspace_irreps_i);
     }
@@ -571,7 +595,7 @@ IrrepDecomposition::IrrepDecomposition(
     }
 
     // Check iteration count
-    ++i;
+    ++iteration_index;
   }
 
   // 3) Combine to form symmetry adapted subspace
@@ -707,7 +731,7 @@ IrrepDecomposition::IrrepDecomposition(
     std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
     std::optional<std::vector<Index>> const &class_indices, bool allow_complex,
     std::optional<Log> _log, SolveByDisjointVariableSetsFlag /*flag*/,
-    double zero_tol)
+    double zero_tol, CommuterMethod method)
     : init_subspace(init_subspace),
       fullspace_rep(_fullspace_rep),
       head_group(_head_group),
@@ -805,7 +829,8 @@ IrrepDecomposition::IrrepDecomposition(
     // }
 
     SubspaceIrrepDecomposition x(subspace_i);
-    x.solve(fullspace_rep, head_group, subgroup_orbits, allow_complex, log);
+    x.solve(fullspace_rep, head_group, subgroup_orbits, allow_complex, log,
+            method);
 
     Eigen::MatrixXd symmetry_adapted_subspace_i =
         full_trans_mat(x.irreps, allow_complex).adjoint();

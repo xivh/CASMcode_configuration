@@ -65,7 +65,8 @@ DoFSpaceAnalysisResults dof_space_analysis(
     bool include_default_occ_modes,
     std::optional<std::map<int, int>> sublattice_index_to_default_occ,
     std::optional<std::map<Index, int>> site_index_to_default_occ,
-    std::string symmetrization, bool calc_wedges, std::optional<Log> log) {
+    std::string symmetrization, bool calc_wedges, std::optional<Log> log,
+    irreps::CommuterMethod commuter_method) {
   // throw std::runtime_error("dof_space_analysis check.");
   if (log.has_value()) {
     log->begin<Log::standard>("DoF space analysis");
@@ -250,7 +251,7 @@ DoFSpaceAnalysisResults dof_space_analysis(
   irreps::SolveByDisjointVariableSetsFlag flag;
   irreps::IrrepDecomposition irrep_decomposition(
       matrix_rep, group_indices, dof_space.basis, subgroup_orbits,
-      class_indices, allow_complex, log, flag);
+      class_indices, allow_complex, log, flag, 1e-5, commuter_method);
 
   // Generate report, based on constructed inputs
   if (log.has_value()) {

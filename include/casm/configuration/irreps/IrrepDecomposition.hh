@@ -9,6 +9,12 @@
 namespace CASM {
 namespace irreps {
 
+/// \brief Method for constructing commuter matrices in irrep decomposition
+enum class CommuterMethod {
+  deterministic,  // existing structured kernel column pair enumeration
+  random          // random Hermitian seed matrix
+};
+
 struct IrrepInfo {
   /// \brief Construct an IrrepInfo with transformation matrix and vector of
   /// irreducible characters
@@ -67,8 +73,8 @@ struct IrrepDecomposition {
                      GroupIndices const &_head_group,
                      Eigen::MatrixXd const &_init_subspace,
                      std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
-                     bool allow_complex,
-                     std::optional<Log> _log = std::nullopt);
+                     bool allow_complex, std::optional<Log> _log = std::nullopt,
+                     CommuterMethod method = CommuterMethod::deterministic);
 
   /// IrrepDecomposition constructor
   IrrepDecomposition(MatrixRep const &_fullspace_rep,
@@ -78,7 +84,8 @@ struct IrrepDecomposition {
                      std::optional<std::vector<Index>> const &class_indices,
                      bool allow_complex, std::optional<Log> _log,
                      SolveByDisjointVariableSetsFlag flag,
-                     double zero_tol = 1e-5);
+                     double zero_tol = 1e-5,
+                     CommuterMethod method = CommuterMethod::deterministic);
 
   /// Full space matrix representation
   ///

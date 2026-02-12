@@ -3,6 +3,7 @@
 
 #include "casm/clexulator/DoFSpace.hh"
 #include "casm/configuration/Configuration.hh"
+#include "casm/configuration/irreps/IrrepDecomposition.hh"
 #include "casm/configuration/irreps/VectorSpaceSymReport.hh"
 
 namespace CASM {
@@ -48,7 +49,9 @@ DoFSpaceAnalysisResults dof_space_analysis(
     std::optional<std::map<Index, int>> site_index_to_default_occ =
         std::nullopt,
     std::string symmetrization = "complete", bool calc_wedges = false,
-    std::optional<Log> log = std::nullopt);
+    std::optional<Log> log = std::nullopt,
+    irreps::CommuterMethod commuter_method =
+        irreps::CommuterMethod::deterministic);
 
 }  // namespace config
 }  // namespace CASM

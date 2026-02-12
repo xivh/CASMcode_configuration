@@ -499,10 +499,6 @@ def TlZn2Sb2_disp_prim():
             [4.32450000000000, 4.32450000000000, -3.64349936250000],
         ]
     ).transpose()
-    lattice = xtal.Lattice(
-        column_vector_matrix=L,
-        tol=1e-3,
-    )
 
     atom_type = ["Sb", "Sb", "Sb", "Sb", "Tl", "Tl", "Zn", "Zn", "Zn", "Zn"]
 

@@ -3011,7 +3011,8 @@ PYBIND11_MODULE(_configuration, m) {
              bool include_default_occ_modes,
              std::optional<std::map<int, int>> sublattice_index_to_default_occ,
              std::optional<std::map<Index, int>> site_index_to_default_occ,
-             std::string symmetrization, bool calc_wedges) -> py::tuple {
+             std::string symmetrization, bool calc_wedges,
+             std::string commuter_method) -> py::tuple {
             if (!symmetry_adapted) {
               clexulator::DoFSpace dof_space_in(
                   dof_key, self.supercell->prim->basicstructure,
@@ -3047,15 +3048,27 @@ PYBIND11_MODULE(_configuration, m) {
                   self.supercell->superlattice.transformation_matrix_to_super(),
                   sites, basis);
 
+              irreps::CommuterMethod _commuter_method;
+              if (commuter_method == "deterministic") {
+                _commuter_method = irreps::CommuterMethod::deterministic;
+              } else if (commuter_method == "random") {
+                _commuter_method = irreps::CommuterMethod::random;
+              } else {
+                throw std::runtime_error(
+                    "Error in make_dof_space: commuter_method must be "
+                    "\"deterministic\" or \"random\", got \"" +
+                    commuter_method + "\"");
+              }
+
               std::optional<Log> log = std::nullopt;
               // std::optional<Log> log = Log(std::cout, Log::debug, true);
               config::DoFSpaceAnalysisResults results =
-                  config::dof_space_analysis(*dof_space, self.supercell->prim,
-                                             self, exclude_homogeneous_modes,
-                                             include_default_occ_modes,
-                                             sublattice_index_to_default_occ,
-                                             site_index_to_default_occ,
-                                             symmetrization, calc_wedges, log);
+                  config::dof_space_analysis(
+                      *dof_space, self.supercell->prim, self,
+                      exclude_homogeneous_modes, include_default_occ_modes,
+                      sublattice_index_to_default_occ,
+                      site_index_to_default_occ, symmetrization, calc_wedges,
+                      log, _commuter_method);
               return py::make_tuple(
                   std::make_shared<clexulator::DoFSpace>(
                       std::move(results.symmetry_adapted_dof_space)),
@@ -3127,6 +3140,17 @@ PYBIND11_MODULE(_configuration, m) {
               If True, calculate the irreducible wedges for the vector space.
               This may take a long time, but provides the symmetrically unique
               portions of the vector space, which is useful for enumeration.
+          commuter_method : str = "deterministic"
+              Method for constructing commuter matrices in the irrep
+              decomposition. Options are:
+
+              - "deterministic": (default) Use structured kernel column pair
+                enumeration. This method is deterministic initially, but if
+                it fails, then a random rotation of the subspace is applied
+                and the method is retried, up to a maximum of 10 attempts.
+              - "random": Use random Hermitian seed matrices projected via the
+                Reynolds operator. This usually enables finding irreps in one
+                attempt, but is not deterministic.
 
           Returns
           -------
@@ -3146,7 +3170,8 @@ PYBIND11_MODULE(_configuration, m) {
           py::arg("sublattice_index_to_default_occ") = std::nullopt,
           py::arg("site_index_to_default_occ") = std::nullopt,
           py::arg("symmetrization") = "complete",
-          py::arg("calc_wedges") = false)
+          py::arg("calc_wedges") = false,
+          py::arg("commuter_method") = "deterministic")
       .def(
           "order_parameters",
           [](config::Configuration &self,
@@ -4674,15 +4699,27 @@ PYBIND11_MODULE(_configuration, m) {
          std::optional<std::map<int, int>> sublattice_index_to_default_occ,
          std::optional<std::map<Index, int>> site_index_to_default_occ,
          std::string symmetrization, bool calc_wedges,
-         std::optional<std::string> verbosity)
-          -> config::DoFSpaceAnalysisResults {
+         std::optional<std::string> verbosity,
+         std::string commuter_method) -> config::DoFSpaceAnalysisResults {
+        irreps::CommuterMethod _commuter_method;
+        if (commuter_method == "deterministic") {
+          _commuter_method = irreps::CommuterMethod::deterministic;
+        } else if (commuter_method == "random") {
+          _commuter_method = irreps::CommuterMethod::random;
+        } else {
+          throw std::runtime_error(
+              "Error in dof_space_analysis: commuter_method must be "
+              "\"deterministic\" or \"random\", got \"" +
+              commuter_method + "\"");
+        }
         return run_with_sigint_handler(
             [&]() -> config::DoFSpaceAnalysisResults {
               std::optional<Log> log = make_log(verbosity);
               return config::dof_space_analysis(
                   dof_space, prim, configuration, exclude_homogeneous_modes,
                   include_default_occ_modes, sublattice_index_to_default_occ,
-                  site_index_to_default_occ, symmetrization, calc_wedges, log);
+                  site_index_to_default_occ, symmetrization, calc_wedges, log,
+                  _commuter_method);
             });
       },
       R"pbdoc(
@@ -4754,6 +4791,17 @@ PYBIND11_MODULE(_configuration, m) {
           If not None, the irrep decomposition process will be logged to
           standard output. Use "standard" for basic logging output,
           or "verbose" for additional logging output.
+      commuter_method : str = "deterministic"
+          Method for constructing commuter matrices in the irrep
+          decomposition. Options are:
+
+          - "deterministic": (default) Use structured kernel column pair
+            enumeration. This method is deterministic initially, but if
+            it fails, then a random rotation of the subspace is applied
+            and the method is retried, up to a maximum of 10 attempts.
+          - "random": Use random Hermitian seed matrices projected via the
+            Reynolds operator. This usually enables finding irreps in one
+            attempt, but is not deterministic.
 
       Returns
       -------
@@ -4770,7 +4818,8 @@ PYBIND11_MODULE(_configuration, m) {
       py::arg("sublattice_index_to_default_occ") = std::nullopt,
       py::arg("site_index_to_default_occ") = std::nullopt,
       py::arg("symmetrization") = "complete", py::arg("calc_wedges") = false,
-      py::arg("verbosity") = std::nullopt);
+      py::arg("verbosity") = std::nullopt,
+      py::arg("commuter_method") = "deterministic");
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

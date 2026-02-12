@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <random>
 
 #include "casm/configuration/irreps/Symmetrizer.hh"
 #include "casm/configuration/irreps/misc.hh"
@@ -85,6 +86,110 @@ Eigen::MatrixXcd make_commuter(CommuterParamsCounter const &params,
   auto const &phase = params.phase;
   Eigen::MatrixXcd M_init = phase * col_i * col_j.adjoint() +
                             std::conj(phase) * col_j * col_i.adjoint();
+
+  // If there are no group elements, return zero matrix
+  if (head_group.size() == 0) {
+    return complex_Zero(dim, dim);
+  }
+
+  Eigen::MatrixXcd M = complex_Zero(dim, dim);
+
+  // Convert head_group into an indexable vector for partitioning
+  std::vector<Index> head_vec;
+  head_vec.reserve(head_group.size());
+  for (Index idx : head_group) head_vec.push_back(idx);
+
+  // Determine number of threads to use
+  unsigned int hw_conc = std::thread::hardware_concurrency();
+  Index max_threads = hw_conc == 0 ? 1 : static_cast<Index>(hw_conc);
+  Index n_threads = std::min<Index>(static_cast<Index>(head_vec.size()),
+                                    std::max<Index>(1, max_threads));
+
+  // If only one thread, do the simple serial loop for minimal overhead
+  if (n_threads == 1) {
+    for (Index element_index : head_group) {
+      M.noalias() +=
+          rep[element_index] * M_init * rep[element_index].transpose();
+    }
+    return M;
+  }
+
+  // Prepare per-thread local accumulators
+  std::vector<Eigen::MatrixXcd> local_Ms(n_threads);
+  for (Index t = 0; t < n_threads; ++t) local_Ms[t] = complex_Zero(dim, dim);
+
+  // Partition head_vec into contiguous chunks
+  Index total = static_cast<Index>(head_vec.size());
+  Index chunk = (total + n_threads - 1) / n_threads;
+
+  // Launch threads
+  std::vector<std::thread> threads;
+  threads.reserve(n_threads);
+  for (Index t = 0; t < n_threads; ++t) {
+    Index start = t * chunk;
+    Index end = std::min(start + chunk, total);
+
+    threads.emplace_back([&, start, end, t]() {
+      Eigen::MatrixXcd &local = local_Ms[t];
+      for (Index idx = start; idx < end; ++idx) {
+        Index element_index = head_vec[idx];
+        local.noalias() +=
+            rep[element_index] * M_init * rep[element_index].transpose();
+      }
+    });
+  }
+
+  // Join threads
+  for (auto &th : threads) {
+    if (th.joinable()) th.join();
+  }
+
+  // Sum local accumulators into final matrix
+  for (Index t = 0; t < n_threads; ++t) {
+    M.noalias() += local_Ms[t];
+  }
+
+  return M;
+}
+
+Eigen::MatrixXcd make_random_commuter(MatrixRep const &rep,
+                                      GroupIndices const &head_group,
+                                      Eigen::MatrixXcd const &kernel,
+                                      std::mt19937 &gen,
+                                      bool use_complex_seed) {
+  Index dim = rep[0].rows();
+  Index k = kernel.cols();
+
+  std::normal_distribution<double> dist(0.0, 1.0);
+  Eigen::MatrixXcd M_init;
+
+  if (use_complex_seed) {
+    // Generate random complex Hermitian matrix of size (k x k).
+    // A complex Hermitian seed can distinguish complex conjugate irrep pairs
+    // that share eigenvalues under a real symmetric commuter.
+    Eigen::MatrixXcd A(k, k);
+    for (Index r = 0; r < k; ++r) {
+      for (Index c = 0; c < k; ++c) {
+        A(r, c) = std::complex<double>(0.0, dist(gen));
+      }
+    }
+    Eigen::MatrixXcd H = A + A.adjoint();
+    M_init = kernel * H * kernel.adjoint();
+  } else {
+    // Generate random real symmetric matrix of size (k x k).
+    // Using a real symmetric seed (rather than complex Hermitian) ensures that
+    // the resulting commuter is real symmetric when the kernel and rep are
+    // real, which keeps eigenvectors real for real irreps.
+    Eigen::MatrixXd A_real(k, k);
+    for (Index r = 0; r < k; ++r) {
+      for (Index c = 0; c < k; ++c) {
+        A_real(r, c) = dist(gen);
+      }
+    }
+    Eigen::MatrixXcd H =
+        (A_real + A_real.transpose()).cast<std::complex<double>>();
+    M_init = kernel * H * kernel.adjoint();
+  }
 
   // If there are no group elements, return zero matrix
   if (head_group.size() == 0) {
@@ -613,12 +718,24 @@ std::vector<PossibleIrrep> make_possible_irreps(
                     << possible_irreps.back().is_irrep;
       append_time(*log, 1);
       auto const &p = possible_irreps.back();
+
+      bool is_complex = !almost_zero(p.subspace.adjoint().imag());
+
+      // double max_imag_component = 0.0;
+      // if (p.subspace.size() > 0) {
+      //   max_imag_component =
+      //   p.subspace.adjoint().imag().cwiseAbs().maxCoeff();
+      // }
+
       log->indent() << "    - characters_squared_norm: " << std::setprecision(2)
                     << p.characters_squared_norm << std::endl;
       log->indent() << "    - is_block_diagonal: " << std::boolalpha
                     << p.is_block_diagonal << std::endl;
-      log->indent() << "    - complex: " << std::boolalpha
-                    << !almost_zero(p.subspace.adjoint().imag()) << std::endl;
+      log->indent() << "    - complex: " << std::boolalpha << is_complex
+                    << std::endl;
+      // log->indent() << "    - max imag component of subspace: "
+      //               << max_imag_component << std::endl;
+      // std::cout << "subspace:\n" << p.subspace << std::endl;
     }
 
     begin = end;
@@ -794,15 +911,23 @@ bool is_irrep(MatrixRep const &rep, GroupIndices const &head_group) {
 ///     complex-valued. If false, complex irreps are combined to form real
 ///     representations
 /// \param log Optional Log object for logging progress
+/// \param method Method for constructing commuters. The "deterministic" method
+///     iterates deterministically through possible commuters, but does not
+///     guarantee that all irreps will be found. The "random" method randomly
+///     randomly constructs commuters, alternating between commuters
+///     constructed from real-valued and complex-valued seeds, up to a maximum
+///     of 10 attempts.
+/// \param start_with_real_seed If method == CommuterMethod::random, whether to
+///     start with a commuter constructed from a real-valued seed, or a
+///     complex-valued seed.
 ///
 /// \result vector of IrrepInfo objects. Irreps are ordered by dimension, with
 ///     identity first (if present).  Repeated irreps (with equal character
 ///     vectors) are sequential, and are distinguished by IrrepInfo::index.
 ///
-std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
-                                           GroupIndices const &head_group,
-                                           bool allow_complex,
-                                           std::optional<Log> log) {
+std::vector<IrrepInfo> irrep_decomposition(
+    MatrixRep const &rep, GroupIndices const &head_group, bool allow_complex,
+    std::optional<Log> log, CommuterMethod method, bool start_with_real_seed) {
   if (log.has_value()) {
     log->begin<Log::standard>("Find irreps");
     log->increase_indent();
@@ -849,103 +974,186 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
   //   the adapted_subspace space) BP: not necessary?
   std::set<PossibleIrrep> irreps;
 
-  // count over possible commuter matrices for this kernel:
-  // - kernel column pairs (i,j), j>=i & phase = [1, i]; skips i==j if
-  // phase==i
-  CommuterParamsCounter commuter_params;
-  commuter_params.reset(kernel);
+  if (method == CommuterMethod::deterministic) {
+    // count over possible commuter matrices for this kernel:
+    // - kernel column pairs (i,j), j>=i & phase = [1, i]; skips i==j if
+    // phase==i
+    CommuterParamsCounter commuter_params;
+    commuter_params.reset(kernel);
 
-  do {  // while adapated_subspace.cols() != dim
+    do {  // while adapated_subspace.cols() != dim
 
-    if (!commuter_params.valid()) {
-      // The commuter construction method does not currently guarantee that
-      // all irreps will be revealed. The caller may have a way to handle this
-      // and so this does not throw an exception.
-
-      if (log.has_value()) {
-        log->indent() << std::endl;
-        log->indent() << "Break: All commuters attempted" << std::endl;
-      }
-
-      break;
-    }
-    if (log.has_value() && log->verbosity() >= Log::verbose) {
-      log->indent() << "Make commuter... ";
-      append_time(*log, 1);
-    }
-
-    // make next commuter, M, and check if not zero
-    Eigen::MatrixXcd commuter =
-        make_commuter(commuter_params, rep, head_group, kernel);
-
-    if (almost_equal(frobenius_product(commuter).real(), 0., TOL)) {
-      if (log.has_value() && log->verbosity() >= Log::verbose) {
-        log->indent() << "Frobenius product is zero. Skipping... ";
-        append_time(*log, 1);
-      }
-      commuter_params.increment();
-      continue;
-    }
-
-    // make possible irreps:
-    //
-    // Given kernel, K, and commuter matrix, M, perform eigenvalue
-    // decomposition
-    //     K.adjoint() * M * K = V * D * V.inverse()
-    // and construct matrix representation that acts on vectors in the K*V
-    // basis, which will be block diagonalized and sorted by eigenvalue. Each
-    // block corresponds to a possible irrep, which can be checked by its
-    // characters. The columns in K*V corresponding to an irrep are the irrep
-    // subspace.
-    if (log.has_value() && log->verbosity() >= Log::verbose) {
-      log->indent() << "Make possible irreps...";
-      append_time(*log, 1);
-    }
-    std::vector<PossibleIrrep> possible_irreps = make_possible_irreps(
-        commuter, kernel, rep, head_group_vec, allow_complex, log);
-
-    // save any possible irrep that:
-    // - i) is an irrep,
-    // - and ii) extends the adapted_subspace space (BP: not necessary?)
-    bool any_new_irreps = false;
-    for (auto const &possible_irrep : possible_irreps) {
-      if (possible_irrep.is_irrep &&
-          is_extended_by(adapted_subspace, possible_irrep.subspace)) {
-        irreps.insert(possible_irrep);
-        adapted_subspace = extend(adapted_subspace, possible_irrep.subspace);
-        any_new_irreps = true;
+      if (!commuter_params.valid()) {
+        // The commuter construction method does not currently guarantee that
+        // all irreps will be revealed. The caller may have a way to handle
+        // this and so this does not throw an exception.
 
         if (log.has_value()) {
-          log->indent() << "Found irrep of dim " << possible_irrep.irrep_dim
-                        << " (" << dim - adapted_subspace.cols() << " / " << dim
-                        << " dim remaining)";
+          log->indent() << std::endl;
+          log->indent() << "Break: All commuters attempted" << std::endl;
+        }
+
+        break;
+      }
+      if (log.has_value() && log->verbosity() >= Log::verbose) {
+        log->indent() << "Make commuter... ";
+        append_time(*log, 1);
+      }
+
+      // make next commuter, M, and check if not zero
+      Eigen::MatrixXcd commuter =
+          make_commuter(commuter_params, rep, head_group, kernel);
+
+      if (almost_equal(frobenius_product(commuter).real(), 0., TOL)) {
+        if (log.has_value() && log->verbosity() >= Log::verbose) {
+          log->indent() << "Frobenius product is zero. Skipping... ";
           append_time(*log, 1);
         }
+        commuter_params.increment();
+        continue;
       }
+
+      // make possible irreps:
+      //
+      // Given kernel, K, and commuter matrix, M, perform eigenvalue
+      // decomposition
+      //     K.adjoint() * M * K = V * D * V.inverse()
+      // and construct matrix representation that acts on vectors in the K*V
+      // basis, which will be block diagonalized and sorted by eigenvalue. Each
+      // block corresponds to a possible irrep, which can be checked by its
+      // characters. The columns in K*V corresponding to an irrep are the irrep
+      // subspace.
+      if (log.has_value() && log->verbosity() >= Log::verbose) {
+        log->indent() << "Make possible irreps...";
+        append_time(*log, 1);
+      }
+      std::vector<PossibleIrrep> possible_irreps = make_possible_irreps(
+          commuter, kernel, rep, head_group_vec, allow_complex, log);
+
+      // save any possible irrep that:
+      // - i) is an irrep,
+      // - and ii) extends the adapted_subspace space (BP: not necessary?)
+      bool any_new_irreps = false;
+      for (auto const &possible_irrep : possible_irreps) {
+        if (possible_irrep.is_irrep &&
+            is_extended_by(adapted_subspace, possible_irrep.subspace)) {
+          irreps.insert(possible_irrep);
+          adapted_subspace = extend(adapted_subspace, possible_irrep.subspace);
+          any_new_irreps = true;
+
+          if (log.has_value()) {
+            log->indent() << "Found irrep of dim " << possible_irrep.irrep_dim
+                          << " (" << dim - adapted_subspace.cols() << " / "
+                          << dim << " dim remaining)";
+            append_time(*log, 1);
+          }
+        }
+      }
+
+      // If any new irreps were found, break to return
+      // Empirically, it seems more efficient to break and continue
+      // in the smaller remaining subspace with recalculated matrix reps.
+      if (any_new_irreps && adapted_subspace.cols() != dim) {
+        kernel = make_kernel(adapted_subspace);
+        commuter_params.reset(kernel);
+        if (kernel.cols() + adapted_subspace.cols() !=
+            adapted_subspace.rows()) {
+          throw std::runtime_error(
+              "Unknown error finding irreps: dimension mismatch");
+        }
+        // Restart after finding any irreps
+        if (log.has_value()) {
+          log->indent() << std::endl;
+          log->indent() << "Break: irreps found" << std::endl;
+        }
+
+        break;
+
+      } else {
+        commuter_params.increment();
+      }
+    } while (adapted_subspace.cols() != dim);
+
+  } else {
+    // CommuterMethod::random
+    // Use random seed matrices projected via Reynolds operator.
+    // Alternates between real symmetric and complex Hermitian seeds:
+    // - Real symmetric seeds find real irreps with clean real eigenvectors
+    // - Complex Hermitian seeds can distinguish complex conjugate irrep
+    //   pairs that share eigenvalues under a real symmetric commuter
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    Index max_random_attempts = 10;
+
+    bool any_new_irreps = false;
+    Index attempt = 0;
+
+    while (attempt < max_random_attempts) {
+      // Alternate real seed and complex seed
+      Index offset = start_with_real_seed ? 0 : 1;
+      bool use_complex_seed = ((offset + attempt) % 2 == 1);
+
+      if (log.has_value() && log->verbosity() >= Log::verbose) {
+        log->indent() << "Make random commuter (attempt " << attempt + 1
+                      << " / " << max_random_attempts << ", "
+                      << (use_complex_seed ? "complex" : "real")
+                      << " seed)... ";
+        append_time(*log, 1);
+      }
+
+      Eigen::MatrixXcd commuter =
+          make_random_commuter(rep, head_group, kernel, gen, use_complex_seed);
+
+      if (almost_equal(frobenius_product(commuter).real(), 0., TOL)) {
+        if (log.has_value() && log->verbosity() >= Log::verbose) {
+          log->indent() << "Frobenius product is zero. Skipping... ";
+          append_time(*log, 1);
+        }
+        ++attempt;
+        continue;
+      }
+
+      if (log.has_value() && log->verbosity() >= Log::verbose) {
+        log->indent() << "Make possible irreps...";
+        append_time(*log, 1);
+      }
+      std::vector<PossibleIrrep> possible_irreps = make_possible_irreps(
+          commuter, kernel, rep, head_group_vec, allow_complex, log);
+
+      for (auto const &possible_irrep : possible_irreps) {
+        if (possible_irrep.is_irrep &&
+            is_extended_by(adapted_subspace, possible_irrep.subspace)) {
+          irreps.insert(possible_irrep);
+          adapted_subspace = extend(adapted_subspace, possible_irrep.subspace);
+          any_new_irreps = true;
+
+          if (log.has_value()) {
+            log->indent() << "Found irrep of dim " << possible_irrep.irrep_dim
+                          << " (" << dim - adapted_subspace.cols() << " / "
+                          << dim << " dim remaining)";
+            append_time(*log, 1);
+          }
+        }
+      }
+
+      if (any_new_irreps) {
+        break;
+      }
+      ++attempt;
     }
 
-    // if any new irreps were found, recalculate kernel, reset commuter params
-    // counter, and go again
-    if (any_new_irreps && adapted_subspace.cols() != dim) {
-      kernel = make_kernel(adapted_subspace);
-      commuter_params.reset(kernel);
-      if (kernel.cols() + adapted_subspace.cols() != adapted_subspace.rows()) {
-        throw std::runtime_error(
-            "Unknown error finding irreps: dimension mismatch");
-      }
-
-      // Restart after finding any irreps
-      if (log.has_value()) {
+    if (log.has_value()) {
+      if (!any_new_irreps) {
+        log->indent() << std::endl;
+        log->indent() << "Break: No new irreps found after "
+                      << max_random_attempts << " random commuter attempts"
+                      << std::endl;
+      } else {
         log->indent() << std::endl;
         log->indent() << "Break: irreps found" << std::endl;
       }
-
-      break;
-
-    } else {
-      commuter_params.increment();
     }
-  } while (adapted_subspace.cols() != dim);
+  }
 
   // Make irrep info (no directions yet, orthogonalized but not aligned along
   // high symmetry directions)

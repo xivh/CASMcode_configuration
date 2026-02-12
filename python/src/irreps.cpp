@@ -95,7 +95,7 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
     std::optional<Eigen::MatrixXd> init_subspace, bool allow_complex,
     std::optional<irreps::SubgroupOrbitVec> subgroup_orbits_in,
     std::optional<std::vector<Index>> class_indices,
-    std::optional<std::string> verbosity) {
+    std::optional<std::string> verbosity, std::string commuter_method) {
   // py::scoped_ostream_redirect redirect;
   // py::gil_scoped_release release;
   std::optional<Log> log = make_log(verbosity);
@@ -150,10 +150,22 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
   // return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
   //                                   subgroup_orbits, allow_complex, log);
 
+  irreps::CommuterMethod method;
+  if (commuter_method == "deterministic") {
+    method = irreps::CommuterMethod::deterministic;
+  } else if (commuter_method == "random") {
+    method = irreps::CommuterMethod::random;
+  } else {
+    throw std::runtime_error(
+        "Error in make_IrrepDecomposition: commuter_method must be "
+        "\"deterministic\" or \"random\", got \"" +
+        commuter_method + "\"");
+  }
+
   irreps::SolveByDisjointVariableSetsFlag flag;
   return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
                                     subgroup_orbits, class_indices,
-                                    allow_complex, log, flag);
+                                    allow_complex, log, flag, 1e-5, method);
 }
 
 }  // namespace CASMpy
@@ -643,13 +655,25 @@ PYBIND11_MODULE(_irreps, m) {
               standard output. Use "standard" for basic logging output,
               or "verbose" for additional logging output.
 
+          commuter_method : str = "deterministic"
+              Method for constructing commuter matrices. Options are:
+
+              - "deterministic": (default) Use structured kernel column pair
+                enumeration. This method is deterministic initially, but if
+                it fails, then a random rotation of the subspace is applied
+                and the method is retried, up to a maximum of 10 attempts.
+              - "random": Use random Hermitian seed matrices projected via the
+                Reynolds operator. This usually enables finding irreps in one
+                attempt, but is not deterministic.
+
           )pbdoc",
            py::arg("matrix_rep"), py::arg("head_group") = std::nullopt,
            py::arg("init_subspace") = std::nullopt,
            py::arg("allow_complex") = true,
            py::arg("subgroup_orbits") = std::nullopt,
            py::arg("class_indices") = std::nullopt,
-           py::arg("verbosity") = std::nullopt)
+           py::arg("verbosity") = std::nullopt,
+           py::arg("commuter_method") = "deterministic")
       .def_readonly("matrix_rep", &irreps::IrrepDecomposition::fullspace_rep,
                     "Full space matrix representation")
       .def_readonly("head_group", &irreps::IrrepDecomposition::head_group,
