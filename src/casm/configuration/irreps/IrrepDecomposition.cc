@@ -138,18 +138,19 @@ Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps,
       // one encountered will not extend and will be skipped.
       Eigen::MatrixXcd Q_complex = Q.cast<std::complex<double>>();
       if (is_extended_by(covered, Q_complex)) {
-        // New subspace: add original Re and Im parts, preserving the
-        // symmetrized axis selection exactly
+        // Add Re and Im parts of trans_mat rows, normalized to unit length.
         for (Index i = 0; i < irrep.irrep_dim; ++i) {
           if (row + 1 >= trans_mat.rows()) {
             throw std::runtime_error(
                 "Error in full_trans_mat: row out of range error");
           }
-          trans_mat.block(row, 0, 1, col) =
+          Eigen::RowVectorXd re_row =
               irrep.trans_mat.row(i).real().template cast<double>();
+          trans_mat.block(row, 0, 1, col) = re_row.normalized();
           row += 1;
-          trans_mat.block(row, 0, 1, col) =
+          Eigen::RowVectorXd im_row =
               irrep.trans_mat.row(i).imag().template cast<double>();
+          trans_mat.block(row, 0, 1, col) = im_row.normalized();
           row += 1;
         }
         covered = extend(covered, Q_complex);

@@ -95,6 +95,13 @@ def test_dof_space_analysis_1(FCC_binary_prim):
     data = sym_report.to_dict()
     assert isinstance(data, dict)
 
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
+
 
 def test_dof_space_analysis_1_generic(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
@@ -141,6 +148,13 @@ def test_dof_space_analysis_1_generic(FCC_binary_prim):
 
     data = sym_report.to_dict()
     assert isinstance(data, dict)
+
+    # Check if basis.T @ basis is close to identity
+    basis = irrep_decomposition.symmetry_adapted_subspace
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
 
 
 def plot_irrep_axes(irrep: casmirreps.IrrepInfo, index: int):
@@ -298,118 +312,6 @@ def make_maximal_subgroups(supercell_symops: list[casmconfig.SupercellSymOp]):
     print(f"# only_lattice_translation_group: {len(only_lattice_translation_group)}")
 
 
-def test_groups(FCC_binary_GLstrain_disp_prim):
-    return  # skip test
-    prim = casmconfig.Prim(FCC_binary_GLstrain_disp_prim)
-    # T_dof_space = (
-    #     np.array(
-    #         [  # conventional FCC cubic cell
-    #             [-1, 1, 1],
-    #             [1, -1, 1],
-    #             [1, 1, -1],
-    #         ],
-    #         dtype=int,
-    #     )
-    #     * 2
-    # )
-    T_dof_space = np.eye(3, dtype=int) * 2
-    symmetrization = "fast"
-    supercell = casmconfig.Supercell(prim, T_dof_space)
-    configuration = casmconfig.Configuration(
-        supercell=supercell,
-    )
-
-    supercell_factor_group = casmconfig.make_invariant_subgroup(
-        configuration=configuration,
-    )
-    make_maximal_subgroups(
-        supercell_symops=supercell_factor_group,
-    )
-
-    # construct DoFSpace with default basis
-    dof_space_full, _ = configuration.make_dof_space(
-        dof_key="disp",
-        symmetry_adapted=False,
-        exclude_homogeneous_modes=False,
-    )
-
-    dof_space, _ = configuration.make_dof_space(
-        dof_key="disp",
-        symmetry_adapted=False,
-        exclude_homogeneous_modes=True,
-    )
-    print("basis shape:", dof_space.basis.shape)
-
-    print("-- dof_space_analysis -- ")
-    print()
-
-    # Perform DoF space analysis
-    results = casmconfig.dof_space_analysis(
-        dof_space=dof_space,
-        prim=prim,
-        symmetrization=symmetrization,
-        calc_wedges=False,
-        verbosity="standard",
-    )
-
-    print_report(results.symmetry_report)
-
-    assert False
-
-    print("-- IrrepDecomposition -- ")
-    print()
-
-    matrix_rep = casmconfig.make_dof_space_rep(
-        group=supercell_factor_group,
-        dof_space=dof_space_full,
-    )
-
-    abs_tol = 1e-5
-
-    # remove duplicate matrices from matrix_rep:
-    unique_matrices = []
-    for M in matrix_rep:
-        if not any(np.allclose(M, UM, atol=abs_tol) for UM in unique_matrices):
-            unique_matrices.append(M)
-
-    print("# of duplicate matrices removed:", len(matrix_rep) - len(unique_matrices))
-    matrix_rep = unique_matrices
-
-    # print("-- matrix_rep -- ")
-    # for i, M in enumerate(matrix_rep):
-    #     print(f"Matrix {i}:")
-    #     print(M)
-    #     print()
-
-    print("basis shape:", dof_space.basis.shape)
-
-    # Perform DoF space analysis
-    irrep_decomposition = casmirreps.IrrepDecomposition(
-        matrix_rep=matrix_rep,
-        init_subspace=dof_space.basis,
-        # init_subspace=np.array(
-        #     [
-        #         [0.0, 0.0, 0.0, 0.0],
-        #         [1.0, 0.0, 0.0, 0.0],
-        #         [0.0, 0.0, 0.0, 0.0],
-        #         [0.0, 1.0, 0.0, 0.0],
-        #         [0.0, 0.0, 0.0, 0.0],
-        #         [0.0, 0.0, 1.0, 0.0],
-        #         [0.0, 0.0, 0.0, 0.0],
-        #         [0.0, 0.0, 0.0, 1.0],
-        #     ]
-        # ),
-        symmetrization=symmetrization,
-    )
-
-    report = irrep_decomposition.make_symmetry_report(
-        calc_wedges=False,
-    )
-    print_report(report)
-
-    assert False
-
-
 def test_dof_space_analysis_2(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
     T_dof_space = np.array(
@@ -461,6 +363,13 @@ def test_dof_space_analysis_2(FCC_binary_prim):
 
     data = results.to_dict()
     assert isinstance(data, dict)
+
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
 
 
 def test_dof_space_analysis_2_generic(FCC_binary_prim):
@@ -543,6 +452,13 @@ def test_dof_space_analysis_2_generic(FCC_binary_prim):
 
     # print(xtal.pretty_json(data))
 
+    # Check if basis.T @ basis is close to identity
+    basis = irrep_decomposition.symmetry_adapted_subspace
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
+
 
 def test_dof_space_analysis_2a(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
@@ -589,6 +505,13 @@ def test_dof_space_analysis_2a(FCC_binary_prim):
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
 
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
+
 
 def test_dof_space_analysis_2b(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
@@ -634,6 +557,13 @@ def test_dof_space_analysis_2b(FCC_binary_prim):
     assert np.allclose(
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
+
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
 
 
 def test_dof_space_analysis_2c(FCC_binary_prim):
@@ -698,6 +628,13 @@ def test_dof_space_analysis_2c(FCC_binary_prim):
         sym_report.irrep_wedge_axes[1], conventional_FCC_occ_irrep_2_wedge_axes()
     )
 
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
+
 
 def test_dof_space_analysis_3(FCC_binary_occ_fix_corner_prim):
     prim = casmconfig.Prim(FCC_binary_occ_fix_corner_prim)
@@ -730,6 +667,13 @@ def test_dof_space_analysis_3(FCC_binary_occ_fix_corner_prim):
     assert np.allclose(
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
+
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
 
 
 def test_dof_space_analysis_4(FCC_binary_GLstrain_disp_prim):
@@ -772,6 +716,13 @@ def test_dof_space_analysis_4(FCC_binary_GLstrain_disp_prim):
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
 
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
+
 
 @pytest.mark.xfail(reason="MemoryError: std::bad_alloc")
 def test_dof_space_analysis_5(prim_ABC2):
@@ -788,7 +739,7 @@ def test_dof_space_analysis_5(prim_ABC2):
         dof_space=dof_space,
         prim=prim,
         # configuration=None,
-        # exclude_homogeneous_modes=None,
+        # exclude_homogeneous_modes=False,
         # include_default_occ_modes=False,
         symmetrization="fast",
         # calc_wedges=False,
@@ -804,6 +755,13 @@ def test_dof_space_analysis_5(prim_ABC2):
     assert np.allclose(
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
+
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
 
 
 def test_dof_space_analysis_6(FCC_binary_disp_fix_corner_prim):
@@ -838,6 +796,13 @@ def test_dof_space_analysis_6(FCC_binary_disp_fix_corner_prim):
     assert np.allclose(
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
+
+    # Check if basis.T @ basis is close to identity
+    basis = symmetry_adapted_dof_space.basis
+    identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
 
 
 def test_dof_space_analysis_TlZn2Sb2_disp(TlZn2Sb2_disp_prim):
@@ -881,8 +846,8 @@ def test_dof_space_analysis_TlZn2Sb2_disp(TlZn2Sb2_disp_prim):
         configuration=configuration,
         calc_wedges=False,
         exclude_homogeneous_modes=False,  # TODO: why is this necessary?
-        verbosity="none",
-        commuter_method="random",
+        verbosity="standard",
+        commuter_method="deterministic",
     )
     assert isinstance(results, casmconfig.DoFSpaceAnalysisResults)
     basis = results.symmetry_adapted_dof_space.basis
@@ -898,5 +863,6 @@ def test_dof_space_analysis_TlZn2Sb2_disp(TlZn2Sb2_disp_prim):
 
     # Check if basis.T @ basis is close to identity
     identity_approx = basis.T @ basis
+    # print("Diagonal of Basis.T @ Basis:\n", np.diag(identity_approx))
     # print("Basis.T @ Basis:\n", clean(identity_approx))
     assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
