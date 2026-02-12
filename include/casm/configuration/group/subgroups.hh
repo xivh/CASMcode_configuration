@@ -957,6 +957,13 @@ inline std::map<std::set<Index>, std::set<Index>> make_maximal_proper_subgroups(
 /// the existing object. Some properties are lazily evaluated and cached.
 class Subset {
  public:
+  /// \brief Constructor (full group)
+  ///
+  /// \param group The head group
+  Subset(std::shared_ptr<GenericGroup const> group)
+      : Subset(std::move(group),
+               Group_impl::_identity_indices_set(group->size())) {}
+
   /// \brief Constructor
   ///
   /// \param group The head group

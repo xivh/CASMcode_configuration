@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "casm/configuration/irreps/Symmetrizer.hh"
+#include "casm/configuration/irreps/misc.hh"
 #include "casm/configuration/irreps/to_real.hh"
 #include "casm/global/threads.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
@@ -576,7 +577,7 @@ std::vector<PossibleIrrep> make_possible_irreps(
   //   characters vectors equals the head group size, then the corresponding
   //   columns of the KV_matrix are an irrep subspace
   if (log.has_value() && log->verbosity() >= Log::verbose) {
-    log->indent() << "Begin irrep identification";
+    log->indent() << "Begin irrep identification... ";
     append_time(*log, 1);
   }
 
@@ -611,13 +612,20 @@ std::vector<PossibleIrrep> make_possible_irreps(
       log->indent() << "  - Is irrep = " << std::boolalpha
                     << possible_irreps.back().is_irrep;
       append_time(*log, 1);
+      auto const &p = possible_irreps.back();
+      log->indent() << "    - characters_squared_norm: " << std::setprecision(2)
+                    << p.characters_squared_norm << std::endl;
+      log->indent() << "    - is_block_diagonal: " << std::boolalpha
+                    << p.is_block_diagonal << std::endl;
+      log->indent() << "    - complex: " << std::boolalpha
+                    << !almost_zero(p.subspace.adjoint().imag()) << std::endl;
     }
 
     begin = end;
   } while (begin != eigenvalues.size());
 
   if (log.has_value() && log->verbosity() >= Log::verbose) {
-    log->indent() << "DONE";
+    log->indent() << "Irrep identification: DONE";
     append_time(*log, 2);
   }
 
@@ -797,6 +805,7 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
                                            std::optional<Log> log) {
   if (log.has_value()) {
     log->begin<Log::standard>("Find irreps");
+    log->increase_indent();
     log->indent() << std::endl;
 
     log->indent() << "Using " << max_threads() << " threads" << std::endl
@@ -808,6 +817,7 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
     if (log.has_value()) {
       log->indent() << std::endl;
       log->indent() << "No irreps to find." << std::endl << std::endl;
+      log->decrease_indent();
     }
     return std::vector<IrrepInfo>();
   }
@@ -950,6 +960,7 @@ std::vector<IrrepInfo> irrep_decomposition(MatrixRep const &rep,
                   << (adapted_subspace.cols() == dim ? "yes" : "no")
                   << std::endl
                   << std::endl;
+    log->decrease_indent();
   }
   return irrep_info;
 }
@@ -988,10 +999,6 @@ Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
 Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
                                      std::vector<Index> const &head_group_vec,
                                      Eigen::MatrixXd const &subspace) {
-  if (subspace.isIdentity()) {
-    return subspace;
-  }
-
   const double tol = TOL;
   Index n = subspace.rows();
   Index k = subspace.cols();
@@ -1013,7 +1020,6 @@ Eigen::MatrixXd make_invariant_space(MatrixRep const &rep,
 
     for (Index idx = start; idx < end; ++idx) {
       Index element_index = head_group_vec[idx];
-
       Eigen::MatrixXd transformed = rep[element_index] * subspace;  // (n x k)
 
       for (Index c = 0; c < k; ++c) {

@@ -211,6 +211,7 @@ DoFSpaceAnalysisResults dof_space_analysis(
   }
 
   std::optional<group::GroupIndicesOrbitSet> subgroup_orbits;
+  std::optional<std::vector<Index>> class_indices;
   if (symmetrization == "fast" || symmetrization == "complete") {
     if (symmetrization == "fast") {
       if (log.has_value()) {
@@ -219,6 +220,8 @@ DoFSpaceAnalysisResults dof_space_analysis(
       }
       group::MakeCyclicSubgroups f(symgroup);
       subgroup_orbits = f();
+      class_indices = symgroup->class_index;
+
     } else if (symmetrization == "complete") {
       if (log.has_value()) {
         log->indent() << "Generating all subgroups...";
@@ -226,10 +229,11 @@ DoFSpaceAnalysisResults dof_space_analysis(
       }
       group::MakeAllSubgroups f(symgroup);
       subgroup_orbits = f();
+      class_indices = symgroup->class_index;
     }
     if (log.has_value()) {
       log->indent() << std::endl;
-      log->indent() << "DONE";
+      log->indent() << "Generating all subgroups: DONE";
       irreps::append_time(*log, 1);
       log->indent() << std::endl;
     }
@@ -238,9 +242,15 @@ DoFSpaceAnalysisResults dof_space_analysis(
   bool allow_complex = true;
 
   // Note: this is logged internally
+  // irreps::IrrepDecomposition irrep_decomposition(
+  //     matrix_rep, group_indices, dof_space.basis, subgroup_orbits,
+  //     allow_complex, log);
+
+  // Note: this is logged internally
+  irreps::SolveByDisjointVariableSetsFlag flag;
   irreps::IrrepDecomposition irrep_decomposition(
       matrix_rep, group_indices, dof_space.basis, subgroup_orbits,
-      allow_complex, log);
+      class_indices, allow_complex, log, flag);
 
   // Generate report, based on constructed inputs
   if (log.has_value()) {

@@ -172,6 +172,14 @@ inline std::vector<Index> _identity_indices(Index n) {
   return result;
 }
 
+inline std::set<Index> _identity_indices_set(Index n) {
+  std::set<Index> result;
+  for (Index i = 0; i < n; ++i) {
+    result.insert(i);
+  }
+  return result;
+}
+
 template <typename ElementType>
 std::vector<ElementType> _make_subgroup_elements(
     std::shared_ptr<Group<ElementType> const> const &_head_group,

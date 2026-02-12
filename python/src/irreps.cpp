@@ -94,6 +94,7 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
     std::optional<irreps::GroupIndices> head_group,
     std::optional<Eigen::MatrixXd> init_subspace, bool allow_complex,
     std::optional<irreps::SubgroupOrbitVec> subgroup_orbits_in,
+    std::optional<std::vector<Index>> class_indices,
     std::optional<std::string> verbosity) {
   // py::scoped_ostream_redirect redirect;
   // py::gil_scoped_release release;
@@ -146,8 +147,13 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
     log->indent() << std::endl;
   }
   // std::optional<Log> log;
+  // return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
+  //                                   subgroup_orbits, allow_complex, log);
+
+  irreps::SolveByDisjointVariableSetsFlag flag;
   return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
-                                    subgroup_orbits, allow_complex, log);
+                                    subgroup_orbits, class_indices,
+                                    allow_complex, log, flag);
 }
 
 }  // namespace CASMpy
@@ -626,6 +632,12 @@ PYBIND11_MODULE(_irreps, m) {
               in a more general case using methods of
               :class:`~libcasm.sym_info.Subset`.
 
+          class_indices : Optional[list[int]] = None
+              If provided, ``cc = class_indices[i]`` indicates that the
+              `i`-th element (i.e. `matrix_rep[i]`) belongs to the `cc`-th class
+              of group elements. If provided, this is used to make the
+              character table.
+
           verbosity : Optional[str] = None
               If not None, the irrep decomposition process will be logged to
               standard output. Use "standard" for basic logging output,
@@ -636,6 +648,7 @@ PYBIND11_MODULE(_irreps, m) {
            py::arg("init_subspace") = std::nullopt,
            py::arg("allow_complex") = true,
            py::arg("subgroup_orbits") = std::nullopt,
+           py::arg("class_indices") = std::nullopt,
            py::arg("verbosity") = std::nullopt)
       .def_readonly("matrix_rep", &irreps::IrrepDecomposition::fullspace_rep,
                     "Full space matrix representation")

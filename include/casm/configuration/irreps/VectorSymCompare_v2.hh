@@ -62,6 +62,14 @@ struct VectorSymCompare {
   double m_tol;
 };
 
+/// Standardize column vector signs
+Eigen::MatrixXcd standardize_column_vector_signs(
+    Eigen::MatrixXcd const &vector_space, double tol);
+
+/// Standardize basis vector signs
+Eigen::MatrixXd standardize_column_vector_signs(
+    Eigen::MatrixXd const &vector_space, double tol);
+
 /// Vector space preparation for comparison
 Eigen::MatrixXcd vector_space_prepare(Eigen::MatrixXcd const &vector_space,
                                       double tol);

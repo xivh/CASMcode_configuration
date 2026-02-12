@@ -55,7 +55,10 @@ IrrepInfo make_dummy_irrep_info(Eigen::MatrixXd const &trans_mat);
 
 /// \brief Assumes that irreps are real, and concatenates their individual
 /// trans_mats to form larger trans_mat
-Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps);
+Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps,
+                               bool allow_complex);
+
+struct SolveByDisjointVariableSetsFlag {};
 
 /// Performs irreducible subspace construction and symmetrization
 struct IrrepDecomposition {
@@ -66,6 +69,16 @@ struct IrrepDecomposition {
                      std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
                      bool allow_complex,
                      std::optional<Log> _log = std::nullopt);
+
+  /// IrrepDecomposition constructor
+  IrrepDecomposition(MatrixRep const &_fullspace_rep,
+                     GroupIndices const &_head_group,
+                     Eigen::MatrixXd const &_init_subspace,
+                     std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
+                     std::optional<std::vector<Index>> const &class_indices,
+                     bool allow_complex, std::optional<Log> _log,
+                     SolveByDisjointVariableSetsFlag flag,
+                     double zero_tol = 1e-5);
 
   /// Full space matrix representation
   ///

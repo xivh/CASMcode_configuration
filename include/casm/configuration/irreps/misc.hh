@@ -15,9 +15,21 @@ inline Eigen::MatrixXcd prettyc(const Eigen::MatrixXcd &M, double tol = 1e-10) {
     for (int j = 0; j < M.cols(); j++) {
       if (std::abs(std::round(M(i, j).real()) - M(i, j).real()) < tol) {
         Mp(i, j).real(std::round(M(i, j).real()));
+        if (Mp(i, j).real() == -0.0) {
+          Mp(i, j).real(0.0);
+        }
+        if (Mp(i, j).imag() == -0.0) {
+          Mp(i, j).imag(0.0);
+        }
       }
       if (std::abs(std::round(M(i, j).imag()) - M(i, j).imag()) < tol) {
         Mp(i, j).imag(std::round(M(i, j).imag()));
+        if (Mp(i, j).real() == -0.0) {
+          Mp(i, j).real(0.0);
+        }
+        if (Mp(i, j).imag() == -0.0) {
+          Mp(i, j).imag(0.0);
+        }
       }
     }
   }
@@ -32,6 +44,9 @@ inline Eigen::MatrixXd pretty(const Eigen::MatrixXd &M, double tol = 1e-10) {
     for (int j = 0; j < M.cols(); j++) {
       if (std::abs(std::round(M(i, j)) - M(i, j)) < tol) {
         Mp(i, j) = std::round(M(i, j));
+        if (Mp(i, j) == -0.0) {
+          Mp(i, j) = 0.0;
+        }
       }
     }
   }
@@ -78,6 +93,27 @@ void prettyp(Log &log, std::string what, Eigen::MatrixXd const &M,
     log.indent() << std::endl;
   }
   log.end_section();
+}
+
+struct SetPrinter {
+  const std::set<Index> &s;
+
+  SetPrinter(const std::set<Index> &_s) : s(_s) {}
+};
+
+inline std::ostream &operator<<(std::ostream &out, const SetPrinter &printer) {
+  bool first = true;
+  out << "{";
+  for (Index idx : printer.s) {
+    if (!first) {
+      out << ", ";
+    } else {
+      first = false;
+    }
+    out << idx;
+  }
+  out << "}";
+  return out;
 }
 
 }  // namespace irreps

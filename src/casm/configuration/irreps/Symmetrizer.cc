@@ -8,6 +8,12 @@
 #include "casm/global/threads.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
 
+// debug
+#include <iostream>
+
+#include "casm/configuration/irreps/misc.hh"
+#include "casm/configuration/irreps/to_real.hh"
+
 namespace CASM {
 
 namespace irreps {
@@ -47,11 +53,6 @@ multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
     MatrixRep const &rep, GroupIndices const &head_group,
     Eigen::MatrixXcd const &irrep_subspace, double vec_compare_tol,
     GroupIndicesOrbitSet const &subgroup_orbits, std::optional<Log> log) {
-  if (log.has_value() && log->verbosity() >= Log::verbose) {
-    log->indent() << "Get subgroup indices...";
-    append_time(*log, 1);
-  }
-
   GroupIndicesOrbitSet const &sgroups = subgroup_orbits;
 
   // Copy sgroups to a vector for indexed access in parallel tasks
@@ -61,13 +62,12 @@ multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
   }
 
   if (log.has_value() && log->verbosity() >= Log::verbose) {
-    log->indent() << "Get subgroup indices: DONE" << std::endl << std::endl;
     log->indent() << "Number of subgroup orbits = " << sgroups.size();
     append_time(*log, 2);
     log->indent() << "Applying Reynolds operator to find special directions... "
                   << std::endl
                   << std::endl;
-    log->indent() << "Special directions: ";
+    log->indent() << "Special directions: " << std::flush;
   }
 
   Index dim = rep[0].rows();
@@ -99,7 +99,7 @@ multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
       Eigen::MatrixXcd projected = R_local * local_irrep_subspace;
 
       // If projection is (near) zero, skip
-      if (projected.norm() < TOL) return;
+      if (projected.norm() < TOL) continue;
 
       // Find spanning vectors of column space of
       // R*irrep_space
@@ -126,26 +126,16 @@ multivector<Eigen::VectorXcd>::X<2> make_irrep_special_directions(
   // Insert local_orbit_result elements into shared orbit_result
   for (const auto &orbits : per_thread_orbit_result) {
     for (const auto &orbit : orbits) {
-      orbit_result.insert(orbit);
       auto res1 = orbit_result.insert(orbit);
       if (res1.second == true) {
-        if (log.has_value() && log->verbosity() >= Log::verbose &&
-            log->print()) {
-          log->ostream() << "*";
-        }
-      }
-
-      auto res2 = orbit_result.insert(orbit);
-      if (res2.second == true) {
-        if (log.has_value() && log->verbosity() >= Log::verbose &&
-            log->print()) {
-          log->ostream() << "*";
+        if (log.has_value() && log->verbosity() >= Log::verbose) {
+          log->ostream() << "*" << std::flush;
         }
       }
     }
   }
 
-  if (log.has_value() && log->verbosity() >= Log::verbose && log->print()) {
+  if (log.has_value() && log->verbosity() >= Log::verbose) {
     log->ostream() << std::endl << std::endl;
   }
 

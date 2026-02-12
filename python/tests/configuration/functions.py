@@ -113,3 +113,8 @@ def make_discrete_magnetic_atom(
             )
         ],
     )
+
+
+def clean(arr):
+    arr = np.where(np.abs(arr) < 1e-5, 0.0, arr)
+    return arr

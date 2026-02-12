@@ -5,9 +5,12 @@ import numpy as np
 
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
+import libcasm.configuration.io.spglib as spglib_io
 import libcasm.group as casmgroup
 import libcasm.irreps as casmirreps
 import libcasm.xtal as xtal
+
+from .functions import clean
 
 
 def conventional_FCC_occ_symmetry_adapted_basis():
@@ -835,3 +838,77 @@ def test_dof_space_analysis_6(FCC_binary_disp_fix_corner_prim):
     assert np.allclose(
         symmetry_adapted_dof_space.basis, sym_report.symmetry_adapted_subspace
     )
+
+
+def test_dof_space_analysis_TlZn2Sb2_disp(TlZn2Sb2_disp_prim):
+    xtal_prim = TlZn2Sb2_disp_prim
+
+    prim = casmconfig.Prim(xtal_prim)
+    spacegroup_type = spglib_io.get_spacegroup_type_from_symmetry(
+        elements=prim.factor_group.elements,
+        lattice=xtal_prim.lattice(),
+    )
+    # print("Factor group:")
+    # print(prim.factor_group.brief_cart(lattice=xtal_prim.lattice()))
+    # print(f"Space group: #{spacegroup_type.number}")
+    assert spacegroup_type.number == 79
+
+    T = (
+        np.array(
+            [
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+            ],
+            dtype=int,
+        )
+        * 2
+    )
+    supercell = casmconfig.Supercell(prim, T)
+    configuration = casmconfig.Configuration(
+        supercell=supercell,
+    )
+
+    custom_basis = np.zeros((supercell.n_sites * 3, 1))
+    custom_basis[0, 0] = 1.0
+    # custom_basis[0, 0] = -0.5
+    # custom_basis[3, 0] = 0.5
+    # custom_basis[7, 0] = -0.5
+    # custom_basis[10, 0] = 0.5
+    # custom_basis[13, 1] = 1.0
+    # custom_basis[14, 2] = 1.0
+
+    dof_space = casmclex.DoFSpace(
+        dof_key="disp",
+        xtal_prim=xtal_prim,
+        transformation_matrix_to_super=T,
+        # site_indices=site_indices,
+        # basis=custom_basis,
+    )
+
+    results = casmconfig.dof_space_analysis(
+        dof_space=dof_space,
+        prim=prim,
+        configuration=configuration,
+        calc_wedges=False,
+        exclude_homogeneous_modes=False,  # TODO: why is this necessary?
+        verbosity="verbose",
+    )
+    assert isinstance(results, casmconfig.DoFSpaceAnalysisResults)
+    basis = results.symmetry_adapted_dof_space.basis
+    symmetry_report = results.symmetry_report
+
+    print("# Irreps:", len(symmetry_report.irreps))
+    # assert len(symmetry_report.irreps) == 30
+
+    print("Basis shape:", basis.shape)
+    # assert basis.shape == (supercell.n_sites * 3, supercell.n_sites * 3)
+    with np.printoptions(precision=6, suppress=True, linewidth=2000):
+        print("Basis:\n", basis)
+
+    # Check if basis.T @ basis is close to identity
+    identity_approx = basis.T @ basis
+    # print("Basis.T @ Basis:\n", clean(identity_approx))
+    assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
+
+    assert False
