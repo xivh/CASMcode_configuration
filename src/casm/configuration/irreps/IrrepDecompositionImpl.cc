@@ -810,14 +810,18 @@ IrrepInfo subspace_to_full_space(IrrepInfo const &subspace_irrep,
   result.irrep_dim = result.trans_mat.rows();
   result.vector_dim = result.trans_mat.cols();
 
-  result.directions.clear();
-  for (const auto &direction_orbit : subspace_irrep.directions) {
-    std::vector<Eigen::VectorXd> new_orbit;
-    new_orbit.reserve(direction_orbit.size());
-    for (const auto &directions : direction_orbit) {
-      new_orbit.push_back(subspace * directions);
+  if (subspace_irrep.directions.has_value()) {
+    result.directions = std::vector<std::vector<Eigen::VectorXd>>{};
+    for (const auto &direction_orbit : *subspace_irrep.directions) {
+      std::vector<Eigen::VectorXd> new_orbit;
+      new_orbit.reserve(direction_orbit.size());
+      for (const auto &directions : direction_orbit) {
+        new_orbit.push_back(subspace * directions);
+      }
+      result.directions->push_back(std::move(new_orbit));
     }
-    result.directions.push_back(std::move(new_orbit));
+  } else {
+    result.directions = std::nullopt;
   }
   return result;
 }

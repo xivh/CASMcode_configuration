@@ -3,6 +3,11 @@ import numpy as np
 import libcasm.irreps as casmirreps
 
 
+def clean(arr):
+    arr = np.where(np.abs(arr) < 1e-5, 0.0, arr)
+    return arr
+
+
 def test_IrrepInfo_constructor():
     """Test constructing an IrrepInfo directly."""
     trans_mat = np.array([[1.0 + 0j, 0.0 + 0j, 0.0 + 0j]])
@@ -12,6 +17,8 @@ def test_IrrepInfo_constructor():
     assert isinstance(irrep_info, casmirreps.IrrepInfo)
     assert irrep_info.irrep_dim == 1
     assert irrep_info.vector_dim == 3
+    assert irrep_info.index is None
+    assert irrep_info.directions is None
 
 
 def test_IrrepInfo_attributes(FCC_binary_irrep_decomposition):
@@ -52,27 +59,50 @@ def test_IrrepInfo_identity_irrep(FCC_binary_irrep_decomposition):
     assert np.allclose(np.abs(identity.characters), np.ones(len(identity.characters)))
 
 
-def test_IrrepInfo_frobenius_schur_indicator(FCC_binary_irrep_decomposition):
+def frobenius_schur_indicator_assertions(irrep_info):
+    """Helper function to check Frobenius-Schur indicator consistency."""
+    # Frobenius-Schur indicator should be -1, 0, or 1
+    assert irrep_info.frobenius_schur_indicator in (-1, 0, 1)
+
+    # Check consistency with is_real, is_complex_irrep, is_pseudo_real
+    if irrep_info.frobenius_schur_indicator == 1:
+        assert irrep_info.is_real is True
+        assert irrep_info.is_complex_irrep is False
+        assert irrep_info.is_pseudo_real is False
+    elif irrep_info.frobenius_schur_indicator == 0:
+        assert irrep_info.is_real is False
+        assert irrep_info.is_complex_irrep is True
+        assert irrep_info.is_pseudo_real is False
+    elif irrep_info.frobenius_schur_indicator == -1:
+        assert irrep_info.is_real is False
+        assert irrep_info.is_complex_irrep is False
+        assert irrep_info.is_pseudo_real is True
+
+
+def test_IrrepInfo_1(FCC_binary_irrep_decomposition):
     """Test the Frobenius-Schur indicator."""
     irreps = FCC_binary_irrep_decomposition.irreps
 
     for irrep_info in irreps:
-        # Frobenius-Schur indicator should be -1, 0, or 1
-        assert irrep_info.frobenius_schur_indicator in (-1, 0, 1)
+        frobenius_schur_indicator_assertions(irrep_info)
 
-        # Check consistency with is_real, is_complex_irrep, is_pseudo_real
-        if irrep_info.frobenius_schur_indicator == 1:
-            assert irrep_info.is_real is True
-            assert irrep_info.is_complex_irrep is False
-            assert irrep_info.is_pseudo_real is False
-        elif irrep_info.frobenius_schur_indicator == 0:
-            assert irrep_info.is_real is False
-            assert irrep_info.is_complex_irrep is True
-            assert irrep_info.is_pseudo_real is False
-        elif irrep_info.frobenius_schur_indicator == -1:
-            assert irrep_info.is_real is False
-            assert irrep_info.is_complex_irrep is False
-            assert irrep_info.is_pseudo_real is True
+
+# ABC2_disp_irrep_decomposition
+def test_IrrepInfo_2(ABC2_disp_irrep_decomposition):
+    """Test the Frobenius-Schur indicator."""
+    irreps = ABC2_disp_irrep_decomposition.irreps
+
+    for irrep_info in irreps:
+        frobenius_schur_indicator_assertions(irrep_info)
+
+
+# TlZn2Sb2_disp_irrep_decomposition
+def test_IrrepInfo_3(TlZn2Sb2_disp_irrep_decomposition):
+    """Test the Frobenius-Schur indicator."""
+    irreps = TlZn2Sb2_disp_irrep_decomposition.irreps
+
+    for irrep_info in irreps:
+        frobenius_schur_indicator_assertions(irrep_info)
 
 
 def test_IrrepInfo_is_gerade(FCC_binary_irrep_decomposition):
@@ -89,12 +119,23 @@ def test_IrrepInfo_directions(FCC_binary_irrep_decomposition):
 
     for irrep_info in irreps:
         directions = irrep_info.directions
+        assert directions is not None
         assert isinstance(directions, list)
         for orbit in directions:
             assert isinstance(orbit, list)
             for direction in orbit:
                 assert isinstance(direction, np.ndarray)
                 assert len(direction) == irrep_info.vector_dim
+
+
+def test_IrrepInfo_index(FCC_binary_irrep_decomposition):
+    """Test the index attribute."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    for irrep_info in irreps:
+        assert irrep_info.index is not None
+        assert isinstance(irrep_info.index, int)
+        assert irrep_info.index >= 0
 
 
 def test_IrrepInfo_comparison(FCC_binary_irrep_decomposition):
@@ -142,3 +183,4 @@ def test_IrrepInfo_from_dict_roundtrip(FCC_binary_irrep_decomposition):
             reconstructed.frobenius_schur_indicator
             == irrep_info.frobenius_schur_indicator
         )
+        assert reconstructed.index == irrep_info.index

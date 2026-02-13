@@ -44,7 +44,7 @@ struct IrrepInfo {
 
   /// sequentially-assigned index used to distinguish between identical irreps
   /// irreps are identical if they have the same character vectors
-  Index index;
+  std::optional<Index> index;
 
   /// Frobenius-Schur indicator: 1 (real), -1 (quaternionic), 0 (complex)
   int frobenius_schur_indicator;
@@ -53,7 +53,7 @@ struct IrrepInfo {
   /// directions in the irreducible vector space. directions[i] is the i'th
   /// orbit of equivalent high-symmetry directions and directions[i].size() is
   /// the symmetric multiplicity of a direction in that orbit
-  std::vector<std::vector<Eigen::VectorXd>> directions;
+  std::optional<std::vector<std::vector<Eigen::VectorXd>>> directions;
 
   /// Check if Irrep is identity (dimension 1, all characters equal to 1)
   bool is_identity() const;

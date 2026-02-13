@@ -19,7 +19,7 @@ VectorSpaceSymReport::VectorSpaceSymReport(
   // ~~~ Identify irrep_names, irrep_axes_indices, irrep_wedges  ~~~
   std::vector<Index> mults;
   for (auto const &irrep : this->irreps) {
-    if (irrep.index == 0) mults.push_back(0);
+    if (!irrep.index.has_value() || *irrep.index == 0) mults.push_back(0);
     mults.back()++;
   }
 

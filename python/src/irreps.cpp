@@ -360,7 +360,20 @@ PYBIND11_MODULE(_irreps, m) {
   py::class_<irreps::IrrepInfo>(m, "IrrepInfo", R"pbdoc(
             Describes an irreducible subspace.
             )pbdoc")
-      .def(py::init<Eigen::MatrixXcd, Eigen::VectorXcd>(), R"pbdoc(
+      .def(py::init([](Eigen::MatrixXcd trans_mat, Eigen::VectorXcd characters,
+                       bool pseudo_irrep, std::optional<Index> index,
+                       int frobenius_schur_indicator,
+                       std::optional<std::vector<std::vector<Eigen::VectorXd>>>
+                           directions) {
+             auto info =
+                 irreps::IrrepInfo(std::move(trans_mat), std::move(characters));
+             info.pseudo_irrep = pseudo_irrep;
+             info.index = index;
+             info.frobenius_schur_indicator = frobenius_schur_indicator;
+             info.directions = std::move(directions);
+             return info;
+           }),
+           R"pbdoc(
 
           .. rubric:: Constructor
 
@@ -372,8 +385,25 @@ PYBIND11_MODULE(_irreps, m) {
           characters : numpy.ndarray[numpy.complex128[m, 1]]
               A vector containing the complex character of each group operation's
               action on the irreducible vector space.
+          pseudo_irrep : bool, default=False
+              True if irrep is real but was created as direct sum of two complex
+              irreps. In this case, the 'irrep' is reducible, but this is the
+              most-reduced representation with real basis vectors.
+          index : Optional[int], default=None
+              Sequentially-assigned index used to distinguish between identical
+              irreps (irreps with the same character vectors).
+          frobenius_schur_indicator : int, default=1
+              Frobenius-Schur indicator: 1 (real), -1 (quaternionic/pseudo-real),
+              0 (complex).
+          directions : Optional[list[list[np.ndarray[np.float64[vector_dim,]]]]], default=None
+              High-symmetry directions in the initial vector space.
+              ``directions[i]`` is the `i`-th orbit of equivalent high-symmetry
+              directions.
           )pbdoc",
-           py::arg("trans_mat"), py::arg("characters"))
+           py::arg("trans_mat"), py::arg("characters"),
+           py::arg("pseudo_irrep") = false, py::arg("index") = std::nullopt,
+           py::arg("frobenius_schur_indicator") = 1,
+           py::arg("directions") = std::nullopt)
       .def_readonly("irrep_dim", &irreps::IrrepInfo::irrep_dim,
                     "int: Irreducible subspace dimension")
       .def_readonly("vector_dim", &irreps::IrrepInfo::vector_dim,
@@ -398,14 +428,30 @@ PYBIND11_MODULE(_irreps, m) {
           - -1: quaternionic (pseudo-real)
           - 0: complex
           )pbdoc")
-      .def_readonly("directions", &irreps::IrrepInfo::directions,
-                    R"pbdoc(
-          list[list[np.ndarray[np.float64[irrep_dim,]]]: High-symmetry directions
+      .def_property_readonly(
+          "index",
+          [](irreps::IrrepInfo const &self) -> std::optional<Index> {
+            return self.index;
+          },
+          R"pbdoc(
+          Optional[int]: Index to differentiate irreps with identical character vectors.
+
+          Irreps with the same characters are assigned sequential indices
+          starting from 0. None if not yet set.
+          )pbdoc")
+      .def_property_readonly(
+          "directions",
+          [](irreps::IrrepInfo const &self)
+              -> std::optional<std::vector<std::vector<Eigen::VectorXd>>> {
+            return self.directions;
+          },
+          R"pbdoc(
+          Optional[list[list[np.ndarray[np.float64[irrep_dim,]]]]]: High-symmetry directions
 
           Vectors in the initial vector space that correspond to high-symmetry
           directions in the irreducible vector space. ``directions[i]`` is the `i`-th
           orbit of equivalent high-symmetry directions and ``len(directions[i])`` is
-          the symmetric multiplicity of a direction in that orbit.
+          the symmetric multiplicity of a direction in that orbit. None if not yet set.
           )pbdoc")
       .def_property_readonly("is_identity", &irreps::IrrepInfo::is_identity,
                              R"pbdoc(

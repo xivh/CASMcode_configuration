@@ -88,21 +88,24 @@ jsonParser &to_json(irreps::IrrepInfo const &irrep, jsonParser &json) {
   json["pseudo_irrep"] = irrep.pseudo_irrep;
 
   // Index
-  json["index"] = irrep.index;
+  if (irrep.index.has_value()) {
+    json["index"] = *irrep.index;
+  }
 
   // Frobenius-Schur indicator
   json["frobenius_schur_indicator"] = irrep.frobenius_schur_indicator;
 
   // High-symmetry directions
-  if (!irrep.directions.empty()) {
-    json["high_symmetry_directions"].put_array(irrep.directions.size());
-  }
-  for (Index i = 0; i < irrep.directions.size(); ++i) {
-    json["high_symmetry_directions"][i].put_array(irrep.directions[i].size());
-    for (Index j = 0; j < irrep.directions[i].size(); ++j) {
-      to_json_array(
-          Eigen::MatrixXd(irrep.trans_mat.real() * irrep.directions[i][j]),
-          json["high_symmetry_directions"][i][j]);
+  if (irrep.directions.has_value() && !irrep.directions->empty()) {
+    json["high_symmetry_directions"].put_array(irrep.directions->size());
+    for (Index i = 0; i < irrep.directions->size(); ++i) {
+      json["high_symmetry_directions"][i].put_array(
+          (*irrep.directions)[i].size());
+      for (Index j = 0; j < (*irrep.directions)[i].size(); ++j) {
+        to_json_array(
+            Eigen::MatrixXd(irrep.trans_mat.real() * (*irrep.directions)[i][j]),
+            json["high_symmetry_directions"][i][j]);
+      }
     }
   }
   return json;
@@ -151,23 +154,29 @@ void parse(InputParser<irreps::IrrepInfo> &parser) {
   characters.imag() = char_imag;
 
   // Index
-  Index index;
-  parser.require(index, fs::path{"index"});
+  std::optional<Index> index = std::nullopt;
+  if (parser.self.find("index") != parser.self.end()) {
+    Index index_val;
+    parser.require(index_val, fs::path{"index"});
+    index = index_val;
+  }
 
   // High-symmetry directions
-  std::vector<std::vector<Eigen::VectorXd>> directions;
+  std::optional<std::vector<std::vector<Eigen::VectorXd>>> directions =
+      std::nullopt;
   fs::path directions_path{"high_symmetry_directions"};
   if (parser.self.find(directions_path) != parser.self.end()) {
     jsonParser directions_json = parser.self[directions_path];
-    directions.resize(directions_json.size());
+    directions = std::vector<std::vector<Eigen::VectorXd>>{};
+    directions->resize(directions_json.size());
     for (Index i = 0; i < directions_json.size(); ++i) {
       jsonParser orbit_json = directions_json[i];
-      directions[i].resize(orbit_json.size());
+      (*directions)[i].resize(orbit_json.size());
       for (Index j = 0; j < orbit_json.size(); ++j) {
         Eigen::VectorXd direction;
         parser.require(direction,
                        directions_path / std::to_string(i) / std::to_string(j));
-        directions[i][j] = direction;
+        (*directions)[i][j] = direction;
       }
     }
   }

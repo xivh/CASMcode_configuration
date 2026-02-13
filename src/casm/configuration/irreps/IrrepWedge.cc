@@ -132,7 +132,7 @@ std::vector<IrrepWedge> make_irrep_wedges(
     // std::cout << "Irrep characters: \n" << irrep.characters << std::endl;
     // std::cout << "Irrep directions: " << irrep.directions.size() <<
     // std::endl;
-    if (irrep.directions.empty()) {
+    if (!irrep.directions.has_value() || irrep.directions->empty()) {
       wedges.back() = IrrepWedgeImpl::_wedge_from_pseudo_irrep(
           irrep, fullspace_rep, head_group);
       continue;
@@ -141,30 +141,32 @@ std::vector<IrrepWedge> make_irrep_wedges(
     // std::cout << "Irrep direction orbit" << 0 << " : " <<
     // irrep.directions[0].size() << std::endl; std::cout << "Irrep direction: "
     // << irrep.directions[0][0].transpose() << std::endl;
-    wedges.back().axes.col(0) = irrep.directions[0][0];
-    wedges.back().mult.push_back(irrep.directions[0].size());
+    wedges.back().axes.col(0) = (*irrep.directions)[0][0];
+    wedges.back().mult.push_back((*irrep.directions)[0].size());
     for (Index i = 1; i < irrep.irrep_dim; i++) {
       // std::cout << "Irrep direction orbit" << i << " : " <<
       // irrep.directions[i].size() << std::endl; std::cout << "Irrep direction:
       // " << irrep.directions[i][0].transpose() << std::endl;
-      if (i >= irrep.directions.size()) {
+      if (i >= static_cast<Index>(irrep.directions->size())) {
         throw std::runtime_error(
             "Error in make_irrep_wedges: irrep.directions.size is smaller than "
             "irrep dimension");
       }
       Index j_best = 0;
       best_proj =
-          (wedges.back().axes.transpose() * irrep.directions[i][0]).sum();
-      for (Index j = 1; j < irrep.directions[i].size(); j++) {
-        tproj = (wedges.back().axes.transpose() * irrep.directions[i][j]).sum();
+          (wedges.back().axes.transpose() * (*irrep.directions)[i][0]).sum();
+      for (Index j = 1; j < static_cast<Index>((*irrep.directions)[i].size());
+           j++) {
+        tproj =
+            (wedges.back().axes.transpose() * (*irrep.directions)[i][j]).sum();
         if (tproj > best_proj) {
           best_proj = tproj;
           j_best = j;
         }
       }
 
-      wedges.back().axes.col(i) = irrep.directions[i][j_best];
-      wedges.back().mult.push_back(irrep.directions[i].size());
+      wedges.back().axes.col(i) = (*irrep.directions)[i][j_best];
+      wedges.back().mult.push_back((*irrep.directions)[i].size());
     }
     // std::cout << "New irrep wedge: \n" << wedges.back().axes.transpose() <<
     // std::endl;

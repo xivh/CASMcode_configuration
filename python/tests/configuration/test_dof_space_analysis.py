@@ -761,6 +761,14 @@ def test_dof_space_analysis_5(prim_ABC2):
     # print("Basis.T @ Basis:\n", clean(identity_approx))
     assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
 
+    # irreps = sym_report.irreps
+    # for i, irrep in enumerate(irreps):
+    #     print(f"Irrep {i}: dim={irrep.irrep_dim}, index={irrep.index}")
+    #     # print characters
+    #     print("- Characters:", irrep.characters)
+    #     print()
+    # assert False
+
 
 def test_dof_space_analysis_6(FCC_binary_disp_fix_corner_prim):
     prim = casmconfig.Prim(FCC_binary_disp_fix_corner_prim)

@@ -34,7 +34,7 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json,
 
   std::vector<Index> mults;
   for (auto const &irrep : obj.irreps) {
-    if (irrep.index == 0) mults.push_back(0);
+    if (!irrep.index.has_value() || *irrep.index == 0) mults.push_back(0);
     mults.back()++;
   }
 
@@ -86,17 +86,18 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json,
       {
         jsonParser &djson = json["irreducible_representations"]
                                 ["subgroup_invariant_directions"];
-        if (irrep.directions.empty()) {
+        if (!irrep.directions.has_value() || irrep.directions->empty()) {
           djson[irrep_name] = "none";
         } else {
-          for (Index d = 0; d < irrep.directions.size(); ++d) {
+          for (Index d = 0; d < irrep.directions->size(); ++d) {
             std::string orbit_name =
                 "direction_orbit_" +
-                to_sequential_string(d + 1, irrep.directions.size());
-            djson[irrep_name][orbit_name].put_array(irrep.directions[d].size());
-            for (Index j = 0; j < irrep.directions[d].size(); ++j) {
+                to_sequential_string(d + 1, irrep.directions->size());
+            djson[irrep_name][orbit_name].put_array(
+                (*irrep.directions)[d].size());
+            for (Index j = 0; j < (*irrep.directions)[d].size(); ++j) {
               to_json_array(Eigen::MatrixXd(irrep.trans_mat.real() *
-                                            irrep.directions[d][j]),
+                                            (*irrep.directions)[d][j]),
                             djson[irrep_name][orbit_name][j]);
             }
           }

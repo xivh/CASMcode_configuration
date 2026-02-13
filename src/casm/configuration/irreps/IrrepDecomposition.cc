@@ -37,6 +37,22 @@ void print_irreps(Log &log, std::string what,
 
 }  // namespace
 
+/// Sort irreps and set sequential indices to differentiate irreps
+/// with identical character vectors
+static void sort_and_index_irreps(std::vector<IrrepInfo> &irreps) {
+  std::sort(irreps.begin(), irreps.end());
+  Index irrep_index = 0;
+  for (Index i = 0; i < static_cast<Index>(irreps.size()) - 1; ++i) {
+    irreps[i].index = irrep_index;
+    if (almost_equal(irreps[i + 1].characters, irreps[i].characters, TOL)) {
+      irrep_index++;
+    } else {
+      irrep_index = 0;
+    }
+  }
+  irreps.back().index = irrep_index;
+}
+
 IrrepInfo::IrrepInfo(Eigen::MatrixXcd _trans_mat, Eigen::VectorXcd _characters)
     : trans_mat(std::move(_trans_mat)),
       irrep_dim(trans_mat.rows()),
@@ -44,7 +60,6 @@ IrrepInfo::IrrepInfo(Eigen::MatrixXcd _trans_mat, Eigen::VectorXcd _characters)
       characters(std::move(_characters)),
       complex(!almost_zero(trans_mat.imag())),
       pseudo_irrep(false),
-      index(0),
       frobenius_schur_indicator(0) {}
 
 bool IrrepInfo::is_identity() const {
@@ -690,7 +705,8 @@ IrrepDecomposition::IrrepDecomposition(
     ++iteration_index;
   }
 
-  // 3) Combine to form symmetry adapted subspace
+  // 3) Sort and index irreps, then combine to form symmetry adapted subspace
+  sort_and_index_irreps(irreps);
   symmetry_adapted_subspace = full_trans_mat(irreps, allow_complex).adjoint();
   if (log.has_value()) {
     print_irreps<Log::debug>(*log, "3. Irreps, symmetry adapted", irreps);
@@ -878,7 +894,7 @@ IrrepDecomposition::IrrepDecomposition(
   // 3) Combine to form symmetry adapted subspace
   Eigen::MatrixXd finished_subspace = initial_kernel;
   if (irreps.size()) {
-    std::sort(irreps.begin(), irreps.end());
+    sort_and_index_irreps(irreps);
     Eigen::MatrixXd irreps_subspace =
         full_trans_mat(irreps, allow_complex).adjoint();
     finished_subspace = extend(finished_subspace, irreps_subspace);
