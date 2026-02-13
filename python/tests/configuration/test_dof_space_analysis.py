@@ -2,7 +2,6 @@ import json
 import pathlib
 
 import numpy as np
-import pytest
 
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
@@ -15,14 +14,14 @@ import libcasm.xtal as xtal
 def conventional_FCC_occ_symmetry_adapted_basis():
     # fmt: off
     return np.array([
-        [ 0.,   0.,   0.,   0., ],
-        [-0.5, -0.5, -0.5, -0.5,],
-        [ 0.,   0.,   0.,   0., ],
-        [-0.5, -0.5,  0.5,  0.5,],
-        [ 0.,   0.,   0.,   0., ],
-        [-0.5,  0.5, -0.5,  0.5,],
-        [ 0.,   0.,   0.,   0., ],
-        [-0.5,  0.5,  0.5, -0.5,],
+        [ 0.,  0.,   0.,   0., ],
+        [0.5,  0.5,  0.5,  0.5,],
+        [ 0.,  0.,   0.,   0., ],
+        [0.5,  0.5, -0.5, -0.5,],
+        [ 0.,  0.,   0.,   0., ],
+        [0.5, -0.5,  0.5, -0.5,],
+        [ 0.,  0.,   0.,   0., ],
+        [0.5, -0.5, -0.5,  0.5,],
     ])
     # fmt: on
 
@@ -31,13 +30,13 @@ def conventional_FCC_occ_irrep_1_wedge_axes():
     # fmt: off
     return np.array([
         [ 0., ],
-        [-0.5,],
+        [ 0.5,],
         [ 0., ],
-        [-0.5,],
+        [ 0.5,],
         [ 0., ],
-        [-0.5,],
+        [ 0.5,],
         [ 0., ],
-        [-0.5,],
+        [ 0.5,],
     ])
     # fmt: off
 
@@ -45,14 +44,14 @@ def conventional_FCC_occ_irrep_1_wedge_axes():
 def conventional_FCC_occ_irrep_2_wedge_axes():
     # fmt: off
     return np.array([
-        [ 0.,         0.,         0.,        ],
-        [-0.8660254, -0.5,       -0.28867513,],
-        [ 0.,         0.,         0.        ,],
-        [ 0.28867513, 0.5,       -0.28867513,],
-        [ 0.,         0.,         0.        ,],
-        [ 0.28867513, 0.5,        0.8660254 ,],
-        [ 0.,         0.,         0.        ,],
-        [ 0.28867513,-0.5,       -0.28867513,],
+        [ 0.,          0.,   0.,        ],
+        [0.8660254,    0.5,  0.28867513,],
+        [ 0.,          0.,   0.        ,],
+        [-0.28867513, -0.5,  0.28867513,],
+        [ 0.,          0.,   0.        ,],
+        [-0.28867513, -0.5, -0.8660254 ,],
+        [ 0.,          0.,   0.        ,],
+        [-0.28867513,  0.5,  0.28867513,],
     ])
     # fmt: on
 
@@ -724,7 +723,6 @@ def test_dof_space_analysis_4(FCC_binary_GLstrain_disp_prim):
     assert np.allclose(identity_approx, np.eye(basis.shape[1]), atol=1e-5)
 
 
-@pytest.mark.xfail(reason="MemoryError: std::bad_alloc")
 def test_dof_space_analysis_5(prim_ABC2):
     prim = casmconfig.Prim(prim_ABC2)
     T_dof_space = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=int)

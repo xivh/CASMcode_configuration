@@ -721,21 +721,12 @@ std::vector<PossibleIrrep> make_possible_irreps(
 
       bool is_complex = !almost_zero(p.subspace.adjoint().imag());
 
-      // double max_imag_component = 0.0;
-      // if (p.subspace.size() > 0) {
-      //   max_imag_component =
-      //   p.subspace.adjoint().imag().cwiseAbs().maxCoeff();
-      // }
-
       log->indent() << "    - characters_squared_norm: " << std::setprecision(2)
                     << p.characters_squared_norm << std::endl;
       log->indent() << "    - is_block_diagonal: " << std::boolalpha
                     << p.is_block_diagonal << std::endl;
       log->indent() << "    - complex: " << std::boolalpha << is_complex
                     << std::endl;
-      // log->indent() << "    - max imag component of subspace: "
-      //               << max_imag_component << std::endl;
-      // std::cout << "subspace:\n" << p.subspace << std::endl;
     }
 
     begin = end;

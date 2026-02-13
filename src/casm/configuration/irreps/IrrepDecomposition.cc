@@ -638,71 +638,6 @@ std::set<std::set<Index>> make_disjoint_variable_sets(
   return disjoint_variable_sets;
 }
 
-/// \brief Project a general subspace onto the subspace of variables
-///     specified by variable_set and orthonormalize.
-///
-/// \param variable_set Set of variable indices to project onto
-/// \param subspace Subspace to project onto variable set (subspace.rows() ==
-///     full space dimension, subspace.cols() == subspace dimension)
-/// \param zero_tol Tolerance for determining if the projection is zero.
-///
-/// \returns Orthonormal basis for the projection of subspace onto the variables
-/// specified by variable_set. If the projection is zero, then an empty matrix
-/// with shape (subspace.rows(), 0) is returned.
-///
-Eigen::MatrixXd project_onto_variable_set(Eigen::MatrixXd const &subspace,
-                                          std::set<Index> const &variable_set,
-                                          double zero_tol) {
-  if (variable_set.size() == 0) {
-    throw std::runtime_error(
-        "Error in project_onto_variable_set: variable_set is empty.");
-  }
-  if (subspace.cols() == 0) {
-    throw std::runtime_error(
-        "Error in project_onto_variable_set: subspace has zero columns.");
-  }
-  if (subspace.rows() == 0) {
-    throw std::runtime_error(
-        "Error in project_onto_variable_set: subspace has zero rows.");
-  }
-  Index dim = subspace.rows();
-
-  Eigen::MatrixXd B =
-      Eigen::MatrixXd::Zero(variable_set.size(), subspace.cols());
-  for (Index i_col = 0; i_col < subspace.cols(); ++i_col) {
-    Index idx = 0;
-    for (Index j_x : variable_set) {
-      B(idx, i_col) = subspace(j_x, i_col);
-      ++idx;
-    }
-  }
-
-  if (B.cwiseAbs().maxCoeff() < zero_tol) {
-    return Eigen::MatrixXd::Zero(dim, 0);
-  }
-
-  Eigen::ColPivHouseholderQR<Eigen::MatrixXd> qr(B);
-  qr.setThreshold(zero_tol);
-  Eigen::MatrixXd Q = qr.householderQ();
-  Index rank = qr.rank();
-  // This is probably redundant.
-  if (rank == 0) {
-    return Eigen::MatrixXd::Zero(dim, 0);
-  }
-
-  Eigen::MatrixXd Qi = Q.leftCols(rank);
-  Qi = standardize_column_vector_signs(Qi, TOL);
-  Eigen::MatrixXd subspace_projection = Eigen::MatrixXd::Zero(dim, rank);
-  for (Index i_col = 0; i_col < rank; ++i_col) {
-    Index idx = 0;
-    for (Index j_x : variable_set) {
-      subspace_projection(j_x, i_col) = Qi(idx, i_col);
-      ++idx;
-    }
-  }
-  return subspace_projection;
-};
-
 /// IrrepDecomposition constructor
 ///
 /// \param rep Full space matrix representation (rep[0].rows() ==
@@ -748,10 +683,6 @@ IrrepDecomposition::IrrepDecomposition(
 
   Index dim = fullspace_rep[0].rows();
 
-  // Check for variables that do not mix
-  std::set<std::set<Index>> disjoint_variable_sets =
-      make_disjoint_variable_sets(fullspace_rep, head_group, zero_tol);
-
   if (log.has_value()) {
     log->begin<Log::standard>("IrrepDecomposition");
     log->indent() << std::endl;
@@ -759,14 +690,7 @@ IrrepDecomposition::IrrepDecomposition(
                   << std::endl;
     log->indent() << "Vector space dimension = " << dim << std::endl
                   << std::endl;
-    log->indent() << "Number of disjoint variable sets = "
-                  << disjoint_variable_sets.size() << std::endl
-                  << std::endl;
-    log->indent() << "Variable sets:" << std::endl;
-    for (const auto &variable_set : disjoint_variable_sets) {
-      log->indent() << "- " << SetPrinter(variable_set) << std::endl;
-    }
-    log->indent() << std::endl;
+
     log->indent() << "Make invariant vector space..." << std::endl;
   }
 
@@ -790,27 +714,37 @@ IrrepDecomposition::IrrepDecomposition(
     throw std::runtime_error(msg.str());
   }
 
+  // Check for columns that do not mix
+  MatrixRep subspace_rep = make_subspace_rep(fullspace_rep, subspace);
+  std::set<std::set<Index>> disjoint_column_sets =
+      make_disjoint_variable_sets(subspace_rep, head_group, zero_tol);
+
   /// Find irreps for the projection of the initial subspace onto each
   /// variable set subspace
   Index i_variable_set = 1;
   bool running_complete_decomposition = true;
-  for (const auto &variable_set : disjoint_variable_sets) {
-    // Log variable set
+  for (const auto &column_set : disjoint_column_sets) {
+    // Log column set
     if (log.has_value()) {
       std::stringstream ss;
-      ss << "Variable set " << i_variable_set << " / "
-         << disjoint_variable_sets.size();
+      ss << "Column set " << i_variable_set << " / "
+         << disjoint_column_sets.size();
       log->begin<Log::standard>(ss.str());
       log->indent() << std::endl;
       log->increase_indent();
-      log->indent() << "Variable set size = " << variable_set.size()
-                    << std::endl;
-      log->indent() << "Variable set: " << SetPrinter(variable_set) << std::endl
+      log->indent() << "Column set size = " << column_set.size() << std::endl;
+      log->indent() << "Column set: " << SetPrinter(column_set) << std::endl
                     << std::endl;
     }
 
+    // Create subspace_i from columns in column_set
     Eigen::MatrixXd subspace_i =
-        project_onto_variable_set(subspace, variable_set, zero_tol);
+        Eigen::MatrixXd::Zero(subspace.rows(), column_set.size());
+    Index i_col = 0;
+    for (Index j : column_set) {
+      subspace_i.col(i_col) = subspace.col(j);
+      ++i_col;
+    }
 
     if (subspace_i.cols() == 0) {
       if (log.has_value()) {
@@ -821,13 +755,12 @@ IrrepDecomposition::IrrepDecomposition(
       }
       ++i_variable_set;
       continue;
+    } else {
+      if (log.has_value()) {
+        log->indent() << "Overlap with input subspace, continue..." << std::endl
+                      << std::endl;
+      }
     }
-
-    // // debug
-    // if (subspace_i.cols() > B.cols()) {
-    //   throw std::runtime_error(
-    //       "Error in IrrepDecomposition: subspace_i.cols() > B.cols()");
-    // }
 
     SubspaceIrrepDecomposition x(subspace_i);
     x.solve(fullspace_rep, head_group, subgroup_orbits, allow_complex, log,
@@ -854,10 +787,17 @@ IrrepDecomposition::IrrepDecomposition(
   // 3) Combine to form symmetry adapted subspace
   Eigen::MatrixXd finished_subspace = initial_kernel;
   if (irreps.size()) {
-    finished_subspace = extend(finished_subspace,
-                               full_trans_mat(irreps, allow_complex).adjoint());
+    Eigen::MatrixXd irreps_subspace =
+        full_trans_mat(irreps, allow_complex).adjoint();
+    finished_subspace = extend(finished_subspace, irreps_subspace);
   }
   symmetry_adapted_subspace = full_trans_mat(irreps, allow_complex).adjoint();
+
+  if (finished_subspace.cols() > finished_subspace.rows()) {
+    throw std::runtime_error(
+        "Error in IrrepDecomposition: finished_subspace has more columns than "
+        "rows for unknown reason.");
+  }
   incomplete_subspace = make_kernel(finished_subspace);
 
   if (log.has_value()) {

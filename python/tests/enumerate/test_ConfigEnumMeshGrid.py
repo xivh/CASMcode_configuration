@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
@@ -600,10 +599,6 @@ def test_ConfigEnumMeshGrid_by_range_FCC_disp_2():
     assert len(canonical_configs) == 10
 
 
-# Mark test as expected to fail since this is currently failing in make_irrep_wedges
-# when the number of high symmetry direction orbits is greater than 0 but less than
-# the irrep dimension.
-@pytest.mark.xfail(reason="Error in make_irrep_wedges")
 def test_ConfigEnumMeshGrid_by_irreducible_wedge_FCC_disp_1():
     """Test ConfigEnumMeshGrid.by_irreducible_wedge
 
@@ -748,7 +743,6 @@ def test_ConfigEnumMeshGrid_by_irreducible_wedge_FCC_disp_1():
     assert len(canonical_configs) == 54  # no subwedge axes are equivalent
 
 
-@pytest.mark.xfail(reason="Error in make_irrep_wedges")
 def test_ConfigEnumMeshGrid_by_irreducible_wedge_FCC_disp_2():
     """Test ConfigEnumMeshGrid.by_irreducible_wedge
 
