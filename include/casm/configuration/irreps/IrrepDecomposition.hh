@@ -46,11 +46,34 @@ struct IrrepInfo {
   /// irreps are identical if they have the same character vectors
   Index index;
 
+  /// Frobenius-Schur indicator: 1 (real), -1 (quaternionic), 0 (complex)
+  int frobenius_schur_indicator;
+
   /// Vectors in the initial vector space that correspond to high-symmetry
   /// directions in the irreducible vector space. directions[i] is the i'th
   /// orbit of equivalent high-symmetry directions and directions[i].size() is
   /// the symmetric multiplicity of a direction in that orbit
   std::vector<std::vector<Eigen::VectorXd>> directions;
+
+  /// Check if Irrep is identity (dimension 1, all characters equal to 1)
+  bool is_identity() const;
+
+  /// Check if Irrep is gerade (first and last characters are equal)
+  bool is_gerade() const;
+
+  /// Check if Irrep is real (Frobenius-Schur indicator == 1)
+  bool is_real() const;
+
+  /// Check if Irrep is complex (Frobenius-Schur indicator == 0)
+  bool is_complex_irrep() const;
+
+  /// Check if Irrep is pseudo-real / quaternionic (Frobenius-Schur indicator
+  /// == -1)
+  bool is_pseudo_real() const;
+
+  bool operator<(IrrepInfo const &other) const;
+  bool operator==(IrrepInfo const &other) const;
+  bool operator!=(IrrepInfo const &other) const;
 };
 
 /// Construct a "dummy" IrrepInfo with user specified transformtion matrix

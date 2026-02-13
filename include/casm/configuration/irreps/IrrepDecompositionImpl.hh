@@ -119,6 +119,9 @@ struct PossibleIrrep {
   /// is_block_diagonal && characters_squared_norm ~= head_group_size;
   bool is_irrep;
 
+  /// Frobenius-Schur indicator: 1 (real), -1 (quaternionic), 0 (complex)
+  int frobenius_schur_indicator;
+
   /// Subspace corresponding to this possible irrep
   ///
   /// (K * V).block(0, begin, K.rows(), irrep_dim)

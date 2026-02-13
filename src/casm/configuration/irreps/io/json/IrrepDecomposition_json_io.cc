@@ -90,6 +90,9 @@ jsonParser &to_json(irreps::IrrepInfo const &irrep, jsonParser &json) {
   // Index
   json["index"] = irrep.index;
 
+  // Frobenius-Schur indicator
+  json["frobenius_schur_indicator"] = irrep.frobenius_schur_indicator;
+
   // High-symmetry directions
   if (!irrep.directions.empty()) {
     json["high_symmetry_directions"].put_array(irrep.directions.size());
@@ -169,12 +172,17 @@ void parse(InputParser<irreps::IrrepInfo> &parser) {
     }
   }
 
+  // Frobenius-Schur indicator
+  int frobenius_schur_indicator;
+  parser.require(frobenius_schur_indicator, "frobenius_schur_indicator");
+
   if (parser.valid()) {
     parser.value =
         notstd::make_unique<irreps::IrrepInfo>(trans_mat, characters);
     parser.value->pseudo_irrep = pseudo_irrep;
     parser.value->index = index;
     parser.value->directions = directions;
+    parser.value->frobenius_schur_indicator = frobenius_schur_indicator;
   }
 }
 

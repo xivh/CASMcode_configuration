@@ -518,6 +518,7 @@ PossibleIrrep::PossibleIrrep(
 
   if (!char_squared_norm_is_head_group_size) {
     is_irrep = false;
+    frobenius_schur_indicator = 0;
     return;
   }
 
@@ -527,12 +528,25 @@ PossibleIrrep::PossibleIrrep(
   is_irrep = is_block_diagonal && char_squared_norm_is_head_group_size;
 
   if (!is_irrep) {
+    frobenius_schur_indicator = 0;
     return;
   }
 
   // log.indent() << "e";
   // append_time(log, 1);
   subspace = make_irrep_subspace(KV_matrix, begin, end, allow_complex);
+
+  // Compute Frobenius-Schur indicator: ν = (1/|G|) Σ_g χ(g²)
+  // where χ(g²) = trace(R_g * R_g) for the block corresponding to this irrep
+  {
+    std::complex<double> fs_sum{0., 0.};
+    for (Index i = 0; i < static_cast<Index>(transformed_rep.size()); ++i) {
+      auto block = transformed_rep[i].block(begin, begin, irrep_dim, irrep_dim);
+      fs_sum += (block * block).trace();
+    }
+    frobenius_schur_indicator =
+        static_cast<int>(std::round(fs_sum.real() / double(head_group_size)));
+  }
 
   // log.indent() << "f";
   // append_time(log, 2);
@@ -750,6 +764,9 @@ std::vector<IrrepInfo> make_irrep_info(std::set<PossibleIrrep> const &irreps) {
       irrep_info.back().pseudo_irrep = true;
     else
       irrep_info.back().pseudo_irrep = false;
+
+    irrep_info.back().frobenius_schur_indicator =
+        irrep.frobenius_schur_indicator;
   }
 
   // set sequential indices to differentiate irreps

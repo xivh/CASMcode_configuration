@@ -387,6 +387,17 @@ PYBIND11_MODULE(_irreps, m) {
           numpy.ndarray[numpy.complex128[m, 1]]: A vector containing the complex
           character of each group operation's action on the irreducible vector space.
           )pbdoc")
+      .def_readonly("frobenius_schur_indicator",
+                    &irreps::IrrepInfo::frobenius_schur_indicator,
+                    R"pbdoc(
+          int: Frobenius-Schur indicator (-1, 0, or 1).
+
+          Classifies the irrep type:
+
+          - 1: real
+          - -1: quaternionic (pseudo-real)
+          - 0: complex
+          )pbdoc")
       .def_readonly("directions", &irreps::IrrepInfo::directions,
                     R"pbdoc(
           list[list[np.ndarray[np.float64[irrep_dim,]]]: High-symmetry directions
@@ -396,6 +407,39 @@ PYBIND11_MODULE(_irreps, m) {
           orbit of equivalent high-symmetry directions and ``len(directions[i])`` is
           the symmetric multiplicity of a direction in that orbit.
           )pbdoc")
+      .def_property_readonly("is_identity", &irreps::IrrepInfo::is_identity,
+                             R"pbdoc(
+          bool: True if this is the identity irrep.
+
+          The identity irrep has dimension 1 and all characters equal to 1.
+          )pbdoc")
+      .def_property_readonly("is_gerade", &irreps::IrrepInfo::is_gerade,
+                             R"pbdoc(
+          bool: True if this is a gerade irrep.
+
+          A gerade irrep has equal first and last characters, meaning
+          that inversion results in no sign change.
+          )pbdoc")
+      .def_property_readonly("is_real", &irreps::IrrepInfo::is_real,
+                             R"pbdoc(
+          bool: True if this is a real irrep (Frobenius-Schur indicator == 1).
+          )pbdoc")
+      .def_property_readonly("is_complex_irrep",
+                             &irreps::IrrepInfo::is_complex_irrep,
+                             R"pbdoc(
+          bool: True if this is a complex irrep (Frobenius-Schur indicator == 0).
+          )pbdoc")
+      .def_property_readonly("is_pseudo_real",
+                             &irreps::IrrepInfo::is_pseudo_real,
+                             R"pbdoc(
+          bool: True if this is a pseudo-real (quaternionic) irrep \
+          (Frobenius-Schur indicator == -1).
+          )pbdoc")
+      .def(py::self < py::self,
+           "Sorts by: identity first, then low-dimensional, then gerade, "
+           "then lexicographic by characters, then by trans_mat.")
+      .def(py::self == py::self)
+      .def(py::self != py::self)
       .def(
           "to_dict",
           [](irreps::IrrepInfo const &self) -> nlohmann::json {

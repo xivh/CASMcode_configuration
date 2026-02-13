@@ -44,7 +44,98 @@ IrrepInfo::IrrepInfo(Eigen::MatrixXcd _trans_mat, Eigen::VectorXcd _characters)
       characters(std::move(_characters)),
       complex(!almost_zero(trans_mat.imag())),
       pseudo_irrep(false),
-      index(0) {}
+      index(0),
+      frobenius_schur_indicator(0) {}
+
+bool IrrepInfo::is_identity() const {
+  std::complex<double> complex_one{1., 0.};
+  std::complex<double> first = characters(0);
+  std::complex<double> complex_size{double(characters.size()), 0.};
+  std::complex<double> sum = characters.sum();
+
+  return almost_equal(first, complex_one, TOL) &&
+         almost_equal(sum, complex_size, TOL);
+}
+
+bool IrrepInfo::is_gerade() const {
+  std::complex<double> first = characters(0);
+  std::complex<double> last = characters(characters.size() - 1);
+  return almost_equal(first, last, TOL);
+}
+
+bool IrrepInfo::is_real() const { return frobenius_schur_indicator == 1; }
+
+bool IrrepInfo::is_complex_irrep() const {
+  return frobenius_schur_indicator == 0;
+}
+
+bool IrrepInfo::is_pseudo_real() const {
+  return frobenius_schur_indicator == -1;
+}
+
+bool IrrepInfo::operator<(IrrepInfo const &other) const {
+  // Identity comes first
+  bool this_is_identity = this->is_identity();
+  bool other_is_identity = other.is_identity();
+  if (this_is_identity != other_is_identity) {
+    return this_is_identity;
+  }
+
+  // Low-dimensional irreps come before higher dimensional
+  if (!almost_equal(this->characters(0), other.characters(0))) {
+    return this->characters(0).real() < other.characters(0).real();
+  }
+
+  // 'gerade' irreps come before 'ungerade' irreps
+  bool this_is_gerade = this->is_gerade();
+  bool other_is_gerade = other.is_gerade();
+  if (this_is_gerade != other_is_gerade) {
+    return this_is_gerade;
+  }
+
+  // Compare characters lexicographically (real first, then imag)
+  for (Index i = 0; i < this->characters.size(); ++i) {
+    if (!almost_equal(this->characters(i).real(), other.characters(i).real()))
+      return this->characters(i).real() > other.characters(i).real();
+  }
+  for (Index i = 0; i < this->characters.size(); ++i) {
+    if (!almost_equal(this->characters(i).imag(), other.characters(i).imag()))
+      return this->characters(i).imag() > other.characters(i).imag();
+  }
+
+  // Break ties by comparing trans_mat elements
+  if (this->trans_mat.cols() != other.trans_mat.cols()) {
+    return this->trans_mat.cols() < other.trans_mat.cols();
+  }
+  if (this->trans_mat.rows() != other.trans_mat.rows()) {
+    return this->trans_mat.rows() < other.trans_mat.rows();
+  }
+  for (Index col = 0; col < this->trans_mat.cols(); ++col) {
+    for (Index row = 0; row < this->trans_mat.rows(); ++row) {
+      if (!almost_equal(this->trans_mat(row, col).real(),
+                        other.trans_mat(row, col).real()))
+        return this->trans_mat(row, col).real() >
+               other.trans_mat(row, col).real();
+    }
+    for (Index row = 0; row < this->trans_mat.rows(); ++row) {
+      if (!almost_equal(this->trans_mat(row, col).imag(),
+                        other.trans_mat(row, col).imag()))
+        return this->trans_mat(row, col).imag() >
+               other.trans_mat(row, col).imag();
+    }
+  }
+
+  // Equal
+  return false;
+}
+
+bool IrrepInfo::operator==(IrrepInfo const &other) const {
+  return !(*this < other) && !(other < *this);
+}
+
+bool IrrepInfo::operator!=(IrrepInfo const &other) const {
+  return !(*this == other);
+}
 
 /// Construct a "dummy" IrrepInfo with user specified transformtion matrix
 ///
@@ -787,6 +878,7 @@ IrrepDecomposition::IrrepDecomposition(
   // 3) Combine to form symmetry adapted subspace
   Eigen::MatrixXd finished_subspace = initial_kernel;
   if (irreps.size()) {
+    std::sort(irreps.begin(), irreps.end());
     Eigen::MatrixXd irreps_subspace =
         full_trans_mat(irreps, allow_complex).adjoint();
     finished_subspace = extend(finished_subspace, irreps_subspace);
