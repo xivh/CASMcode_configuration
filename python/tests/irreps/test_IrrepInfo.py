@@ -1,0 +1,144 @@
+import numpy as np
+
+import libcasm.irreps as casmirreps
+
+
+def test_IrrepInfo_constructor():
+    """Test constructing an IrrepInfo directly."""
+    trans_mat = np.array([[1.0 + 0j, 0.0 + 0j, 0.0 + 0j]])
+    characters = np.array([1.0 + 0j, 1.0 + 0j, 1.0 + 0j])
+    irrep_info = casmirreps.IrrepInfo(trans_mat=trans_mat, characters=characters)
+
+    assert isinstance(irrep_info, casmirreps.IrrepInfo)
+    assert irrep_info.irrep_dim == 1
+    assert irrep_info.vector_dim == 3
+
+
+def test_IrrepInfo_attributes(FCC_binary_irrep_decomposition):
+    """Test IrrepInfo attributes from an irrep decomposition."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    assert len(irreps) == 2
+
+    for irrep_info in irreps:
+        assert isinstance(irrep_info, casmirreps.IrrepInfo)
+
+        # Check irrep_dim and vector_dim
+        assert irrep_info.vector_dim == 8
+        assert irrep_info.irrep_dim > 0
+
+        # Check trans_mat shape
+        assert irrep_info.trans_mat.shape == (
+            irrep_info.irrep_dim,
+            irrep_info.vector_dim,
+        )
+
+        # Check characters length matches number of group operations
+        assert len(irrep_info.characters) == len(
+            FCC_binary_irrep_decomposition.matrix_rep
+        )
+
+
+def test_IrrepInfo_identity_irrep(FCC_binary_irrep_decomposition):
+    """Test the identity irrep properties."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    # One of the irreps should be the identity irrep (1-dimensional, all chars = 1)
+    identity_irreps = [ir for ir in irreps if ir.is_identity]
+    assert len(identity_irreps) == 1
+
+    identity = identity_irreps[0]
+    assert identity.irrep_dim == 1
+    assert np.allclose(np.abs(identity.characters), np.ones(len(identity.characters)))
+
+
+def test_IrrepInfo_frobenius_schur_indicator(FCC_binary_irrep_decomposition):
+    """Test the Frobenius-Schur indicator."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    for irrep_info in irreps:
+        # Frobenius-Schur indicator should be -1, 0, or 1
+        assert irrep_info.frobenius_schur_indicator in (-1, 0, 1)
+
+        # Check consistency with is_real, is_complex_irrep, is_pseudo_real
+        if irrep_info.frobenius_schur_indicator == 1:
+            assert irrep_info.is_real is True
+            assert irrep_info.is_complex_irrep is False
+            assert irrep_info.is_pseudo_real is False
+        elif irrep_info.frobenius_schur_indicator == 0:
+            assert irrep_info.is_real is False
+            assert irrep_info.is_complex_irrep is True
+            assert irrep_info.is_pseudo_real is False
+        elif irrep_info.frobenius_schur_indicator == -1:
+            assert irrep_info.is_real is False
+            assert irrep_info.is_complex_irrep is False
+            assert irrep_info.is_pseudo_real is True
+
+
+def test_IrrepInfo_is_gerade(FCC_binary_irrep_decomposition):
+    """Test the is_gerade property."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    for irrep_info in irreps:
+        assert isinstance(irrep_info.is_gerade, bool)
+
+
+def test_IrrepInfo_directions(FCC_binary_irrep_decomposition):
+    """Test the directions attribute."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    for irrep_info in irreps:
+        directions = irrep_info.directions
+        assert isinstance(directions, list)
+        for orbit in directions:
+            assert isinstance(orbit, list)
+            for direction in orbit:
+                assert isinstance(direction, np.ndarray)
+                assert len(direction) == irrep_info.vector_dim
+
+
+def test_IrrepInfo_comparison(FCC_binary_irrep_decomposition):
+    """Test comparison operators."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    assert len(irreps) == 2
+
+    # Test equality with self
+    assert irreps[0] == irreps[0]
+    assert irreps[1] == irreps[1]
+
+    # Test inequality between different irreps
+    assert irreps[0] != irreps[1]
+
+    # Test less-than (identity should sort first)
+    identity_idx = 0 if irreps[0].is_identity else 1
+    other_idx = 1 - identity_idx
+    assert irreps[identity_idx] < irreps[other_idx]
+
+
+def test_IrrepInfo_to_dict(FCC_binary_irrep_decomposition):
+    """Test to_dict serialization."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    for irrep_info in irreps:
+        data = irrep_info.to_dict()
+        assert isinstance(data, dict)
+
+
+def test_IrrepInfo_from_dict_roundtrip(FCC_binary_irrep_decomposition):
+    """Test from_dict / to_dict roundtrip."""
+    irreps = FCC_binary_irrep_decomposition.irreps
+
+    for irrep_info in irreps:
+        data = irrep_info.to_dict()
+        reconstructed = casmirreps.IrrepInfo.from_dict(data)
+
+        assert isinstance(reconstructed, casmirreps.IrrepInfo)
+        assert reconstructed.irrep_dim == irrep_info.irrep_dim
+        assert reconstructed.vector_dim == irrep_info.vector_dim
+        assert np.allclose(reconstructed.trans_mat, irrep_info.trans_mat)
+        assert np.allclose(reconstructed.characters, irrep_info.characters)
+        assert (
+            reconstructed.frobenius_schur_indicator
+            == irrep_info.frobenius_schur_indicator
+        )
