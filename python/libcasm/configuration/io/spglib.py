@@ -12,6 +12,11 @@ import libcasm.configuration as casmconfig
 import libcasm.configuration.io.tools as io_tools
 import libcasm.xtal as xtal
 
+try:
+    spglib.error.OLD_ERROR_HANDLING = False
+except:
+    pass
+
 
 def asdict(
     obj: typing.Any,

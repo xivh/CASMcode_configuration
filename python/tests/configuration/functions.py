@@ -5,6 +5,11 @@ import spglib
 
 import libcasm.xtal as xtal
 
+try:
+    spglib.error.OLD_ERROR_HANDLING = False
+except:
+    pass
+
 
 def check_symmetry_dataset(
     symmetry_dataset: typing.Any,

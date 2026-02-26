@@ -82,6 +82,11 @@ def symgroup_to_dict_with_group_classification(
     try:
         import spglib
 
+        try:
+            spglib.error.OLD_ERROR_HANDLING = False
+        except:
+            pass
+
     except ImportError:
         data["group_classification"] = None
         return data

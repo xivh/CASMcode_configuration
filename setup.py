@@ -2,7 +2,7 @@ from skbuild import setup
 
 setup(
     name="libcasm-configuration",
-    version="2.3.0",
+    version="2.3.1",
     packages=[
         "libcasm",
         "libcasm.clusterography",
