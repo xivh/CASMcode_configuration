@@ -7,14 +7,14 @@ requires = [
     "ninja",
     "pybind11~=3.0",
     "libcasm-global>=2.2.0",
-    "libcasm-xtal>=2.2.0",
+    "libcasm-xtal>=2.2.0,<3",
     "libcasm-clexulator>=2.2.0",
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "libcasm-configuration"
-version = "2.2.0"
+version = "2.2.1"
 authors = [
   { name="CASM developers", email="casm-developers@lists.engr.ucsb.edu" },
 ]
@@ -30,7 +30,7 @@ classifiers = [
 ]
 dependencies = [
   "libcasm-global>=2.2.0",
-  "libcasm-xtal>=2.2.0",
+  "libcasm-xtal>=2.2.0,<3",
   "libcasm-clexulator>=2.2.0",
   "numpy",
   "spglib",

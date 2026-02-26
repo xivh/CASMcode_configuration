@@ -5,6 +5,13 @@ All notable changes to `libcasm-configuration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-02-26
+
+### Changed
+
+- Restrict libcasm-xtal dependency to major version 2 (`libcasm-xtal>=2.2.0,<3`)
+
+
 ## [2.2.0] - 2025-08-14
 
 ### Changed
