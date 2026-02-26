@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Restrict libcasm-xtal dependency to major version 2 (`libcasm-xtal>=2.2.0,<3`)
-- Drop builds for python3.9, add builds for python3.14
+- Drop builds for python3.9, add builds for python3.14; update requires-python to ">=3.10,<3.15"
 - Drop x86_64 macOS wheels
 
 
