@@ -91,6 +91,90 @@ def FCC_binary_irrep_decomposition(FCC_binary_prim):
 
 
 @pytest.fixture(scope="session")
+def FCC_disp_prim():
+    # Lattice vectors
+    lattice_column_vector_matrix = np.array(
+        [
+            [0.0, 1.0 / 2.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 0.0, 1.0 / 2.0],  # a
+            [1.0 / 2.0, 1.0 / 2.0, 0.0],  # a
+        ]
+    ).transpose()
+    lattice = xtal.Lattice(lattice_column_vector_matrix)
+
+    # Basis sites positions, as columns of a matrix,
+    # in fractional coordinates with respect to the lattice vectors
+    coordinate_frac = np.array(
+        [
+            [0.0, 0.0, 0.0],
+        ]
+    ).transpose()
+
+    # Occupation degrees of freedom (DoF)
+    occupants = {}
+    occ_dof = [["A"]]
+
+    # Local continuous degrees of freedom (DoF)
+    disp_dof = xtal.DoFSetBasis("disp")  # Atomic displacement
+    local_dof = [
+        [disp_dof],
+    ]
+
+    return xtal.Prim(
+        lattice=lattice,
+        coordinate_frac=coordinate_frac,
+        occ_dof=occ_dof,
+        local_dof=local_dof,
+        occupants=occupants,
+    )
+
+
+@pytest.fixture(scope="session")
+def FCC_disp_vol32_irrep_decomposition(FCC_disp_prim):
+    """IrrepDecomposition for FCC disp DoF in 2x2x2 of the conventional cell."""
+    prim = casmconfig.Prim(FCC_disp_prim)
+    T_dof_space = (
+        np.array(
+            [
+                [-1, 1, 1],
+                [1, -1, 1],
+                [1, 1, -1],
+            ],
+            dtype=int,
+        )
+        * 2
+    )
+    supercell = casmconfig.Supercell(prim, T_dof_space)
+    configuration = casmconfig.Configuration(supercell=supercell)
+    supercell_factor_group = casmconfig.make_invariant_subgroup(
+        configuration=configuration,
+    )
+    symgroup = casmconfig.make_symgroup(supercell_factor_group)
+
+    print("Group size:", len(symgroup.elements))
+
+    subset = casmgroup.Subset(group=symgroup)
+    subset.all_subgroups()
+    subgroup_orbits = subset.all_subgroup_orbits()
+
+    dof_space = casmclex.DoFSpace(
+        dof_key="disp",
+        xtal_prim=FCC_disp_prim,
+        transformation_matrix_to_super=T_dof_space,
+    )
+    matrix_rep = casmconfig.make_dof_space_rep(
+        group=supercell_factor_group,
+        dof_space=dof_space,
+    )
+
+    return casmirreps.IrrepDecomposition(
+        matrix_rep=matrix_rep,
+        subgroup_orbits=subgroup_orbits,
+        verbosity="verbose",
+    )
+
+
+@pytest.fixture(scope="session")
 def ABC2_disp_prim():
     # Lattice vectors
     lattice_column_vector_matrix = np.array(
@@ -173,6 +257,11 @@ def ABC2_disp_irrep_decomposition(ABC2_disp_prim):
 
 @pytest.fixture(scope="session")
 def TlZn2Sb2_disp_prim():
+
+    # P. Villars, TlZn2Sb2 Crystal Structure (2016).
+    # PAULING FILE in: Inorganic Solid Phases, SpringerMaterials
+    # (online database), Springer, Heidelberg (ed.) SpringerMaterials.
+
     L = np.array(
         [
             [-4.32450000000000, 4.32450000000000, 3.64349936250000],
@@ -210,7 +299,7 @@ def TlZn2Sb2_disp_irrep_decomposition(TlZn2Sb2_disp_prim):
     """IrrepDecomposition for ABC2 prim with disp DoF."""
     xtal_prim = TlZn2Sb2_disp_prim
     prim = casmconfig.Prim(xtal_prim)
-    T_dof_space = np.eye(3, dtype=int) * 1  # 2x supercell in each direction
+    T_dof_space = np.eye(3, dtype=int) * 1
     supercell = casmconfig.Supercell(prim, T_dof_space)
     configuration = casmconfig.Configuration(supercell=supercell)
     supercell_factor_group = casmconfig.make_invariant_subgroup(

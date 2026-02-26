@@ -361,14 +361,16 @@ PYBIND11_MODULE(_irreps, m) {
             Describes an irreducible subspace.
             )pbdoc")
       .def(py::init([](Eigen::MatrixXcd trans_mat, Eigen::VectorXcd characters,
-                       bool pseudo_irrep, std::optional<Index> index,
-                       int frobenius_schur_indicator,
+                       bool pseudo_irrep, int frobenius_schur_indicator,
+                       std::optional<Index> irrep_type,
+                       std::optional<Index> index,
                        std::optional<std::vector<std::vector<Eigen::VectorXd>>>
                            directions) {
              auto info =
                  irreps::IrrepInfo(std::move(trans_mat), std::move(characters));
              info.pseudo_irrep = pseudo_irrep;
              info.index = index;
+             info.irrep_type = irrep_type;
              info.frobenius_schur_indicator = frobenius_schur_indicator;
              info.directions = std::move(directions);
              return info;
@@ -389,20 +391,24 @@ PYBIND11_MODULE(_irreps, m) {
               True if irrep is real but was created as direct sum of two complex
               irreps. In this case, the 'irrep' is reducible, but this is the
               most-reduced representation with real basis vectors.
-          index : Optional[int], default=None
-              Sequentially-assigned index used to distinguish between identical
-              irreps (irreps with the same character vectors).
           frobenius_schur_indicator : int, default=1
               Frobenius-Schur indicator: 1 (real), -1 (quaternionic/pseudo-real),
               0 (complex).
+          irrep_type : Optional[int], default=None
+              Index that is the same for irreps with the same characters.
+          index : Optional[int], default=None
+              Sequentially-assigned index used to distinguish between identical
+              irreps (irreps with the same character vectors).
           directions : Optional[list[list[np.ndarray[np.float64[vector_dim,]]]]], default=None
               High-symmetry directions in the initial vector space.
               ``directions[i]`` is the `i`-th orbit of equivalent high-symmetry
               directions.
           )pbdoc",
            py::arg("trans_mat"), py::arg("characters"),
-           py::arg("pseudo_irrep") = false, py::arg("index") = std::nullopt,
+           py::arg("pseudo_irrep") = false,
            py::arg("frobenius_schur_indicator") = 1,
+           py::arg("irrep_type") = std::nullopt,
+           py::arg("index") = std::nullopt,
            py::arg("directions") = std::nullopt)
       .def_readonly("irrep_dim", &irreps::IrrepInfo::irrep_dim,
                     "int: Irreducible subspace dimension")
@@ -427,6 +433,18 @@ PYBIND11_MODULE(_irreps, m) {
           - 1: real
           - -1: quaternionic (pseudo-real)
           - 0: complex
+          )pbdoc")
+      .def_property_readonly(
+          "irrep_type",
+          [](irreps::IrrepInfo const &self) -> std::optional<Index> {
+            return self.irrep_type;
+          },
+          R"pbdoc(
+          Optional[int]: Index that is the same for irreps with the same
+          characters.
+
+          Irreps with the same characters are assigned the same irrep_type
+          value, starting from 0. None if not yet set.
           )pbdoc")
       .def_property_readonly(
           "index",

@@ -57,9 +57,11 @@ def is_same_space(found, expected):
 def test_config_space_analysis_1(FCC_binary_prim):
     prim = casmconfig.Prim(FCC_binary_prim)
 
+    configurations = build_configurations_1(prim)
+
     # Perform DoF space analysis
     results = casmconfig.config_space_analysis(
-        configurations=build_configurations_1(prim),
+        configurations=configurations,
         # dofs=None,
         # exclude_homogeneous_modes=None,
         # include_default_occ_modes=False,

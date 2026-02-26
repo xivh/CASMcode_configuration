@@ -79,27 +79,58 @@ def frobenius_schur_indicator_assertions(irrep_info):
         assert irrep_info.is_pseudo_real is True
 
 
+def print_summary(irreps):
+    for i, x in enumerate(irreps):
+        print(f"Irrep {i}: dim={x.irrep_dim}, type={x.irrep_type}, index={x.index}")
+    print()
+    # print("Symmetry-adapted basis:")
+    # B = clean(irrep_decomposition.symmetry_adapted_subspace)
+    # for i in range(B.shape[1]):
+    #     print(f"{i}: {B[:, i]}")
+    # print()
+    # assert False
+
+
 def test_IrrepInfo_1(FCC_binary_irrep_decomposition):
     """Test the Frobenius-Schur indicator."""
-    irreps = FCC_binary_irrep_decomposition.irreps
+    irrep_decomposition = FCC_binary_irrep_decomposition
+    irreps = irrep_decomposition.irreps
+
+    # print_summary(irreps)
 
     for irrep_info in irreps:
         frobenius_schur_indicator_assertions(irrep_info)
+
+
+# def test_IrrepInfo_2(FCC_disp_vol32_irrep_decomposition):
+#     """Test the Frobenius-Schur indicator."""
+#     irrep_decomposition = FCC_disp_vol32_irrep_decomposition
+#     irreps = irrep_decomposition.irreps
+#
+#     # print_summary(irreps)
+#
+#     for irrep_info in irreps:
+#         frobenius_schur_indicator_assertions(irrep_info)
 
 
 # ABC2_disp_irrep_decomposition
-def test_IrrepInfo_2(ABC2_disp_irrep_decomposition):
+def test_IrrepInfo_3(ABC2_disp_irrep_decomposition):
     """Test the Frobenius-Schur indicator."""
-    irreps = ABC2_disp_irrep_decomposition.irreps
+    irrep_decomposition = ABC2_disp_irrep_decomposition
+    irreps = irrep_decomposition.irreps
+
+    # print_summary(irreps)
 
     for irrep_info in irreps:
         frobenius_schur_indicator_assertions(irrep_info)
 
 
-# TlZn2Sb2_disp_irrep_decomposition
-def test_IrrepInfo_3(TlZn2Sb2_disp_irrep_decomposition):
+def test_IrrepInfo_4(TlZn2Sb2_disp_irrep_decomposition):
     """Test the Frobenius-Schur indicator."""
-    irreps = TlZn2Sb2_disp_irrep_decomposition.irreps
+    irrep_decomposition = TlZn2Sb2_disp_irrep_decomposition
+    irreps = irrep_decomposition.irreps
+
+    # print_summary(irreps)
 
     for irrep_info in irreps:
         frobenius_schur_indicator_assertions(irrep_info)

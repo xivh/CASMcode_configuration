@@ -1975,6 +1975,7 @@ inline void MakeAllSubgroupsFromGenerators::run(
   progress_callback(0, 0);
   threaded_pipeline(producer, worker, merger, task_queue_max_size,
                     result_queue_max_size);
+  progress_callback(n_subtrees, subgroups_size());
 
   if (stop_requested()) {
     throw std::runtime_error(

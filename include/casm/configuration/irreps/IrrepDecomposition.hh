@@ -46,6 +46,9 @@ struct IrrepInfo {
   /// irreps are identical if they have the same character vectors
   std::optional<Index> index;
 
+  /// index that is the same for irreps with approximately the same characters
+  std::optional<Index> irrep_type;
+
   /// Frobenius-Schur indicator: 1 (real), -1 (quaternionic), 0 (complex)
   int frobenius_schur_indicator;
 

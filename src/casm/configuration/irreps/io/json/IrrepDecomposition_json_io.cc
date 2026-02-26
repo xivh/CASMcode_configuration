@@ -59,6 +59,10 @@ jsonParser &add_pseudo_irrep_characters(irreps::IrrepInfo const &irrep,
 ///       Negative of the imaginary component of the irrep transformation
 ///       matrix, if it is complex.
 ///
+///   "irrep_type": optional, integer
+///     Index that is the same for irreps with approximately the same
+///     characters.
+///
 ///   "high_symmetry_directions": optional, array_like
 ///     Vectors in the irreducible vector space that correspond to high-symmetry
 ///     directions. X[i] is the i'th orbit of equivalent high-symmetry
@@ -90,6 +94,11 @@ jsonParser &to_json(irreps::IrrepInfo const &irrep, jsonParser &json) {
   // Index
   if (irrep.index.has_value()) {
     json["index"] = *irrep.index;
+  }
+
+  // Irrep type
+  if (irrep.irrep_type.has_value()) {
+    json["irrep_type"] = *irrep.irrep_type;
   }
 
   // Frobenius-Schur indicator
@@ -161,6 +170,14 @@ void parse(InputParser<irreps::IrrepInfo> &parser) {
     index = index_val;
   }
 
+  // Irrep type
+  std::optional<Index> irrep_type = std::nullopt;
+  if (parser.self.find("irrep_type") != parser.self.end()) {
+    Index irrep_type_val;
+    parser.require(irrep_type_val, fs::path{"irrep_type"});
+    irrep_type = irrep_type_val;
+  }
+
   // High-symmetry directions
   std::optional<std::vector<std::vector<Eigen::VectorXd>>> directions =
       std::nullopt;
@@ -190,6 +207,7 @@ void parse(InputParser<irreps::IrrepInfo> &parser) {
         notstd::make_unique<irreps::IrrepInfo>(trans_mat, characters);
     parser.value->pseudo_irrep = pseudo_irrep;
     parser.value->index = index;
+    parser.value->irrep_type = irrep_type;
     parser.value->directions = directions;
     parser.value->frobenius_schur_indicator = frobenius_schur_indicator;
   }

@@ -42,15 +42,19 @@ void print_irreps(Log &log, std::string what,
 static void sort_and_index_irreps(std::vector<IrrepInfo> &irreps) {
   std::sort(irreps.begin(), irreps.end());
   Index irrep_index = 0;
+  Index irrep_type = 0;
   for (Index i = 0; i < static_cast<Index>(irreps.size()) - 1; ++i) {
     irreps[i].index = irrep_index;
+    irreps[i].irrep_type = irrep_type;
     if (almost_equal(irreps[i + 1].characters, irreps[i].characters, TOL)) {
       irrep_index++;
     } else {
       irrep_index = 0;
+      irrep_type++;
     }
   }
   irreps.back().index = irrep_index;
+  irreps.back().irrep_type = irrep_type;
 }
 
 IrrepInfo::IrrepInfo(Eigen::MatrixXcd _trans_mat, Eigen::VectorXcd _characters)

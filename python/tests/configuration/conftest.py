@@ -492,6 +492,11 @@ def prim_ABC2():
 
 @pytest.fixture
 def TlZn2Sb2_disp_prim():
+
+    # P. Villars, TlZn2Sb2 Crystal Structure (2016).
+    # PAULING FILE in: Inorganic Solid Phases, SpringerMaterials
+    # (online database), Springer, Heidelberg (ed.) SpringerMaterials.
+
     L = np.array(
         [
             [-4.32450000000000, 4.32450000000000, 3.64349936250000],

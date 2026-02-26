@@ -642,8 +642,7 @@ class ConfigEnumLocalOccupations:
             required_sites=required_sites,
             supercell=supercell,
         ):
-            print(
-                """
+            print("""
 ** WARNING: Small supercell / large neighborhood ******
 **                                                   **
 ** Some sites in the neighborhood of the event map   **
@@ -655,8 +654,7 @@ class ConfigEnumLocalOccupations:
 ** for choosing a supercell that avoids this.        **
 **                                                   **
 *******************************************************
-"""
-            )
+""")
         return prim_local_orbits
 
     def _check_supercell_symmetry(
@@ -689,8 +687,7 @@ class ConfigEnumLocalOccupations:
         # Check that all background_fg_indices are also in scel_fg_indices
         if not all(i in scel_fg_indices for i in background_fg_indices):
             if fix == "both":
-                print(
-                    """
+                print("""
 ** WARNING: Symmetry reduction due to supercell *******
 **                                                   **
 ** The choice of supercell has lower symmetry than   **
@@ -705,11 +702,9 @@ class ConfigEnumLocalOccupations:
 ** for choosing a supercell that avoids this.        **
 **                                                   **
 *******************************************************
-"""
-                )
+""")
             else:
-                print(
-                    """
+                print("""
 ** ERROR: Symmetry reduction due to supercell *********
 **                                                   **
 ** The choice of supercell has lower symmetry than   **
@@ -730,8 +725,7 @@ class ConfigEnumLocalOccupations:
 ** orientations are specifically requested.          **
 **                                                   **
 *******************************************************
-"""
-                )
+""")
 
             if fix != "both":
                 raise ValueError(
@@ -986,8 +980,7 @@ class ConfigEnumLocalOccupations:
             sys.stdout.flush()
 
         if len(super_backgrounds) > 1:
-            print(
-                """
+            print("""
 ** WARNING: Symmetry reduction due to supercell *******
 **                                                   **
 ** The choice of supercell results in symmetrically  **
@@ -1003,8 +996,7 @@ class ConfigEnumLocalOccupations:
 ** for choosing a supercell that avoids this.        **
 **                                                   **
 *******************************************************
-"""
-            )
+""")
 
         if len(super_backgrounds) > 1 and fix != "both":
             raise ValueError(

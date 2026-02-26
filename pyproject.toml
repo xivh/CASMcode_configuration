@@ -20,7 +20,7 @@ authors = [
 ]
 description = "CASM configuration comparison and enumeration"
 readme = "README.md"
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.10,<3.15"
 license = "LGPL-2.1-or-later"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -53,8 +53,8 @@ known-first-party = ["libcasm", "casm"]
 
 
 [tool.cibuildwheel]
-# Build for python3.9, 3.10, 3.11, 3.12, 3.13
-build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+# Build for python3.10, 3.11, 3.12, 3.13, 3.14
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
 
 # Need libcasm dependencies at wheel repair stage
 before-build = "pip install -r build_requirements.txt"
