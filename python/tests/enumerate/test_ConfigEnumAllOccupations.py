@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 import libcasm.configuration as casmconfig
 import libcasm.enumerate as casmenum
