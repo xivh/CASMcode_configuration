@@ -104,6 +104,10 @@ std::vector<SupercellSymOp> make_invariant_subgroup(
     SupercellSymOpIt begin, SupercellSymOpIt end,
     std::set<std::string> which_dofs = {"all"});
 
+/// \brief Return the multiplication table for a group of SupercellSymOp
+std::vector<std::vector<Index>> make_symgroup_multiplication_table(
+    std::vector<SupercellSymOp> const &group);
+
 }  // namespace config
 }  // namespace CASM
 

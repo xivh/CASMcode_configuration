@@ -13,6 +13,7 @@
 #include "casm/clexulator/ConfigDoFValuesTools_impl.hh"
 #include "casm/configuration/ConfigCompare.hh"
 #include "casm/configuration/ConfigurationSet.hh"
+#include "casm/configuration/DoFSpace_functions.hh"
 #include "casm/configuration/FromStructure.hh"
 #include "casm/configuration/Prim.hh"
 #include "casm/configuration/Supercell.hh"
@@ -30,10 +31,13 @@
 #include "casm/configuration/make_simple_structure.hh"
 #include "casm/crystallography/SimpleStructure.hh"
 #include "casm/crystallography/SymInfo.hh"
+#include "casm/crystallography/SymType.hh"
+#include "casm/crystallography/SymTypeComparator.hh"
 #include "casm/crystallography/UnitCellCoord.hh"
 #include "casm/crystallography/io/BasicStructureIO.hh"
 #include "casm/crystallography/io/SymInfo_json_io.hh"
 #include "casm/crystallography/io/SymInfo_stream_io.hh"
+#include "casm/global/pybind11_helpers.hh"
 #include "pybind11_json/pybind11_json.hpp"
 
 #define STRINGIFY(x) #x
@@ -176,6 +180,36 @@ inline Eigen::MatrixXd pretty(const Eigen::MatrixXd &M, double tol = 1e-10) {
     }
   }
   return Mp;
+}
+
+// class Log {
+// public:
+//   static const int none = 0;
+//   static const int quiet = 5;
+//   static const int standard = 10;
+//   static const int verbose = 20;
+//   static const int debug = 100;
+
+inline std::optional<Log> make_log(
+    std::optional<std::string> const &verbosity) {
+  std::optional<Log> log;
+  if (verbosity.has_value()) {
+    if (verbosity.value() == "debug") {
+      log = Log(std::cout, Log::debug, true);
+    } else if (verbosity.value() == "verbose") {
+      log = Log(std::cout, Log::verbose, true);
+    } else if (verbosity.value() == "standard") {
+      log = Log(std::cout, Log::standard, true);
+    } else if (verbosity.value() == "quiet") {
+      log = Log(std::cout, Log::quiet, true);
+    } else if (verbosity.value() == "none") {
+      log = Log(std::cout, Log::none, true);
+    } else {
+      throw std::runtime_error("Error: verbosity level " + verbosity.value() +
+                               " not recognized");
+    }
+  }
+  return log;
 }
 
 }  // namespace CASMpy
@@ -1130,6 +1164,39 @@ PYBIND11_MODULE(_configuration, m) {
           When permuting site occupants, the following convention is
           used, `after[l] = before[permutation[l]]`. Has value None for large
           supercells (when `n_unitcells` > `max_n_translation_permutations`).
+          )pbdoc")
+      .def(
+          "symgroup",
+          [](std::shared_ptr<config::Supercell const> const &supercell) {
+            std::vector<config::SupercellSymOp> group(
+                config::SupercellSymOp::begin(supercell),
+                config::SupercellSymOp::end(supercell));
+
+            Index n = static_cast<Index>(group.size());
+            std::vector<xtal::SymOp> element(n, xtal::SymOp::identity());
+            for (Index i = 0; i < n; ++i) {
+              element[i] = group[i].to_symop();
+            }
+
+            std::multiplies<xtal::SymOp> multiply_f;
+            double xtal_tol = supercell->prim->basicstructure->lattice().tol();
+            xtal::SymOpPeriodicCompare_f equal_to_f(
+                supercell->superlattice.superlattice(), xtal_tol);
+            auto symgroup = std::make_shared<sym_info::SymGroup const>(
+                group::make_group(element, multiply_f, equal_to_f));
+
+            return symgroup;
+          },
+          R"pbdoc(
+          Returns a new SymGroup containing all combinations of supercell factor
+          group operations and translations within the supercell.
+
+          Returns
+          -------
+          symgroup: libcasm.sym_info.SymGroup
+              All combinations of supercell factor group operations and
+              unit cell translations within the supercell.
+
           )pbdoc")
       .def(
           "symgroup_rep",
@@ -2944,26 +3011,69 @@ PYBIND11_MODULE(_configuration, m) {
              bool include_default_occ_modes,
              std::optional<std::map<int, int>> sublattice_index_to_default_occ,
              std::optional<std::map<Index, int>> site_index_to_default_occ,
-             bool calc_wedges) -> py::tuple {
-            auto dof_space = std::make_shared<clexulator::DoFSpace>(
-                dof_key, self.supercell->prim->basicstructure,
-                self.supercell->superlattice.transformation_matrix_to_super(),
-                sites, basis);
+             std::string symmetrization, bool calc_wedges,
+             std::string commuter_method) -> py::tuple {
             if (!symmetry_adapted) {
+              clexulator::DoFSpace dof_space_in(
+                  dof_key, self.supercell->prim->basicstructure,
+                  self.supercell->superlattice.transformation_matrix_to_super(),
+                  sites, basis);
+              clexulator::DoFSpace dof_space_pre1 =
+                  config::exclude_homogeneous_mode_space(
+                      dof_space_in, exclude_homogeneous_modes);
+              if (dof_space_pre1.basis.cols() == 0) {
+                std::stringstream msg;
+                msg << "Error in make_dof_space: "
+                    << "After excluding homogeneous mode space: basis.cols() "
+                       "== 0";
+                throw config::dof_space_analysis_error(msg.str());
+              }
+
+              clexulator::DoFSpace dof_space =
+                  config::exclude_default_occ_modes(
+                      dof_space_pre1, include_default_occ_modes,
+                      sublattice_index_to_default_occ,
+                      site_index_to_default_occ);
+              if (dof_space.basis.cols() == 0) {
+                std::stringstream msg;
+                msg << "Error in dof_space_analysis: "
+                    << "After excluding default occ modes: basis.cols() == 0";
+                throw config::dof_space_analysis_error(msg.str());
+              }
+
               return py::make_tuple(dof_space, py::none());
+            } else {
+              auto dof_space = std::make_shared<clexulator::DoFSpace>(
+                  dof_key, self.supercell->prim->basicstructure,
+                  self.supercell->superlattice.transformation_matrix_to_super(),
+                  sites, basis);
+
+              irreps::CommuterMethod _commuter_method;
+              if (commuter_method == "deterministic") {
+                _commuter_method = irreps::CommuterMethod::deterministic;
+              } else if (commuter_method == "random") {
+                _commuter_method = irreps::CommuterMethod::random;
+              } else {
+                throw std::runtime_error(
+                    "Error in make_dof_space: commuter_method must be "
+                    "\"deterministic\" or \"random\", got \"" +
+                    commuter_method + "\"");
+              }
+
+              std::optional<Log> log = std::nullopt;
+              // std::optional<Log> log = Log(std::cout, Log::debug, true);
+              config::DoFSpaceAnalysisResults results =
+                  config::dof_space_analysis(
+                      *dof_space, self.supercell->prim, self,
+                      exclude_homogeneous_modes, include_default_occ_modes,
+                      sublattice_index_to_default_occ,
+                      site_index_to_default_occ, symmetrization, calc_wedges,
+                      log, _commuter_method);
+              return py::make_tuple(
+                  std::make_shared<clexulator::DoFSpace>(
+                      std::move(results.symmetry_adapted_dof_space)),
+                  results.symmetry_report);
             }
-            std::optional<Log> log = std::nullopt;
-            // std::optional<Log> log = Log(std::cout, Log::debug, true);
-            config::DoFSpaceAnalysisResults results =
-                config::dof_space_analysis(
-                    *dof_space, self.supercell->prim, self,
-                    exclude_homogeneous_modes, include_default_occ_modes,
-                    sublattice_index_to_default_occ, site_index_to_default_occ,
-                    calc_wedges, log);
-            return py::make_tuple(
-                std::make_shared<clexulator::DoFSpace>(
-                    std::move(results.symmetry_adapted_dof_space)),
-                results.symmetry_report);
           },
           R"pbdoc(
           Construct a :class:`~libcasm.clexulator.DoFSpace` for this \
@@ -3011,10 +3121,36 @@ PYBIND11_MODULE(_configuration, m) {
           site_index_to_default_occ: Optional[dict[int,int]]
               Optional values of default occupation index (the value), specified
               by supercell site index (the key).
+          symmetrization: str = "complete"
+              Controls how irreducible subspace bases are symmetrized to
+              align along high-symmetry directions. Options are:
+
+              - "none": Leave the irreducible subspace bases as initially
+                found, reducing computation time.
+              - "fast": Symmetrize the irreducible subspace
+                bases to align along high-symmetry directions using
+                cyclic subgroups. This may not be a complete
+                symmetrization, but is generally fast.
+              - "complete": Symmetrize the irreducible subspace
+                bases to align along high-symmetry directions using
+                all subgroups. For large spaces, finding all
+                subgroups is slow.
+
           calc_wedges : bool = False
               If True, calculate the irreducible wedges for the vector space.
               This may take a long time, but provides the symmetrically unique
               portions of the vector space, which is useful for enumeration.
+          commuter_method : str = "deterministic"
+              Method for constructing commuter matrices in the irrep
+              decomposition. Options are:
+
+              - "deterministic": (default) Use structured kernel column pair
+                enumeration. This method is deterministic initially, but if
+                it fails, then a random rotation of the subspace is applied
+                and the method is retried, up to a maximum of 10 attempts.
+              - "random": Use random Hermitian seed matrices projected via the
+                Reynolds operator. This usually enables finding irreps in one
+                attempt, but is not deterministic.
 
           Returns
           -------
@@ -3033,7 +3169,9 @@ PYBIND11_MODULE(_configuration, m) {
           py::arg("include_default_occ_modes") = false,
           py::arg("sublattice_index_to_default_occ") = std::nullopt,
           py::arg("site_index_to_default_occ") = std::nullopt,
-          py::arg("calc_wedges") = false)
+          py::arg("symmetrization") = "complete",
+          py::arg("calc_wedges") = false,
+          py::arg("commuter_method") = "deterministic")
       .def(
           "order_parameters",
           [](config::Configuration &self,
@@ -4335,6 +4473,44 @@ PYBIND11_MODULE(_configuration, m) {
       )pbdoc",
         py::arg("group"), py::arg("dof_space"));
 
+  m.def("make_symgroup", &config::make_symgroup, R"pbdoc(
+        Make a SymGroup from a list of SupercellSymOp
+
+        Parameters
+        ----------
+        group: list[:class:`~libcasm.configuration.SupercellSymOp`]
+            The symmetry group, as a list of SupercellSymOp.
+
+        Returns
+        -------
+        symgroup: :class:`~libcasm.configuration.SymGroup`
+            The symmetry group, as a SymGroup representation
+
+        )pbdoc",
+        py::arg("group"));
+
+  m.def("make_symgroup_multiplication_table",
+        &config::make_symgroup_multiplication_table,
+        R"pbdoc(
+        Make the multiplication table for a group of SupercellSymOp
+
+        Parameters
+        ----------
+        group: list[:class:`~libcasm.configuration.SupercellSymOp`]
+            The symmetry group, as a list of SupercellSymOp. The group must be
+            closed.
+
+        Returns
+        -------
+        multiplication_table: list[list[int]]
+            The multiplication table element
+              `multiplication_table[i][j] == k` represents that
+              ``group[k] == group[i] * group[j]``.
+
+
+        )pbdoc",
+        py::arg("group"));
+
   //
   py::class_<config::ConfigSpaceAnalysisResults>(m,
                                                  "ConfigSpaceAnalysisResults",
@@ -4464,11 +4640,13 @@ PYBIND11_MODULE(_configuration, m) {
       Holds results from :func:`~libcasm.configuration.dof_space_analysis`.
 
       )pbdoc")
-      .def(py::init<clexulator::DoFSpace, irreps::VectorSpaceSymReport>(),
+      .def(py::init<clexulator::DoFSpace, irreps::IrrepDecomposition,
+                    irreps::VectorSpaceSymReport>(),
            R"pbdoc(
            .. rubric:: Constructor
            )pbdoc",
-           py::arg("symmetry_adapted_dof_space"), py::arg("symmetry_report"))
+           py::arg("symmetry_adapted_dof_space"),
+           py::arg("irrep_decomposition"), py::arg("symmetry_report"))
       .def_readonly(
           "symmetry_adapted_dof_space",
           &config::DoFSpaceAnalysisResults::symmetry_adapted_dof_space,
@@ -4480,19 +4658,29 @@ PYBIND11_MODULE(_configuration, m) {
                     "irreducible space decomposition")
       .def(
           "to_dict",
-          [](config::DoFSpaceAnalysisResults const &self) {
+          [](config::DoFSpaceAnalysisResults const &self,
+             bool include_symop_matrices) {
             jsonParser json;
-            to_json(self, json);
+            to_json(self, json, include_symop_matrices);
             return static_cast<nlohmann::json>(json);
           },
           R"pbdoc(
           Represent the DoFSpaceAnalysisResults as a Python dict
 
+          Parameters
+          ----------
+          include_symop_matrices : bool = True
+              If True, include the symmetry operation matrices in the
+              irreducible representation bases for the symmetry report. For
+              large spaces, use False to exclude these matrices, saving output
+              time and memory.
+
           Returns
           -------
           data : dict
               The DoFSpaceAnalysisResults as a Python dict
-          )pbdoc")
+          )pbdoc",
+          py::arg("include_symop_matrices") = true)
       .def("__repr__", [](config::DoFSpaceAnalysisResults const &self) {
         std::stringstream ss;
         jsonParser json;
@@ -4510,13 +4698,29 @@ PYBIND11_MODULE(_configuration, m) {
          bool include_default_occ_modes,
          std::optional<std::map<int, int>> sublattice_index_to_default_occ,
          std::optional<std::map<Index, int>> site_index_to_default_occ,
-         bool calc_wedges) -> config::DoFSpaceAnalysisResults {
-        std::optional<Log> log = std::nullopt;
-        // std::optional<Log> log = Log(std::cout, Log::debug, true);
-        return config::dof_space_analysis(
-            dof_space, prim, configuration, exclude_homogeneous_modes,
-            include_default_occ_modes, sublattice_index_to_default_occ,
-            site_index_to_default_occ, calc_wedges, log);
+         std::string symmetrization, bool calc_wedges,
+         std::optional<std::string> verbosity,
+         std::string commuter_method) -> config::DoFSpaceAnalysisResults {
+        irreps::CommuterMethod _commuter_method;
+        if (commuter_method == "deterministic") {
+          _commuter_method = irreps::CommuterMethod::deterministic;
+        } else if (commuter_method == "random") {
+          _commuter_method = irreps::CommuterMethod::random;
+        } else {
+          throw std::runtime_error(
+              "Error in dof_space_analysis: commuter_method must be "
+              "\"deterministic\" or \"random\", got \"" +
+              commuter_method + "\"");
+        }
+        return run_with_sigint_handler(
+            [&]() -> config::DoFSpaceAnalysisResults {
+              std::optional<Log> log = make_log(verbosity);
+              return config::dof_space_analysis(
+                  dof_space, prim, configuration, exclude_homogeneous_modes,
+                  include_default_occ_modes, sublattice_index_to_default_occ,
+                  site_index_to_default_occ, symmetrization, calc_wedges, log,
+                  _commuter_method);
+            });
       },
       R"pbdoc(
       Construct symmetry adapted bases in a DoFSpace
@@ -4564,11 +4768,40 @@ PYBIND11_MODULE(_configuration, m) {
       site_index_to_default_occ: Optional[dict[int,int]]
           Optional values of default occupation index (the value), specified by
           supercell site index (the key).
+      symmetrization: str = "complete"
+          Controls how irreducible subspace bases are symmetrized to
+          align along high-symmetry directions. Options are:
+
+          - "none": Leave the irreducible subspace bases as initially
+            found, reducing computation time.
+          - "fast": Symmetrize the irreducible subspace
+            bases to align along high-symmetry directions using
+            cyclic subgroups. This may not be a complete
+            symmetrization, but is generally fast.
+          - "complete": Symmetrize the irreducible subspace
+            bases to align along high-symmetry directions using
+            all subgroups. For large spaces, finding all
+            subgroups is slow.
+
       calc_wedges : bool = False
           If True, calculate the irreducible wedges for the vector space.
           This may take a long time, but provides the symmetrically unique
           portions of the vector space, which is useful for enumeration.
+      verbosity : Optional[str] = None
+          If not None, the irrep decomposition process will be logged to
+          standard output. Use "standard" for basic logging output,
+          or "verbose" for additional logging output.
+      commuter_method : str = "deterministic"
+          Method for constructing commuter matrices in the irrep
+          decomposition. Options are:
 
+          - "deterministic": (default) Use structured kernel column pair
+            enumeration. This method is deterministic initially, but if
+            it fails, then a random rotation of the subspace is applied
+            and the method is retried, up to a maximum of 10 attempts.
+          - "random": Use random Hermitian seed matrices projected via the
+            Reynolds operator. This usually enables finding irreps in one
+            attempt, but is not deterministic.
 
       Returns
       -------
@@ -4584,7 +4817,9 @@ PYBIND11_MODULE(_configuration, m) {
       py::arg("include_default_occ_modes") = false,
       py::arg("sublattice_index_to_default_occ") = std::nullopt,
       py::arg("site_index_to_default_occ") = std::nullopt,
-      py::arg("calc_wedges") = false);
+      py::arg("symmetrization") = "complete", py::arg("calc_wedges") = false,
+      py::arg("verbosity") = std::nullopt,
+      py::arg("commuter_method") = "deterministic");
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

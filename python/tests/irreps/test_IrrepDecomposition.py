@@ -2,6 +2,7 @@ import numpy as np
 
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
+import libcasm.group as casmgroup
 import libcasm.irreps as casmirreps
 
 
@@ -9,13 +10,13 @@ def conventional_FCC_occ_symmetry_adapted_basis():
     # fmt: off
     return np.array([
         [ 0.,   0.,   0.,   0., ],
-        [-0.5, -0.5, -0.5, -0.5,],
+        [ 0.5,  0.5,  0.5,  0.5,],
         [ 0.,   0.,   0.,   0., ],
-        [-0.5, -0.5,  0.5,  0.5,],
+        [ 0.5,  0.5, -0.5, -0.5,],
         [ 0.,   0.,   0.,   0., ],
-        [-0.5,  0.5, -0.5,  0.5,],
+        [ 0.5, -0.5,  0.5, -0.5,],
         [ 0.,   0.,   0.,   0., ],
-        [-0.5,  0.5,  0.5, -0.5,],
+        [ 0.5, -0.5, -0.5,  0.5,],
     ])
     # fmt: on
 
@@ -37,6 +38,10 @@ def test_dof_space_analysis_2_generic(FCC_binary_prim):
     supercell_factor_group = casmconfig.make_invariant_subgroup(
         configuration=configuration,
     )
+    symgroup = casmconfig.make_symgroup(supercell_factor_group)
+    subset = casmgroup.Subset(group=symgroup)
+    subset.all_subgroups()
+    subgroup_orbits = subset.all_subgroup_orbits()
 
     # construct occ DoFSpace with default basis
     dof_space = casmclex.DoFSpace(
@@ -65,6 +70,7 @@ def test_dof_space_analysis_2_generic(FCC_binary_prim):
                 [0.0, 0.0, 0.0, 1.0],
             ]
         ),
+        subgroup_orbits=subgroup_orbits,
     )
     assert isinstance(irrep_decomposition, casmirreps.IrrepDecomposition)
 

@@ -88,5 +88,40 @@ bool site_indices_are_invariant(SupercellSymOp const &op,
   });
 }
 
+/// \brief Return the multiplication table for a group of SupercellSymOp
+std::vector<std::vector<Index>> make_symgroup_multiplication_table(
+    std::vector<SupercellSymOp> const &group) {
+  auto const &element = group;
+  Index size = element.size();
+
+  // multi-threaded version:
+
+  // preallocate a square table so each thread can safely write to distinct rows
+  group::MultiplicationTable multiplication_table(size,
+                                                  std::vector<Index>(size));
+
+  auto worker = [&](Index start, Index end, Index thread_id) {
+    for (Index i = start; i < end; ++i) {
+      for (Index j = 0; j < size; ++j) {
+        SupercellSymOp product = element[i] * element[j];
+        auto it = std::find_if(
+            element.begin(), element.end(),
+            [&](SupercellSymOp const &lhs) { return lhs == product; });
+        if (it == element.end()) {
+          request_stop();
+          throw std::runtime_error(
+              "Error in CASM::config::make_symgroup_multiplication_table: "
+              "Failed to construct multiplication table");
+        }
+        multiplication_table[i][j] = std::distance(element.begin(), it);
+      }
+    }
+  };
+
+  threaded_run(size, worker);
+
+  return multiplication_table;
+}
+
 }  // namespace config
 }  // namespace CASM

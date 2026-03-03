@@ -90,6 +90,10 @@ class DoFSpaceAnalysisTest : public testing::Test {
 
   std::optional<std::map<Index, int>> site_index_to_default_occ = std::nullopt;
 
+  std::string symmetrization = "complete";
+
+  Index max_iter = 10;
+
   /// If true, calculate the irreducible wedges for the vector space.
   /// This may take a long time.
   bool calc_wedges = false;
@@ -106,7 +110,7 @@ TEST_F(DoFSpaceAnalysisTest, Test1) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -139,7 +143,7 @@ TEST_F(DoFSpaceAnalysisTest, Test2) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -188,7 +192,7 @@ TEST_F(DoFSpaceAnalysisTest, Test2a) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -224,7 +228,7 @@ TEST_F(DoFSpaceAnalysisTest, Test2b) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -268,7 +272,7 @@ TEST_F(DoFSpaceAnalysisTest, Test2c) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -289,7 +293,7 @@ TEST_F(DoFSpaceAnalysisTest, Test3) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -316,7 +320,7 @@ TEST_F(DoFSpaceAnalysisTest, Test4) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -344,7 +348,7 @@ TEST_F(DoFSpaceAnalysisTest, Test4b) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -365,7 +369,7 @@ TEST_F(DoFSpaceAnalysisTest, Test5) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;
@@ -386,7 +390,7 @@ TEST_F(DoFSpaceAnalysisTest, Test6) {
   config::DoFSpaceAnalysisResults results = config::dof_space_analysis(
       *dof_space, prim, configuration, exclude_homogeneous_modes,
       include_default_occ_modes, sublattice_index_to_default_occ,
-      site_index_to_default_occ, calc_wedges, log);
+      site_index_to_default_occ, symmetrization, max_iter, calc_wedges, log);
 
   // Check results
   irreps::VectorSpaceSymReport const &symmetry_report = results.symmetry_report;

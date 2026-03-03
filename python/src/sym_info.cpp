@@ -1,4 +1,5 @@
 #include <pybind11/eigen.h>
+#include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
@@ -6,9 +7,12 @@
 
 // nlohmann::json binding
 #define JSON_USE_IMPLICIT_CONVERSIONS 0
+#include <utility>
+
 #include "casm/casm_io/json/InputParser_impl.hh"
 #include "casm/casm_io/json/jsonParser.hh"
 #include "casm/configuration/group/Group.hh"
+#include "casm/configuration/group/subgroups.hh"
 #include "casm/configuration/sym_info/factor_group.hh"
 #include "casm/configuration/sym_info/io/json/SymGroup_json_io.hh"
 #include "casm/crystallography/BasicStructure.hh"
@@ -16,6 +20,8 @@
 #include "casm/crystallography/SymType.hh"
 #include "casm/crystallography/io/SymInfo_json_io.hh"
 #include "casm/crystallography/io/SymInfo_stream_io.hh"
+#include "casm/global/pybind11_helpers.hh"
+#include "casm/global/threads.hh"
 #include "pybind11_json/pybind11_json.hpp"
 
 #define STRINGIFY(x) #x
@@ -70,9 +76,10 @@ PYBIND11_MODULE(_sym_info, m) {
 
     )pbdoc";
   py::module::import("libcasm.xtal");
+  py::module::import("libcasm.group");
 
-  py::class_<sym_info::SymGroup, std::shared_ptr<sym_info::SymGroup>>(
-      m, "SymGroup", R"pbdoc(
+  py::class_<sym_info::SymGroup, group::GenericGroup,
+             std::shared_ptr<sym_info::SymGroup>>(m, "SymGroup", R"pbdoc(
       Data structure holding group elements and other group info, such as
       group-subgroup relationships.
 
@@ -86,7 +93,6 @@ PYBIND11_MODULE(_sym_info, m) {
       element in the head group each subgroup element corresponds to
       (:func:`~libcasm.sym_info.SymGroup.head_group_index`).
 
-
       The :class:`libcasm.sym_info` package provides factory functions for the common use
       cases of constructing the prim factor group and prim point group:
 
@@ -96,6 +102,8 @@ PYBIND11_MODULE(_sym_info, m) {
         :class:`libcasm.xtal.Prim` factor group
       - :func:`~libcasm.sym_info.make_point_group`: Make the \
         :class:`libcasm.xtal.Prim` point group
+      - :func:`~libcasm.sym_info.make_lattice_point_group`: Make the \
+        :class:`libcasm.xtal.Lattice` point group
 
       .. rubric:: Special methods
 
@@ -106,14 +114,20 @@ PYBIND11_MODULE(_sym_info, m) {
 
           .. rubric:: Constructor
 
+          Notes
+          -----
+          It is recommended to use the factory functions provided by CASM
+          to construct SymGroup. The factory functions sort elements by class
+          and type, resulting in a standard ordering of elements.
+
           Parameters
           ----------
           elements: list[libcasm.xtal.SymOp]
-              The matrix representation of elements of the group.
+              The symmetry operations forming the group.
           multiplication_table: list[list[int]]
               The multiplication table element
-              `multiplication_table[i][j] == k` represents that
-              ``np.allclose(elements[k], elements[i] @ elements[j]) == True``.
+              ``multiplication_table[i][j] == k`` represents that
+              ``elements[k]`` is equivalent to ``elements[i] * elements[j]``.
           )pbdoc",
            py::arg("elements"), py::arg("multiplication_table"))
       .def_static(
@@ -132,18 +146,26 @@ PYBIND11_MODULE(_sym_info, m) {
 
           Parameters
           ----------
-          head_group_index: list[int]
+          head_group_index: set[int]
               Indices of elements in the head group (which may or may not be
-              `self`) of elements to include in subgroup.
+              `self`) to include in the subgroup.
           elements: Optional[list[libcasm.xtal.SymOp]] = None
               If not None, use the provided elements for subgroup elements list.
-              This allows representing subgroups of factor groups such as
-              cluster invariant groups using SymOp that have the correct
-              translation to leave the cluster invariant, which may may be
-              different a different translation than the corresponding element
-              in the factor group elements list.
+              This allows representing subgroups of the space group with
+              reference to the factor group. For example, cluster invariant
+              groups need SymOp that have the correct translation to leave the
+              cluster invariant, which may have a different translation than
+              the corresponding element in the factor group elements list.
           )pbdoc",
            py::arg("head_group_index"), py::arg("element") = std::nullopt)
+      .def_property_readonly(
+          "size",
+          [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
+            return symgroup->size();
+          },
+          R"pbdoc(
+          int: The number of elements in the group.
+          )pbdoc")
       .def_property_readonly(
           "elements",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
@@ -174,7 +196,15 @@ PYBIND11_MODULE(_sym_info, m) {
       .def(
           "conjugacy_classes",
           [](std::shared_ptr<sym_info::SymGroup const> const &symgroup) {
-            return make_conjugacy_classes(*symgroup);
+            std::vector<std::vector<Index>> conjugacy_classes;
+            for (Index i = 0; i < symgroup->element.size(); ++i) {
+              Index cc = symgroup->class_of(i);
+              if (cc >= conjugacy_classes.size()) {
+                conjugacy_classes.resize(cc + 1);
+              }
+              conjugacy_classes[cc].push_back(i);
+            }
+            return conjugacy_classes;
           },
           R"pbdoc(
           Returns the conjugacy classes
@@ -267,6 +297,23 @@ PYBIND11_MODULE(_sym_info, m) {
           -------
           i_inverse: int
               The index the inverse of the `i`-th element.
+          )pbdoc")
+      .def(
+          "class_of",
+          [](std::shared_ptr<sym_info::SymGroup const> const &symgroup,
+             Index i) { return symgroup->class_index[i]; },
+          py::arg("i"), R"pbdoc(
+          Returns the index of the conjugacy class containing an element
+
+          Parameters
+          ----------
+          i: int
+              The element index.
+
+          Returns
+          -------
+          i_class: int
+              The index the conjugacy class containing the `i`-th element.
           )pbdoc")
       .def(
           "brief_cart",

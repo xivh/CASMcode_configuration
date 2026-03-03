@@ -26,9 +26,10 @@ jsonParser &to_json(config::ConfigSpaceAnalysisResults const &results,
 
 /// \brief Write DoFSpaceAnalysisResults to JSON
 jsonParser &to_json(config::DoFSpaceAnalysisResults const &results,
-                    jsonParser &json) {
+                    jsonParser &json, bool include_symop_matrices) {
   json.put_obj();
-  to_json(results.symmetry_report, json["symmetry_report"]);
+  to_json(results.symmetry_report, json["symmetry_report"],
+          include_symop_matrices);
   to_json(results.symmetry_adapted_dof_space,
           json["symmetry_adapted_dof_space"]);
   return json;

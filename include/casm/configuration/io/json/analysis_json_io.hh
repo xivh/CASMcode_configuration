@@ -16,7 +16,7 @@ jsonParser &to_json(config::ConfigSpaceAnalysisResults const &results,
 
 /// \brief Write DoFSpaceAnalysisResults to JSON
 jsonParser &to_json(config::DoFSpaceAnalysisResults const &results,
-                    jsonParser &json);
+                    jsonParser &json, bool include_symop_matrices = true);
 
 }  // namespace CASM
 

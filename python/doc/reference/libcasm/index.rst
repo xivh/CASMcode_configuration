@@ -12,6 +12,7 @@ Reference (libcasm-configuration)
     libcasm.clusterography
     libcasm.configuration
     libcasm.enumerate
+    libcasm.group
     libcasm.irreps
     libcasm.local_configuration
     libcasm.occ_events

@@ -7,4 +7,5 @@ from ._irreps import (
     MatrixRepGroup,
     SubWedge,
     VectorSpaceSymReport,
+    make_invariant_subspace,
 )

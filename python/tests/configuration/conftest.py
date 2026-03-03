@@ -491,6 +491,45 @@ def prim_ABC2():
 
 
 @pytest.fixture
+def TlZn2Sb2_disp_prim():
+
+    # P. Villars, TlZn2Sb2 Crystal Structure (2016).
+    # PAULING FILE in: Inorganic Solid Phases, SpringerMaterials
+    # (online database), Springer, Heidelberg (ed.) SpringerMaterials.
+
+    L = np.array(
+        [
+            [-4.32450000000000, 4.32450000000000, 3.64349936250000],
+            [4.32450000000000, -4.32450000000000, 3.64349936250000],
+            [4.32450000000000, 4.32450000000000, -3.64349936250000],
+        ]
+    ).transpose()
+
+    atom_type = ["Sb", "Sb", "Sb", "Sb", "Tl", "Tl", "Zn", "Zn", "Zn", "Zn"]
+
+    atom_coordinate_frac = np.array(
+        [
+            [0.4434, 0.9434, 0.8260],  # asym 1
+            [0.1174, 0.6174, 0.1740],  # asym 1
+            [0.9434, 0.1174, 0.5000],  # asym 1
+            [0.6174, 0.4434, 0.5000],  # asym 1
+            [0.0000, 0.0000, 0.0000],  # asym 2
+            [0.5104, 0.5104, 0.0000],  # asym 3
+            [0.2794, 0.0474, 0.4980],  # asym 4
+            [0.5494, 0.7814, 0.5020],  # asym 4
+            [0.0474, 0.5494, 0.7680],  # asym 4
+            [0.7814, 0.2794, 0.2320],  # asym 4
+        ],
+    ).transpose()
+    return xtal.Prim(
+        lattice=xtal.Lattice(L),
+        coordinate_frac=atom_coordinate_frac,
+        occ_dof=[[x] for x in atom_type],
+        local_dof=[[xtal.DoFSetBasis("disp")] for x in atom_type],
+    )
+
+
+@pytest.fixture
 def simple_cubic_binary_SupercellSet_1_canonical():
     prim = config.Prim(simple_cubic_binary_prim)
     supercells = config.SupercellSet(prim)

@@ -76,6 +76,22 @@ bool VectorSymCompare::inter_orbit_compare(
 }
 
 namespace {
+
+template <typename Derived>
+typename Derived::PlainObject standardize_column_vector_signs_impl(
+    Eigen::MatrixBase<Derived> const &vector_space, double tol) {
+  typename Derived::PlainObject result(vector_space);
+  for (CASM::Index row = 0; row < result.rows(); ++row) {
+    for (CASM::Index col = 0; col < result.cols(); ++col) {
+      if (!CASM::almost_zero(result(row, col), tol)) {
+        result.col(col) *= std::abs(result(row, col)) / result(row, col);
+        break;
+      }
+    }
+  }
+  return result;
+}
+
 template <typename Derived>
 typename Derived::PlainObject vector_space_prepare_impl(
     Eigen::MatrixBase<Derived> const &obj, double _tol) {
@@ -84,20 +100,21 @@ typename Derived::PlainObject vector_space_prepare_impl(
                                         .householderQr()
                                         .householderQ())
           .leftCols(obj.cols());
-  CASM::Index col = 0;
-  for (CASM::Index row = 0; row < result.rows(); ++row) {
-    CASM::Index i = 0;
-    for (i = col; i < result.cols(); ++i) {
-      if (!CASM::almost_zero(result(row, i), _tol)) {
-        result.col(i) *= std::abs(result(row, i)) / result(row, i);
-        ++col;
-        break;
-      }
-    }
-  }
-  return result;
+  return standardize_column_vector_signs_impl(result, _tol);
 }
 }  // namespace
+
+/// Standardize basis vector signs
+Eigen::MatrixXcd standardize_column_vector_signs(
+    Eigen::MatrixXcd const &vector_space, double tol) {
+  return standardize_column_vector_signs_impl(vector_space, tol);
+}
+
+/// Standardize basis vector signs
+Eigen::MatrixXd standardize_column_vector_signs(
+    Eigen::MatrixXd const &vector_space, double tol) {
+  return standardize_column_vector_signs_impl(vector_space, tol);
+}
 
 /// Vector space preparation for comparison
 ///

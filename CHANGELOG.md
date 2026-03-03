@@ -5,6 +5,33 @@ All notable changes to `libcasm-configuration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Added `libcasm.group` package for crystallography-independent group utilities, including `GenericGroup`, `Subset`, and subgroup finding tools.
+- Added Frobenius-Schur indicator to `IrrepInfo` for classifying real, complex, and quaternionic irrep types.
+- Added random commuter method for `IrrepDecomposition`.
+- Added irrep decomposition by disjoint variable sets and random rotation retry for irrep decomposition.
+- Added `class_indices` parameter to `IrrepDecomposition` for character table construction.
+- Added options to select the amount of symmetrization applied after irrep decomposition.
+- Added `alive-progress` dependency for progress status bars.
+- Added multithreaded construction of group multiplication table, matrix representations, and `make_irrep_special_directions`.
+
+### Changed
+
+- Refactored `Group` to move element-type-independent parts into `GenericGroup`; subgroups now use `Subset` class; `IrrepDecomposition` now accepts subgroup orbits as a constructor argument.
+- Changed `IrrepDecomposition` to find input column spaces that do not mix and decompose irreps within each subspace independently, so the decomposition respects the user's initial choice of axes.
+- Changed output axes sign convention to prefer vectors where the first element is positive.
+- Changed `IrrepInfo` `index` and `directions` attributes to be optional.
+- Updated `stylize.sh` to use `.clang-format` file instead of Google style.
+
+### Fixed
+
+- Fixed constructing `full_trans_mat` from complex irreps.
+- Fixed normalization of real and imaginary parts of complex irrep `trans_mat` when building the full transformation matrix.
+
+
 ## [2.3.1] - 2026-02-26
 
 ### Fixed

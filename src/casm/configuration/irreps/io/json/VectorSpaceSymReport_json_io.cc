@@ -11,7 +11,8 @@
 namespace CASM {
 namespace irreps {
 
-jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
+jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json,
+                    bool include_symop_matrices) {
   json["symmetry_representation"] = obj.symgroup_rep;
 
   json["symmetry_adapted_subspace"] = obj.symmetry_adapted_subspace.transpose();
@@ -33,7 +34,7 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
 
   std::vector<Index> mults;
   for (auto const &irrep : obj.irreps) {
-    if (irrep.index == 0) mults.push_back(0);
+    if (!irrep.index.has_value() || *irrep.index == 0) mults.push_back(0);
     mults.back()++;
   }
 
@@ -69,31 +70,34 @@ jsonParser &to_json(VectorSpaceSymReport const &obj, jsonParser &json) {
       }
       json["irreducible_representations"]["subspaces"].push_back(subspace_json);
 
-      jsonParser &irrep_matrices =
-          json["irreducible_representations"]["symop_matrices"]
-              [irrep_name];  //.put_array();
-      for (Index o = 0; o < obj.symgroup_rep.size(); ++o) {
-        Eigen::MatrixXd const &op = obj.symgroup_rep[o];
-        std::string op_name =
-            "op_" + to_sequential_string(o + 1, obj.symgroup_rep.size());
-        irrep_matrices[op_name] =
-            (irrep.trans_mat * op * irrep.trans_mat.transpose()).real();
+      if (include_symop_matrices) {
+        jsonParser &irrep_matrices =
+            json["irreducible_representations"]["symop_matrices"]
+                [irrep_name];  //.put_array();
+        for (Index o = 0; o < obj.symgroup_rep.size(); ++o) {
+          Eigen::MatrixXd const &op = obj.symgroup_rep[o];
+          std::string op_name =
+              "op_" + to_sequential_string(o + 1, obj.symgroup_rep.size());
+          irrep_matrices[op_name] =
+              (irrep.trans_mat * op * irrep.trans_mat.transpose()).real();
+        }
       }
 
       {
         jsonParser &djson = json["irreducible_representations"]
                                 ["subgroup_invariant_directions"];
-        if (irrep.directions.empty()) {
+        if (!irrep.directions.has_value() || irrep.directions->empty()) {
           djson[irrep_name] = "none";
         } else {
-          for (Index d = 0; d < irrep.directions.size(); ++d) {
+          for (Index d = 0; d < irrep.directions->size(); ++d) {
             std::string orbit_name =
                 "direction_orbit_" +
-                to_sequential_string(d + 1, irrep.directions.size());
-            djson[irrep_name][orbit_name].put_array(irrep.directions[d].size());
-            for (Index j = 0; j < irrep.directions[d].size(); ++j) {
+                to_sequential_string(d + 1, irrep.directions->size());
+            djson[irrep_name][orbit_name].put_array(
+                (*irrep.directions)[d].size());
+            for (Index j = 0; j < (*irrep.directions)[d].size(); ++j) {
               to_json_array(Eigen::MatrixXd(irrep.trans_mat.real() *
-                                            irrep.directions[d][j]),
+                                            (*irrep.directions)[d][j]),
                             djson[irrep_name][orbit_name][j]);
             }
           }

@@ -33,6 +33,8 @@ from ._configuration import (
     make_invariant_subgroup,
     make_local_dof_matrix_rep,
     make_primitive_configuration,
+    make_symgroup,
+    make_symgroup_multiplication_table,
     to_canonical_configuration,
 )
 from ._methods import (

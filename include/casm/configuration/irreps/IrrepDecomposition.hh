@@ -9,6 +9,12 @@
 namespace CASM {
 namespace irreps {
 
+/// \brief Method for constructing commuter matrices in irrep decomposition
+enum class CommuterMethod {
+  deterministic,  // existing structured kernel column pair enumeration
+  random          // random Hermitian seed matrix
+};
+
 struct IrrepInfo {
   /// \brief Construct an IrrepInfo with transformation matrix and vector of
   /// irreducible characters
@@ -38,13 +44,39 @@ struct IrrepInfo {
 
   /// sequentially-assigned index used to distinguish between identical irreps
   /// irreps are identical if they have the same character vectors
-  Index index;
+  std::optional<Index> index;
+
+  /// index that is the same for irreps with approximately the same characters
+  std::optional<Index> irrep_type;
+
+  /// Frobenius-Schur indicator: 1 (real), -1 (quaternionic), 0 (complex)
+  int frobenius_schur_indicator;
 
   /// Vectors in the initial vector space that correspond to high-symmetry
   /// directions in the irreducible vector space. directions[i] is the i'th
   /// orbit of equivalent high-symmetry directions and directions[i].size() is
   /// the symmetric multiplicity of a direction in that orbit
-  std::vector<std::vector<Eigen::VectorXd>> directions;
+  std::optional<std::vector<std::vector<Eigen::VectorXd>>> directions;
+
+  /// Check if Irrep is identity (dimension 1, all characters equal to 1)
+  bool is_identity() const;
+
+  /// Check if Irrep is gerade (first and last characters are equal)
+  bool is_gerade() const;
+
+  /// Check if Irrep is real (Frobenius-Schur indicator == 1)
+  bool is_real() const;
+
+  /// Check if Irrep is complex (Frobenius-Schur indicator == 0)
+  bool is_complex_irrep() const;
+
+  /// Check if Irrep is pseudo-real / quaternionic (Frobenius-Schur indicator
+  /// == -1)
+  bool is_pseudo_real() const;
+
+  bool operator<(IrrepInfo const &other) const;
+  bool operator==(IrrepInfo const &other) const;
+  bool operator!=(IrrepInfo const &other) const;
 };
 
 /// Construct a "dummy" IrrepInfo with user specified transformtion matrix
@@ -55,17 +87,31 @@ IrrepInfo make_dummy_irrep_info(Eigen::MatrixXd const &trans_mat);
 
 /// \brief Assumes that irreps are real, and concatenates their individual
 /// trans_mats to form larger trans_mat
-Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps);
+Eigen::MatrixXd full_trans_mat(std::vector<IrrepInfo> const &irreps,
+                               bool allow_complex);
+
+struct SolveByDisjointVariableSetsFlag {};
 
 /// Performs irreducible subspace construction and symmetrization
 struct IrrepDecomposition {
   /// IrrepDecomposition constructor
-  IrrepDecomposition(
-      MatrixRep const &_fullspace_rep, GroupIndices const &_head_group,
-      Eigen::MatrixXd const &_init_subspace,
-      std::function<GroupIndicesOrbitSet()> make_cyclic_subgroups_f,
-      std::function<GroupIndicesOrbitSet()> make_all_subgroups_f,
-      bool allow_complex, std::optional<Log> _log = std::nullopt);
+  IrrepDecomposition(MatrixRep const &_fullspace_rep,
+                     GroupIndices const &_head_group,
+                     Eigen::MatrixXd const &_init_subspace,
+                     std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
+                     bool allow_complex, std::optional<Log> _log = std::nullopt,
+                     CommuterMethod method = CommuterMethod::deterministic);
+
+  /// IrrepDecomposition constructor
+  IrrepDecomposition(MatrixRep const &_fullspace_rep,
+                     GroupIndices const &_head_group,
+                     Eigen::MatrixXd const &_init_subspace,
+                     std::optional<GroupIndicesOrbitSet> const &subgroup_orbits,
+                     std::optional<std::vector<Index>> const &class_indices,
+                     bool allow_complex, std::optional<Log> _log,
+                     SolveByDisjointVariableSetsFlag flag,
+                     double zero_tol = 1e-5,
+                     CommuterMethod method = CommuterMethod::deterministic);
 
   /// Full space matrix representation
   ///
@@ -76,6 +122,15 @@ struct IrrepDecomposition {
   /// Group (as indices into fullspace_rep) used to find irreps
   GroupIndices head_group;
 
+  /// Input subspace in which irreps are to be found. Will be expanded (column
+  /// space increased) by application of `rep` and orthogonalization to form an
+  /// invariant subspace (i.e. column space dimension is not increased by
+  /// application of elements in head_group)
+  ///
+  /// init_subspace.rows() == full space dimension
+  /// init_subspace.cols() == dimension of input subspace
+  Eigen::MatrixXd init_subspace;
+
   /// Space in which to find irreducible subspaces. This space is formed by
   /// expanding `init_subspace`, if necessary, by application of `rep` and
   /// orthogonalization to form an invariant subspace (i.e. column space does
@@ -84,6 +139,9 @@ struct IrrepDecomposition {
   /// subspace.rows() == full space dimension
   /// subspace.cols() == dimension of invariant subspace
   Eigen::MatrixXd subspace;
+
+  /// The kernel of `subspace`.
+  Eigen::MatrixXd initial_kernel;
 
   /// Irreducible spaces, symmetrized using `make_irrep_special_directions` and
   /// `make_irrep_symmetrizer_matrix` to align the irreducible space bases along
@@ -97,6 +155,13 @@ struct IrrepDecomposition {
   /// symmetry_adapted_subspace.rows() == full space dimension
   /// symmetry_adapted_subspace.cols() == subspace.cols()
   Eigen::MatrixXd symmetry_adapted_subspace;
+
+  /// True if the irrep decomposition successfully decomposed all of the input
+  /// subspace, false otherwise
+  bool complete_decomposition;
+
+  /// Incomplete subspace after irrep decomposition
+  Eigen::MatrixXd incomplete_subspace;
 
   /// If provided, log progress
   std::optional<Log> log;

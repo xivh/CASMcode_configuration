@@ -646,6 +646,9 @@ def test_ConfigEnumMeshGrid_by_irreducible_wedge_FCC_disp_1():
     )
     # fmt: on
 
+    # Notes:
+    # - This is failing in make_irrep_wedges when the number of high symmetry direction
+    #   orbits is greater than 0 but less than the irrep dimension.
     dof_space_analysis_results = casmconfig.dof_space_analysis(
         dof_space=dof_space,
         prim=prim,

@@ -1,0 +1,134 @@
+"""Group theory utilities"""
+
+import time
+import typing
+
+import alive_progress
+
+from ._Group import (
+    Group,
+)
+from ._group import (
+    GenericGroup,
+    Subset,
+)
+
+
+def _subset_all_subgroups(
+    self,
+    n_subtrees: int = 100,
+    progress: typing.Union[str, typing.Callable] = "alive",
+):
+    """Return all subgroups of this subset
+
+    Notes
+    -----
+
+    This method:
+
+    1. Finds all cyclic subgroups and stores the elements which generate unique
+       cyclic subgroups as the candidate generators.
+    2. Performs a depth-first search over combinations of the candidate
+       generators to find all subgroups.
+
+    This is a multithreaded method. The combinations of candidate generators is
+    searched like a tree. The tree can be split into subtrees so that the search can
+    be performed in parallel across multiple threads.
+
+    There are some synchronization costs that come from reading and writing a common
+    set of unique subgroups and splitting the search tree. The number of subtrees can
+    be controlled with the `n_subtrees` parameter to balance  the parallelization and
+    synchronization costs. The number of threads used may be controlled through
+    :func:`libcasm.casmglobal.set_max_threads`. Generally it is preferable to have more
+    subtrees than threads to avoid waiting on subtrees that take longer to search.
+
+    The "alive" progress bar gives an estimated time remaining based on the time taken
+    to search previous subtrees, so it may be useful to have enough subtrees to get a
+    rough estimate of the time remaining. However, the estimate is usually longer than
+    the actual time remaining, because the initial subtrees are likely to be among the
+    longest to search.
+
+
+    Parameters
+    ----------
+    n_subtrees: int = 100
+        The number of subtrees to divide the search tree into.
+    progress: Optional[str, Callable] = "alive"
+        Indicates the type of progress reporting to use. The options are:
+
+        - "alive" (default): a live progress bar is shown.
+        - "plain": use the default C++ stdout progress reporting.
+        - "none": no progress is reported.
+
+        If a callable is provided, it is used as a callback function to report
+        progress. A callback function must take two int arguments: the number of
+        finished subtrees and the total number of subgroups found so far.
+        This is called each time a subtree is finished.
+
+        .. code-block:: python
+
+            def progress_f(n_subtrees_completed: int, subgroups_size: int) -> None:
+
+    Returns
+    -------
+    subgroups: list[Subset]
+        The subgroups.
+    """
+    if Subset._has_all_subgroups(self):
+        return Subset._all_subgroups(self)
+
+    if progress == "alive":
+        with alive_progress.alive_bar(
+            n_subtrees,
+            manual=True,
+            monitor="{percent:.0%}",
+            stats="(eta: {eta})",
+            stats_end=False,
+            length=30,
+            force_tty=True,
+        ) as bar:
+            bar.text = "#Subgroups: 0"
+
+            # The progress callback is called once before the first subtree is searched,
+            # so we use a flag to avoid updating the alive-progress bar at that time.
+            first = True
+
+            def progress_callback(
+                n_finished_tasks: int,
+                subgroups_count: int,
+            ) -> None:  # Update the dynamic text with the latest sum
+                nonlocal first, n_subtrees
+
+                bar.text = f"#Subgroups: {subgroups_count}"
+                bar(n_finished_tasks / n_subtrees)
+
+            subgroups = Subset._all_subgroups(self, n_subtrees, progress_callback)
+
+    else:
+
+        if progress == "plain":
+            progress = None
+
+        elif progress == "none":
+
+            def _no_progress_callback(
+                n_finished_tasks: int,
+                subgroups_count: int,
+            ) -> None:
+                pass
+
+            progress = _no_progress_callback
+
+        elif not callable(progress):
+            raise ValueError("progress must be 'alive', 'plain', 'none', or a callable")
+
+        subgroups = Subset._all_subgroups(self, n_subtrees, progress)
+
+        if progress is None:
+            print("", flush=True)
+
+    return subgroups
+
+
+# Attach the helper as a method on the imported Subset class
+Subset.all_subgroups = _subset_all_subgroups

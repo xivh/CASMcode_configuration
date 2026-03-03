@@ -12,6 +12,7 @@
 #include "casm/configuration/group/Group.hh"
 #include "casm/configuration/group/subgroups.hh"
 #include "casm/configuration/irreps/IrrepDecomposition.hh"
+#include "casm/configuration/irreps/IrrepDecompositionImpl.hh"
 #include "casm/configuration/irreps/IrrepWedge.hh"
 #include "casm/configuration/irreps/VectorSpaceSymReport.hh"
 #include "casm/configuration/irreps/io/json/IrrepDecomposition_json_io.hh"
@@ -35,15 +36,45 @@ namespace CASMpy {
 
 using namespace CASM;
 
+namespace {
+
+// class Log {
+// public:
+//   static const int none = 0;
+//   static const int quiet = 5;
+//   static const int standard = 10;
+//   static const int verbose = 20;
+//   static const int debug = 100;
+
+inline std::optional<Log> make_log(
+    std::optional<std::string> const &verbosity) {
+  std::optional<Log> log;
+  if (verbosity.has_value()) {
+    if (verbosity.value() == "debug") {
+      log = Log(std::cout, Log::debug, true);
+    } else if (verbosity.value() == "verbose") {
+      log = Log(std::cout, Log::verbose, true);
+    } else if (verbosity.value() == "standard") {
+      log = Log(std::cout, Log::standard, true);
+    } else if (verbosity.value() == "quiet") {
+      log = Log(std::cout, Log::quiet, true);
+    } else if (verbosity.value() == "none") {
+      log = Log(std::cout, Log::none, true);
+    } else {
+      throw std::runtime_error("Error: verbosity level " + verbosity.value() +
+                               " not recognized");
+    }
+  }
+  return log;
+}
+
+}  // namespace
+
 std::shared_ptr<irreps::MatrixRepGroup> make_matrixrepgroup(
-    std::vector<Eigen::MatrixXd> const &elements, double abs_tol) {
-  return std::make_shared<irreps::MatrixRepGroup>(group::make_group(
-      elements,
-      [](Eigen::MatrixXd const &A,
-         Eigen::MatrixXd const &B) -> Eigen::MatrixXd { return A * B; },
-      [=](Eigen::MatrixXd const &A, Eigen::MatrixXd const &B) -> bool {
-        return CASM::almost_equal(A, B, abs_tol);
-      }));
+    std::vector<Eigen::MatrixXd> const &elements,
+    group::MultiplicationTable const &multiplication_table) {
+  return std::make_shared<irreps::MatrixRepGroup>(elements,
+                                                  multiplication_table);
 }
 
 std::shared_ptr<irreps::MatrixRepGroup const> make_matrixrepgroup_subgroup(
@@ -62,7 +93,22 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
     irreps::MatrixRep const &matrix_rep,
     std::optional<irreps::GroupIndices> head_group,
     std::optional<Eigen::MatrixXd> init_subspace, bool allow_complex,
-    double abs_tol) {
+    std::optional<irreps::SubgroupOrbitVec> subgroup_orbits_in,
+    std::optional<std::vector<Index>> class_indices,
+    std::optional<std::string> verbosity, std::string commuter_method) {
+  // py::scoped_ostream_redirect redirect;
+  // py::gil_scoped_release release;
+  std::optional<Log> log = make_log(verbosity);
+  if (log.has_value()) {
+    log->begin<Log::standard>("make_IrrepDecomposition");
+    log->indent() << std::endl;
+    log->indent() << "Number of elements = " << matrix_rep.size() << std::endl;
+    if (matrix_rep.size() > 0) {
+      log->indent() << "Vector space dimension = " << matrix_rep[0].rows()
+                    << std::endl
+                    << std::endl;
+    }
+  }
   if (matrix_rep.size() == 0) {
     throw std::runtime_error(
         "Error in make_IrrepDecomposition: matrix_rep.size() == 0");
@@ -91,19 +137,35 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
     init_subspace = Eigen::MatrixXd::Identity(dim, dim);
   }
 
-  std::shared_ptr<irreps::MatrixRepGroup> matrixrepgroup =
-      make_matrixrepgroup(matrix_rep, abs_tol);
+  std::optional<irreps::GroupIndicesOrbitSet> subgroup_orbits = std::nullopt;
+  if (subgroup_orbits_in.has_value()) {
+    subgroup_orbits = group::to_set_of_orbits_sets(*subgroup_orbits_in);
+  }
 
-  std::function<irreps::GroupIndicesOrbitSet()> make_cyclic_subgroups_f =
-      [=]() { return group::make_cyclic_subgroups(*matrixrepgroup); };
-  std::function<irreps::GroupIndicesOrbitSet()> make_all_subgroups_f = [=]() {
-    return group::make_all_subgroups(*matrixrepgroup);
-  };
+  if (log.has_value()) {
+    log->begin<Log::standard>("Irrep Decomposition");
+    log->indent() << std::endl;
+  }
+  // std::optional<Log> log;
+  // return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
+  //                                   subgroup_orbits, allow_complex, log);
 
-  std::optional<Log> log;
+  irreps::CommuterMethod method;
+  if (commuter_method == "deterministic") {
+    method = irreps::CommuterMethod::deterministic;
+  } else if (commuter_method == "random") {
+    method = irreps::CommuterMethod::random;
+  } else {
+    throw std::runtime_error(
+        "Error in make_IrrepDecomposition: commuter_method must be "
+        "\"deterministic\" or \"random\", got \"" +
+        commuter_method + "\"");
+  }
+
+  irreps::SolveByDisjointVariableSetsFlag flag;
   return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
-                                    make_cyclic_subgroups_f,
-                                    make_all_subgroups_f, allow_complex, log);
+                                    subgroup_orbits, class_indices,
+                                    allow_complex, log, flag, 1e-5, method);
 }
 
 }  // namespace CASMpy
@@ -123,11 +185,12 @@ PYBIND11_MODULE(_irreps, m) {
         irreducible space decompositions.
 
     )pbdoc";
-  py::module::import("libcasm.sym_info");
+  py::module::import("libcasm.group");
 
   //
-  py::class_<irreps::MatrixRepGroup, std::shared_ptr<irreps::MatrixRepGroup>>(
-      m, "MatrixRepGroup", R"pbdoc(
+  py::class_<irreps::MatrixRepGroup, group::GenericGroup,
+             std::shared_ptr<irreps::MatrixRepGroup>>(m, "MatrixRepGroup",
+                                                      R"pbdoc(
       Data structure holding group elements and other group info, such as
       group-subgroup relationships.
 
@@ -145,11 +208,12 @@ PYBIND11_MODULE(_irreps, m) {
 
           elements: list[numpy.ndarray[numpy.float64[m, m]]
               The matrix representation of elements of the group.
-          abs_tol: float = :data:`~libcasm.casmglobal.TOL`
-              The absolute tolerance, used to construct the group multiplication
-              table.
+          multiplication_table: list[list[int]]
+              The multiplication table element
+              ``multiplication_table[i][j] == k`` represents that
+              ``elements[k]`` is equivalent to ``elements[i] * elements[j]``.
           )pbdoc",
-           py::arg("elements"), py::arg("abs_tol") = CASM::TOL)
+           py::arg("elements"), py::arg("multiplication_table"))
       .def("make_subgroup", &make_matrixrepgroup_subgroup, R"pbdoc(
           Make a subgroup
 
@@ -296,7 +360,22 @@ PYBIND11_MODULE(_irreps, m) {
   py::class_<irreps::IrrepInfo>(m, "IrrepInfo", R"pbdoc(
             Describes an irreducible subspace.
             )pbdoc")
-      .def(py::init<Eigen::MatrixXcd, Eigen::VectorXcd>(), R"pbdoc(
+      .def(py::init([](Eigen::MatrixXcd trans_mat, Eigen::VectorXcd characters,
+                       bool pseudo_irrep, int frobenius_schur_indicator,
+                       std::optional<Index> irrep_type,
+                       std::optional<Index> index,
+                       std::optional<std::vector<std::vector<Eigen::VectorXd>>>
+                           directions) {
+             auto info =
+                 irreps::IrrepInfo(std::move(trans_mat), std::move(characters));
+             info.pseudo_irrep = pseudo_irrep;
+             info.index = index;
+             info.irrep_type = irrep_type;
+             info.frobenius_schur_indicator = frobenius_schur_indicator;
+             info.directions = std::move(directions);
+             return info;
+           }),
+           R"pbdoc(
 
           .. rubric:: Constructor
 
@@ -308,8 +387,29 @@ PYBIND11_MODULE(_irreps, m) {
           characters : numpy.ndarray[numpy.complex128[m, 1]]
               A vector containing the complex character of each group operation's
               action on the irreducible vector space.
+          pseudo_irrep : bool, default=False
+              True if irrep is real but was created as direct sum of two complex
+              irreps. In this case, the 'irrep' is reducible, but this is the
+              most-reduced representation with real basis vectors.
+          frobenius_schur_indicator : int, default=1
+              Frobenius-Schur indicator: 1 (real), -1 (quaternionic/pseudo-real),
+              0 (complex).
+          irrep_type : Optional[int], default=None
+              Index that is the same for irreps with the same characters.
+          index : Optional[int], default=None
+              Sequentially-assigned index used to distinguish between identical
+              irreps (irreps with the same character vectors).
+          directions : Optional[list[list[np.ndarray[np.float64[vector_dim,]]]]], default=None
+              High-symmetry directions in the initial vector space.
+              ``directions[i]`` is the `i`-th orbit of equivalent high-symmetry
+              directions.
           )pbdoc",
-           py::arg("trans_mat"), py::arg("characters"))
+           py::arg("trans_mat"), py::arg("characters"),
+           py::arg("pseudo_irrep") = false,
+           py::arg("frobenius_schur_indicator") = 1,
+           py::arg("irrep_type") = std::nullopt,
+           py::arg("index") = std::nullopt,
+           py::arg("directions") = std::nullopt)
       .def_readonly("irrep_dim", &irreps::IrrepInfo::irrep_dim,
                     "int: Irreducible subspace dimension")
       .def_readonly("vector_dim", &irreps::IrrepInfo::vector_dim,
@@ -319,19 +419,91 @@ PYBIND11_MODULE(_irreps, m) {
           shape=(`irrep_dim`,`vector_dim`) matrix that transforms a vector from the
           initial vector space into a vector in the irreducible vector space.
           )pbdoc")
-      .def_readonly("characters", &irreps::IrrepInfo::trans_mat, R"pbdoc(
+      .def_readonly("characters", &irreps::IrrepInfo::characters, R"pbdoc(
           numpy.ndarray[numpy.complex128[m, 1]]: A vector containing the complex
           character of each group operation's action on the irreducible vector space.
           )pbdoc")
-      .def_readonly("directions", &irreps::IrrepInfo::directions,
+      .def_readonly("frobenius_schur_indicator",
+                    &irreps::IrrepInfo::frobenius_schur_indicator,
                     R"pbdoc(
-          list[list[np.ndarray[np.float64[irrep_dim,]]]: High-symmetry directions
+          int: Frobenius-Schur indicator (-1, 0, or 1).
+
+          Classifies the irrep type:
+
+          - 1: real
+          - -1: quaternionic (pseudo-real)
+          - 0: complex
+          )pbdoc")
+      .def_property_readonly(
+          "irrep_type",
+          [](irreps::IrrepInfo const &self) -> std::optional<Index> {
+            return self.irrep_type;
+          },
+          R"pbdoc(
+          Optional[int]: Index that is the same for irreps with the same
+          characters.
+
+          Irreps with the same characters are assigned the same irrep_type
+          value, starting from 0. None if not yet set.
+          )pbdoc")
+      .def_property_readonly(
+          "index",
+          [](irreps::IrrepInfo const &self) -> std::optional<Index> {
+            return self.index;
+          },
+          R"pbdoc(
+          Optional[int]: Index to differentiate irreps with identical character vectors.
+
+          Irreps with the same characters are assigned sequential indices
+          starting from 0. None if not yet set.
+          )pbdoc")
+      .def_property_readonly(
+          "directions",
+          [](irreps::IrrepInfo const &self)
+              -> std::optional<std::vector<std::vector<Eigen::VectorXd>>> {
+            return self.directions;
+          },
+          R"pbdoc(
+          Optional[list[list[np.ndarray[np.float64[irrep_dim,]]]]]: High-symmetry directions
 
           Vectors in the initial vector space that correspond to high-symmetry
           directions in the irreducible vector space. ``directions[i]`` is the `i`-th
           orbit of equivalent high-symmetry directions and ``len(directions[i])`` is
-          the symmetric multiplicity of a direction in that orbit.
+          the symmetric multiplicity of a direction in that orbit. None if not yet set.
           )pbdoc")
+      .def_property_readonly("is_identity", &irreps::IrrepInfo::is_identity,
+                             R"pbdoc(
+          bool: True if this is the identity irrep.
+
+          The identity irrep has dimension 1 and all characters equal to 1.
+          )pbdoc")
+      .def_property_readonly("is_gerade", &irreps::IrrepInfo::is_gerade,
+                             R"pbdoc(
+          bool: True if this is a gerade irrep.
+
+          A gerade irrep has equal first and last characters, meaning
+          that inversion results in no sign change.
+          )pbdoc")
+      .def_property_readonly("is_real", &irreps::IrrepInfo::is_real,
+                             R"pbdoc(
+          bool: True if this is a real irrep (Frobenius-Schur indicator == 1).
+          )pbdoc")
+      .def_property_readonly("is_complex_irrep",
+                             &irreps::IrrepInfo::is_complex_irrep,
+                             R"pbdoc(
+          bool: True if this is a complex irrep (Frobenius-Schur indicator == 0).
+          )pbdoc")
+      .def_property_readonly("is_pseudo_real",
+                             &irreps::IrrepInfo::is_pseudo_real,
+                             R"pbdoc(
+          bool: True if this is a pseudo-real (quaternionic) irrep \
+          (Frobenius-Schur indicator == -1).
+          )pbdoc")
+      .def(py::self < py::self,
+           "Sorts by: identity first, then low-dimensional, then gerade, "
+           "then lexicographic by characters, then by trans_mat.")
+      .def(py::self == py::self)
+      .def(py::self != py::self)
       .def(
           "to_dict",
           [](irreps::IrrepInfo const &self) -> nlohmann::json {
@@ -341,7 +513,33 @@ PYBIND11_MODULE(_irreps, m) {
           },
           R"pbdoc(
           Represent the IrrepInfo as a Python dict.
-          )pbdoc");
+          )pbdoc")
+      .def_static(
+          "from_dict",
+          [](nlohmann::json const &data) -> irreps::IrrepInfo {
+            // print errors and warnings to sys.stdout
+            py::scoped_ostream_redirect redirect;
+            jsonParser json{data};
+            InputParser<irreps::IrrepInfo> parser(json);
+            std::runtime_error error_if_invalid{
+                "Error in libcasm.irreps.IrrepInfo.from_dict"};
+            report_and_throw_if_invalid(parser, CASM::log(), error_if_invalid);
+            return std::move(*parser.value);
+          },
+          R"pbdoc(
+          Construct an IrrepInfo from a Python dict.
+
+          Parameters
+          ----------
+          data : dict
+              A :class:`~libcasm.configuration.Supercell` as a dict.
+
+          Returns
+          -------
+          irrep_info : IrrepInfo
+              The :class:`~libcasm.irreps.IrrepInfo` constructed from the dict.
+          )pbdoc",
+          py::arg("data"));
 
   //
   py::class_<irreps::IrrepWedge>(m, "IrrepWedge", R"pbdoc(
@@ -498,14 +696,23 @@ PYBIND11_MODULE(_irreps, m) {
           )pbdoc")
       .def(
           "to_dict",
-          [](irreps::VectorSpaceSymReport const &self) -> nlohmann::json {
+          [](irreps::VectorSpaceSymReport const &self,
+             bool include_symop_matrices) -> nlohmann::json {
             jsonParser json;
-            to_json(self, json);
+            to_json(self, json, include_symop_matrices);
             return static_cast<nlohmann::json>(json);
           },
           R"pbdoc(
-          Represent the VectorSpaceSymReport as a Python dict."
-          )pbdoc");
+          Represent the VectorSpaceSymReport as a Python dict.
+
+          Parameters
+          ----------
+          include_symop_matrices : bool = True
+              If True, include the symmetry operation matrices in the
+              irreducible representation bases. For large vector spaces, use
+              False to exclude these matrices, saving output time and memory .
+          )pbdoc",
+          py::arg("include_symop_matrices") = true);
 
   //
   py::class_<irreps::IrrepDecomposition>(m, "IrrepDecomposition", R"pbdoc(
@@ -532,13 +739,49 @@ PYBIND11_MODULE(_irreps, m) {
           allow_complex: bool = True
               If True, all irreps may be complex-valued, if False, complex
               irreps are combined to form real representations
-          abs_tol: float = :data:`~libcasm.casmglobal.TOL`
-              The absolute tolerance, used to construct a group multiplication
-              table.
+          subgroup_orbits: Optional[list[list[list[int]]]] = None
+              Provides orbits of subgroups which are used to search for high
+              symmetry directions in each irreducible subspace. The list
+              ``subgroup_orbits[i][j]`` contains the indices into `matrix_rep`
+              of elements in the `j`-th subgroup of the `i`-th orbit of
+              equivalent subgroups.
+
+              Subgroup orbits can be obtained for a
+              :class:`~libcasm.configuration.Supercell` using
+              :func:`~libcasm.configuration.Supercell.make_subgroup_orbits` or
+              in a more general case using methods of
+              :class:`~libcasm.sym_info.Subset`.
+
+          class_indices : Optional[list[int]] = None
+              If provided, ``cc = class_indices[i]`` indicates that the
+              `i`-th element (i.e. `matrix_rep[i]`) belongs to the `cc`-th class
+              of group elements. If provided, this is used to make the
+              character table.
+
+          verbosity : Optional[str] = None
+              If not None, the irrep decomposition process will be logged to
+              standard output. Use "standard" for basic logging output,
+              or "verbose" for additional logging output.
+
+          commuter_method : str = "deterministic"
+              Method for constructing commuter matrices. Options are:
+
+              - "deterministic": (default) Use structured kernel column pair
+                enumeration. This method is deterministic initially, but if
+                it fails, then a random rotation of the subspace is applied
+                and the method is retried, up to a maximum of 10 attempts.
+              - "random": Use random Hermitian seed matrices projected via the
+                Reynolds operator. This usually enables finding irreps in one
+                attempt, but is not deterministic.
+
           )pbdoc",
            py::arg("matrix_rep"), py::arg("head_group") = std::nullopt,
            py::arg("init_subspace") = std::nullopt,
-           py::arg("allow_complex") = true, py::arg("abs_tol") = CASM::TOL)
+           py::arg("allow_complex") = true,
+           py::arg("subgroup_orbits") = std::nullopt,
+           py::arg("class_indices") = std::nullopt,
+           py::arg("verbosity") = std::nullopt,
+           py::arg("commuter_method") = "deterministic")
       .def_readonly("matrix_rep", &irreps::IrrepDecomposition::fullspace_rep,
                     "Full space matrix representation")
       .def_readonly("head_group", &irreps::IrrepDecomposition::head_group,
@@ -556,6 +799,17 @@ PYBIND11_MODULE(_irreps, m) {
           `irrep[i].vector_dim() == full space dimension` and
           `sum_i irrep[i].irrep_dim() == subspace columns`).
           )pbdoc")
+      .def_readonly(
+          "complete_decomposition",
+          &irreps::IrrepDecomposition::complete_decomposition,
+          "True if the irrep decomposition successfully decomposed all of the "
+          "input subspace.")
+      .def_readonly(
+          "incomplete_subspace",
+          &irreps::IrrepDecomposition::incomplete_subspace,
+          "If `complete_decomposition == False`, the remaining portion of the "
+          "input subspace that was not successfully decomposed into "
+          "irreducible subspaces.")
       .def(
           "make_symmetry_report",
           [](irreps::IrrepDecomposition const &self, bool calc_wedges,
@@ -586,6 +840,46 @@ PYBIND11_MODULE(_irreps, m) {
               If provided, a description of each dimension of the vector space.
           )pbdoc",
           py::arg("calc_wedges") = false, py::arg("glossary") = std::nullopt);
+
+  m.def(
+      "make_invariant_subspace",
+      [](std::vector<Eigen::MatrixXd> const &matrix_rep,
+         Eigen::MatrixXd const &init_subspace,
+         std::optional<irreps::GroupIndices> head_group) -> Eigen::MatrixXd {
+        if (!head_group.has_value()) {
+          irreps::GroupIndices _head_group;
+          Index i = 0;
+          for (auto const &rep : matrix_rep) {
+            _head_group.insert(i);
+            ++i;
+          }
+          head_group = _head_group;
+        }
+        return irreps::IrrepDecompositionImpl::make_invariant_space(
+            matrix_rep, *head_group, init_subspace);
+      },
+      R"pbdoc(
+      Make the invariant subspace generated by applying matrix representations
+      to a subspace using modified Gram-Schmidt.
+
+      Parameters
+      ----------
+      matrix_rep: list[np.ndarray[np.float64]]
+          Full space matrix representation
+      init_subspace: np.ndarray[np.float64]
+          Initial subspace to expand into an invariant subspace
+      head_group: Optional[set[int]] = None
+          Group used to find irreps, as indices into `matrix_rep`. If
+          None, the entire group is used.
+
+      Returns
+      -------
+      invariant_subspace: np.ndarray[np.float64]
+          The invariant subspace, formed by expanding `init_subspace` by
+          application of `matrix_rep` and orthogonalization.
+      )pbdoc",
+      py::arg("matrix_rep"), py::arg("init_subspace"),
+      py::arg("head_group") = std::nullopt);
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

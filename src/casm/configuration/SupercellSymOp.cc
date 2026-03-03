@@ -7,8 +7,10 @@
 #include "casm/configuration/Supercell.hh"
 #include "casm/configuration/SupercellSymInfo.hh"
 #include "casm/configuration/sym_info/definitions.hh"
+#include "casm/configuration/sym_info/factor_group.hh"
 #include "casm/crystallography/SymType.hh"
 #include "casm/crystallography/SymTypeComparator.hh"
+#include "casm/global/threads.hh"
 
 namespace CASM {
 namespace config {
@@ -545,6 +547,8 @@ std::shared_ptr<SymGroup const> make_local_symgroup(
 ///     no value).
 /// \param symgroup The resulting group as a SymGroup. For global DoF,
 ///     this is the point group with repeated elements are removed.
+/// \param make_symgroup If true, `symgroup` is constructed, otherwise
+///     it is unchanged.
 ///
 /// \returns matrix_rep The matrix representation of `group` which transforms
 ///     the specified DoF. For global DoF repeated elements are removed (the
@@ -558,19 +562,20 @@ std::shared_ptr<SymGroup const> make_local_symgroup(
 std::vector<Eigen::MatrixXd> make_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::optional<std::set<Index>> site_indices,
-    std::shared_ptr<SymGroup const> &symgroup) {
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup) {
   if (group.size() == 0) {
     throw std::runtime_error("Error in make_matrix_rep: group has size==0.");
   }
   if (AnisoValTraits(key).global()) {
-    return make_global_dof_matrix_rep(group, key, symgroup);
+    return make_global_dof_matrix_rep(group, key, symgroup, make_symgroup);
   } else {
     if (!site_indices.has_value()) {
       throw std::runtime_error(
           "Error in make_matrix_rep: site_indices has no value for occupation "
           "or local DoF");
     }
-    return make_local_dof_matrix_rep(group, key, *site_indices, symgroup);
+    return make_local_dof_matrix_rep(group, key, *site_indices, symgroup,
+                                     make_symgroup);
   }
 }
 
@@ -581,6 +586,8 @@ std::vector<Eigen::MatrixXd> make_matrix_rep(
 ///     crystallographic factor group)
 /// \param key The type of global DoF to be transformed.
 /// \param symgroup The resulting group, which is a point group, as a SymGroup.
+/// \param make_symgroup If true, `symgroup` is constructed, otherwise
+///     it is unchanged.
 ///
 /// \returns matrix_rep The matrix representation of `group` which transforms
 ///     the specified global DoF. Repeated elements are removed (the result
@@ -589,7 +596,7 @@ std::vector<Eigen::MatrixXd> make_matrix_rep(
 ///
 std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
-    std::shared_ptr<SymGroup const> &symgroup) {
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup) {
   if (group.size() == 0) {
     throw std::runtime_error(
         "Error in make_global_dof_matrix_rep: group has size==0.");
@@ -633,14 +640,12 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
     result.push_back(M);
   }
 
-  std::multiplies<SymOp> multiply_f;
-  xtal::SymOpPeriodicCompare_f equal_to_f(prim_lattice, xtal_tol);
-  symgroup = std::make_shared<SymGroup const>(
-      group::make_group(element, multiply_f, equal_to_f));
-
-  // std::cout << "make_global_dof_matrix_rep: " << group.size() << ","
-  //           << prim_factor_group_indices.size() << "," << result.size()
-  //           << std::endl;
+  if (make_symgroup) {
+    std::multiplies<SymOp> multiply_f;
+    xtal::SymOpPeriodicCompare_f equal_to_f(prim_lattice, xtal_tol);
+    symgroup = std::make_shared<SymGroup const>(
+        group::make_group(element, multiply_f, equal_to_f));
+  }
   return result;
 }
 
@@ -655,6 +660,8 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
 /// \param site_indices Set of site indices that define the subset of sites
 ///     where DoF will be transformed
 /// \param symgroup The resulting group as a SymGroup.
+/// \param make_symgroup If true, `symgroup` is constructed, otherwise
+///     it is unchanged.
 ///
 /// \returns matrix_rep The matrix representation of `group` which transforms
 ///     the specified occupation or local DoF.
@@ -662,7 +669,7 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
 std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
     std::vector<SupercellSymOp> const &group, DoFKey key,
     std::set<Index> const &site_indices,
-    std::shared_ptr<SymGroup const> &symgroup) {
+    std::shared_ptr<SymGroup const> &symgroup, bool make_symgroup) {
   if (group.size() == 0) {
     throw std::runtime_error(
         "Error in make_local_dof_matrix_rep: group has size==0.");
@@ -692,8 +699,6 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
         "size==0.");
   }
 
-  std::vector<Eigen::MatrixXd> result;
-
   // make map of site_index -> beginning row in basis for that site
   // (number of rows per site == dof dimension on that site)
   std::map<Index, Index> site_index_to_basis_index;
@@ -706,49 +711,103 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
   }
 
   // make matrix rep, by filling in blocks with site dof symreps
-  Eigen::MatrixXd trep(total_dim, total_dim);
+  // Eigen::MatrixXd trep(total_dim, total_dim);
+  Index n = static_cast<Index>(group.size());
+  std::vector<Eigen::MatrixXd> result;
+  result.resize(n);
   std::vector<xtal::SymOp> element;
-  for (SupercellSymOp const &supercell_symop : group) {
-    trep.setZero();
-    for (Index site_index : site_indices) {
-      // "to_site" (after applying symmetry) determines row of block
-      // can't fail, because it was built from [begin, end)
-      Index to_site_index = site_index;
-      Index row = site_index_to_basis_index.find(to_site_index)->second;
-
-      // "from_site" (before applying symmetry) determines col of block
-      // could fail, if mismatch between [begin, end) and group
-      Index from_site_index = supercell_symop.permute_index(site_index);
-      auto col_it = site_index_to_basis_index.find(from_site_index);
-      if (col_it == site_index_to_basis_index.end()) {
-        throw std::runtime_error(
-            "Error in make_collective_dof_matrix_rep: Input group includes "
-            "permutations "
-            "between selected and unselected sites.");
-      }
-      Index col = col_it->second;
-
-      // "from_site" sublattice and factor group op index
-      // are used to lookup the site dof rep matrix
-      Index from_site_b =
-          supercell.unitcellcoord_index_converter(from_site_index).sublattice();
-      Index prim_factor_group_index = supercell_symop.prim_factor_group_index();
-      Eigen::MatrixXd U =
-          local_dof_symgroup_rep.at(prim_factor_group_index).at(from_site_b);
-
-      // insert matrix as block in collective dof symrep
-      trep.block(row, col, U.rows(), U.cols()) = U;
-    }
-    result.push_back(trep);
-
-    element.push_back(supercell_symop.to_symop());
+  if (make_symgroup) {
+    element.resize(n, xtal::SymOp::identity());
   }
+  // for (SupercellSymOp const &supercell_symop : group) {
+  //   trep.setZero();
+  //   for (Index site_index : site_indices) {
+  //     // "to_site" (after applying symmetry) determines row of block
+  //     // can't fail, because it was built from [begin, end)
+  //     Index to_site_index = site_index;
+  //     Index row = site_index_to_basis_index.find(to_site_index)->second;
+  //
+  //     // "from_site" (before applying symmetry) determines col of block
+  //     // could fail, if mismatch between [begin, end) and group
+  //     Index from_site_index = supercell_symop.permute_index(site_index);
+  //     auto col_it = site_index_to_basis_index.find(from_site_index);
+  //     if (col_it == site_index_to_basis_index.end()) {
+  //       throw std::runtime_error(
+  //           "Error in make_collective_dof_matrix_rep: Input group includes "
+  //           "permutations "
+  //           "between selected and unselected sites.");
+  //     }
+  //     Index col = col_it->second;
+  //
+  //     // "from_site" sublattice and factor group op index
+  //     // are used to lookup the site dof rep matrix
+  //     Index from_site_b =
+  //         supercell.unitcellcoord_index_converter(from_site_index).sublattice();
+  //     Index prim_factor_group_index =
+  //     supercell_symop.prim_factor_group_index(); Eigen::MatrixXd U =
+  //         local_dof_symgroup_rep.at(prim_factor_group_index).at(from_site_b);
+  //
+  //     // insert matrix as block in collective dof symrep
+  //     trep.block(row, col, U.rows(), U.cols()) = U;
+  //   }
+  //   result.push_back(trep);
+  //
+  //   element.push_back(supercell_symop.to_symop());
+  // }
 
-  std::multiplies<SymOp> multiply_f;
-  xtal::SymOpPeriodicCompare_f equal_to_f(supercell.superlattice.superlattice(),
-                                          xtal_tol);
-  symgroup = std::make_shared<SymGroup const>(
-      group::make_group(element, multiply_f, equal_to_f));
+  auto worker = [&](Index start, Index end, Index thread_id) {
+    Eigen::MatrixXd trep(total_dim, total_dim);
+    for (Index i = start; i < end; ++i) {
+      SupercellSymOp const &supercell_symop = group[i];
+      trep.setZero();
+      for (Index site_index : site_indices) {
+        // "to_site" (after applying symmetry) determines row of block
+        // can't fail, because it was built from [begin, end)
+        Index to_site_index = site_index;
+        Index row = site_index_to_basis_index.find(to_site_index)->second;
+
+        // "from_site" (before applying symmetry) determines col of block
+        // could fail, if mismatch between [begin, end) and group
+        Index from_site_index = supercell_symop.permute_index(site_index);
+        auto col_it = site_index_to_basis_index.find(from_site_index);
+        if (col_it == site_index_to_basis_index.end()) {
+          throw std::runtime_error(
+              "Error in make_collective_dof_matrix_rep: Input group "
+              "includes "
+              "permutations between selected and unselected sites.");
+        }
+        Index col = col_it->second;
+
+        // "from_site" sublattice and factor group op index
+        // are used to lookup the site dof rep matrix
+        Index from_site_b =
+            supercell.unitcellcoord_index_converter(from_site_index)
+                .sublattice();
+        Index prim_factor_group_index =
+            supercell_symop.prim_factor_group_index();
+        Eigen::MatrixXd U =
+            local_dof_symgroup_rep.at(prim_factor_group_index).at(from_site_b);
+
+        // insert matrix as block in collective dof symrep
+        trep.block(row, col, U.rows(), U.cols()) = U;
+      }
+      result[i] = trep;
+
+      if (make_symgroup) {
+        element[i] = supercell_symop.to_symop();
+      }
+    }
+  };
+
+  threaded_run(n, worker);
+
+  if (make_symgroup) {
+    std::multiplies<SymOp> multiply_f;
+    xtal::SymOpPeriodicCompare_f equal_to_f(
+        supercell.superlattice.superlattice(), xtal_tol);
+    symgroup = std::make_shared<SymGroup const>(
+        group::make_group(element, multiply_f, equal_to_f));
+  }
 
   return result;
 }
@@ -766,24 +825,73 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
 std::vector<Eigen::MatrixXd> make_dof_space_rep(
     std::vector<config::SupercellSymOp> const &group,
     clexulator::DoFSpace const &dof_space) {
+  bool make_symgroup = false;
   std::shared_ptr<config::SymGroup const> symgroup;
   std::vector<Eigen::MatrixXd> fullspace_rep;
   std::vector<Eigen::MatrixXd> dof_space_rep;
   if (dof_space.is_global) {
-    fullspace_rep =
-        config::make_global_dof_matrix_rep(group, dof_space.dof_key, symgroup);
+    fullspace_rep = config::make_global_dof_matrix_rep(group, dof_space.dof_key,
+                                                       symgroup, make_symgroup);
   } else {
     if (!dof_space.sites.has_value()) {
       throw std::runtime_error(
           "Error in make_dof_space_rep with local DoF: no DoFSpace sites");
     }
     fullspace_rep = config::make_local_dof_matrix_rep(
-        group, dof_space.dof_key, *dof_space.sites, symgroup);
+        group, dof_space.dof_key, *dof_space.sites, symgroup, make_symgroup);
   }
-  for (auto const &M : fullspace_rep) {
-    dof_space_rep.push_back(dof_space.basis_inv * M * dof_space.basis);
+
+  Eigen::MatrixXd const &basis = dof_space.basis;
+  double tol = 1e-10;
+  if (basis.isIdentity(tol)) {
+    return fullspace_rep;
   }
+
+  // Multithreaded transformation: pre-size and assign disjoint elements
+  Index const n = static_cast<Index>(fullspace_rep.size());
+  dof_space_rep.resize(n);
+
+  Eigen::MatrixXd const &basis_inv = dof_space.basis_inv;
+
+  auto worker = [&fullspace_rep, &dof_space_rep, &basis_inv, &basis](
+                    Index start, Index end, Index thread_id) {
+    Eigen::MatrixXd temp;
+    for (Index i = start; i < end; ++i) {
+      temp.noalias() = fullspace_rep[i] * basis;
+      dof_space_rep[i].noalias() = basis_inv * temp;
+    }
+  };
+
+  threaded_run(n, worker);
+
   return dof_space_rep;
+}
+
+/// \brief Make a SymGroup from a list of SupercellSymOp
+///
+/// \brief group The group as a list of SupercellSymOp
+///
+/// \returns symgroup The SymGroup corresponding to `group`. This is a head
+/// group, it is not a subgroup of the prim factor group because it can
+/// include unit cell translations.
+std::shared_ptr<SymGroup const> make_symgroup(
+    std::vector<SupercellSymOp> const &group) {
+  if (group.size() == 0) {
+    throw std::runtime_error("Error in make_symgroup: group has size==0.");
+  }
+
+  std::shared_ptr<Supercell const> supercell = group.begin()->supercell();
+
+  std::vector<xtal::SymOp> element;
+  for (auto const &supercell_symop : group) {
+    element.push_back(supercell_symop.to_symop());
+  }
+  std::multiplies<SymOp> multiply_f;
+  xtal::SymOpPeriodicCompare_f equal_to_f(
+      supercell->superlattice.superlattice(),
+      supercell->prim->basicstructure->lattice().tol());
+  return std::make_shared<SymGroup const>(
+      group::make_group(element, multiply_f, equal_to_f));
 }
 
 }  // namespace config

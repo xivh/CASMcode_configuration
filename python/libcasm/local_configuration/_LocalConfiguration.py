@@ -397,8 +397,8 @@ class LocalConfiguration:
     ):
         """Represent the LocalConfiguration as a Python dict
 
-        Note
-        ----
+        Notes
+        -----
         The `event_supercell_info` is not included to avoid excessive duplication.
 
         Parameters
