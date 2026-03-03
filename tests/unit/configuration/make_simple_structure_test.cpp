@@ -179,7 +179,8 @@ TEST_F(MakeSimpleStructureTestStrainDisp, Test1) {
   global_dof_values.at(strain_dof_key) = DoFstrain_converter.from_F(F);
 
   // make SimpleStructure
-  xtal::SimpleStructure structure = make_simple_structure(configuration);
+  config::ToAtomicStructure f;
+  xtal::SimpleStructure structure = f(configuration);
 
   jsonParser json;
   to_json(structure, json);

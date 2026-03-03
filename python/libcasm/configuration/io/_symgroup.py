@@ -84,7 +84,7 @@ def symgroup_to_dict_with_group_classification(
 
         try:
             spglib.error.OLD_ERROR_HANDLING = False
-        except:
+        except Exception:
             pass
 
     except ImportError:

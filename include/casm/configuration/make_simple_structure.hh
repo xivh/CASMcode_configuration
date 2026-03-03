@@ -18,14 +18,6 @@ namespace config {
 struct Configuration;
 struct ConfigurationWithProperties;
 
-/// \brief (deprecated) Convert a Configuration to a SimpleStructure
-xtal::SimpleStructure make_simple_structure(
-    Configuration const &configuration,
-    std::map<std::string, Eigen::MatrixXd> const &local_properties = {},
-    std::map<std::string, Eigen::VectorXd> const &global_properties = {},
-    std::string atom_type_naming_method = "chemical_name",
-    std::set<std::string> excluded_species = {"Va", "VA", "va"});
-
 /// \brief Construct a SimpleStructure from a configuration of a Prim with
 ///     atomic occupants
 ///

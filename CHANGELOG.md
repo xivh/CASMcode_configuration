@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed constructing `full_trans_mat` from complex irreps.
 - Fixed normalization of real and imaginary parts of complex irrep `trans_mat` when building the full transformation matrix.
 
+### Removed
+
+- Removed deprecated `supercells` and `motif` arguments from `ConfigEnumAllOccupations.by_supercell` and made `max` a required argument.
+- Removed deprecated `to_json` and `from_json` methods from `libcasm.configuration.Prim`.
+
 
 ## [2.3.1] - 2026-02-26
 

@@ -28,9 +28,9 @@ class ConfigEnumAllOccupations:
     """Enumerate configuration occupations"""
 
     def __init__(
-        self,
-        prim: casmconfig.Prim,
-        supercell_set: Optional[casmconfig.SupercellSet] = None,
+            self,
+            prim: casmconfig.Prim,
+            supercell_set: Optional[casmconfig.SupercellSet] = None,
     ):
         """
         .. rubric:: Constructor
@@ -105,9 +105,9 @@ class ConfigEnumAllOccupations:
         return motif
 
     def _make_supercell_list(
-        self,
-        background: casmconfig.Configuration,
-        supercells: Optional[dict] = None,
+            self,
+            background: casmconfig.Configuration,
+            supercells: Optional[dict] = None,
     ):
         """Make supercell list from `supercells` or just background supercell"""
         if supercells is None:
@@ -125,9 +125,9 @@ class ConfigEnumAllOccupations:
         return supercell_list
 
     def _make_super_backgrounds(
-        self,
-        background: casmconfig.Configuration,
-        supercells: Optional[dict] = None,
+            self,
+            background: casmconfig.Configuration,
+            supercells: Optional[dict] = None,
     ):
         """Fill the background configuration into enumerated supercells, maintaining
         the orientation of the background configuration.
@@ -156,20 +156,20 @@ class ConfigEnumAllOccupations:
         )
         super_backgrounds = []
         for config in super_config_enum.by_supercell(
-            motif=background,
-            **supercells,
+                motif=background,
+                **supercells,
         ):
             super_backgrounds.append(config.copy())
         return super_backgrounds
 
     def _by_site(
-        self,
-        background: casmconfig.Configuration,
-        sites: set[int],
-        skip_non_primitive: bool,
-        skip_equivalents: bool,
-        use_background_invariant_group: bool,
-        which_dofs: Optional[set[str]] = None,
+            self,
+            background: casmconfig.Configuration,
+            sites: set[int],
+            skip_non_primitive: bool,
+            skip_equivalents: bool,
+            use_background_invariant_group: bool,
+            which_dofs: Optional[set[str]] = None,
     ):
         """Run the inner loop of enumerating occupations on sites in a background
 
@@ -231,13 +231,13 @@ class ConfigEnumAllOccupations:
                 canonicalization_group = None
         while config_enum.is_valid():
             if skip_non_primitive and not casmconfig.is_primitive_configuration(
-                configuration=config_enum.value()
+                    configuration=config_enum.value()
             ):
                 config_enum.advance()
                 continue
             if skip_equivalents and not casmconfig.is_canonical_configuration(
-                configuration=config_enum.value(),
-                subgroup=canonicalization_group,
+                    configuration=config_enum.value(),
+                    subgroup=canonicalization_group,
             ):
                 config_enum.advance()
                 continue
@@ -245,23 +245,21 @@ class ConfigEnumAllOccupations:
             config_enum.advance()
 
     def by_supercell(
-        self,
-        max: Optional[int] = None,
-        min: int = 1,
-        unit_cell: Optional[np.ndarray] = None,
-        dirs: str = "abc",
-        diagonal_only: bool = False,
-        fixed_shape: bool = False,
-        supercells: Optional[dict] = None,
-        motif: Optional[casmconfig.Configuration] = None,
-        skip_non_primitive: bool = True,
-        skip_non_canonical: bool = True,
+            self,
+            max: int,
+            min: int = 1,
+            unit_cell: Optional[np.ndarray] = None,
+            dirs: str = "abc",
+            diagonal_only: bool = False,
+            fixed_shape: bool = False,
+            skip_non_primitive: bool = True,
+            skip_non_canonical: bool = True,
     ):
         """Enumerate all occupations in a series of enumerated supercells
 
         Parameters
         ----------
-        max: Optional[int] = None
+        max: int
             The maximum volume superlattice to enumerate. The volume is measured
             relative the unit cell being used to generate supercells (i.e. the
             determinant of the `unit_cell` parameter). Is required if `supercells` is
@@ -283,31 +281,6 @@ class ConfigEnumAllOccupations:
             If true, restrict :math:`T` to diagonal matrices with diagonal coefficients
             :math:`[m, 1, 1]` (1d), :math:`[m, m, 1]` (2d), or :math:`[m, m, m]` (3d),
             where the dimension is determined from `len(dirs)`.
-        supercells: Optional[dict] = None
-            Parameters to forward to
-            :func:`ScelEnum.by_volume <libcasm.enumerate.ScelEnum.by_volume>` to
-            specify the supercells that the motif configuration will be filled into.
-
-            .. deprecated:: 2.0a5
-                Give the
-                :func:`ScelEnum.by_volume <libcasm.enumerate.ScelEnum.by_volume>`
-                parameters directly, or by using `**supercells`, instead of using this
-                parameter.
-
-        motif: Optional[casmconfig.Configuration] = None
-            The background configuration on which enumeration takes place. The motif is
-            filled into each supercell using
-            :func:`~libcasm.configuration.make_distinct_super_configurations`. If the
-            motif does not tile exactly into a supercell that supercell is skipped.
-            Providing a motif allows enumerating all occupations with other degrees of
-            freedom (DoF) fixed. If None, the default configuration in the volume 1
-            supercell is used.
-
-            .. deprecated:: 2.0a5
-                Use the method
-                :func:`~libcasm.enumerate.ConfigEnumAllOccupations.by_supercell_with_continuous_dof`
-                instead.
-
         skip_non_primitive: bool = True
             If True, enumeration skips non-primitive configurations. All DoF are
             included in the check for primitive configurations.
@@ -324,23 +297,6 @@ class ConfigEnumAllOccupations:
         """
         import warnings
 
-        if max is None:
-            if supercells is None or "max" not in supercells:
-                raise ValueError(
-                    "Error in ConfigEnumAllOccupations.by_supercell: "
-                    "`max` is required. Could not be obtained from supercells."
-                )
-            else:
-                max = supercells["max"]
-                warnings.warn(
-                    "The `max` parameter is required. "
-                    "Obtaining max from supercells, but the 'supercells' parameter is "
-                    "deprecated. Give the ScelEnum.by_volume parameters directly, or "
-                    "by using `**supercells`, instead of using 'supercells'.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-
         _supercells = dict(
             max=max,
             min=min,
@@ -350,58 +306,30 @@ class ConfigEnumAllOccupations:
             fixed_shape=fixed_shape,
         )
 
-        if supercells is not None:
-            warnings.warn(
-                "The 'supercells' parameter is deprecated. Give the "
-                "ScelEnum.by_volume parameters directly, or by using "
-                "`**supercells`, instead of using 'supercells'.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            _supercells.update(supercells)
-
-        if motif is not None:
-            import warnings
-
-            warnings.warn(
-                "The 'motif' parameter is deprecated. Use the method "
-                "'ConfigEnumAllOccupations.by_supercell_with_continuous_dof' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            for config in self.by_supercell_with_continuous_dof(
-                source=motif,
-                **_supercells,
-                skip_non_primitive=skip_non_primitive,
-                skip_equivalents=skip_non_canonical,
-            ):
-                yield config
-            return
-
         self._begin()
         scel_enum = ScelEnum(
             prim=self.prim,
             supercell_set=self.supercell_set,
         )
         for supercell in scel_enum.by_volume(
-            **_supercells,
+                **_supercells,
         ):
             sites = set(range(supercell.n_sites))
             default_config = casmconfig.Configuration(supercell)
             for config in self._by_site(
-                background=default_config,
-                sites=sites,
-                skip_non_primitive=skip_non_primitive,
-                skip_equivalents=skip_non_canonical,
-                use_background_invariant_group=False,
+                    background=default_config,
+                    sites=sites,
+                    skip_non_primitive=skip_non_primitive,
+                    skip_equivalents=skip_non_canonical,
+                    use_background_invariant_group=False,
             ):
                 yield config
 
     def by_supercell_list(
-        self,
-        supercells: list[casmconfig.Supercell],
-        skip_non_primitive: bool = True,
-        skip_non_canonical: bool = True,
+            self,
+            supercells: list[casmconfig.Supercell],
+            skip_non_primitive: bool = True,
+            skip_non_canonical: bool = True,
     ):
         """Enumerate all occupations in a list of supercells explicitly provided
 
@@ -429,25 +357,25 @@ class ConfigEnumAllOccupations:
             sites = set(range(supercell.n_sites))
             default_config = casmconfig.Configuration(supercell)
             for config in self._by_site(
-                background=default_config,
-                sites=sites,
-                skip_non_primitive=skip_non_primitive,
-                skip_equivalents=skip_non_canonical,
-                use_background_invariant_group=False,
+                    background=default_config,
+                    sites=sites,
+                    skip_non_primitive=skip_non_primitive,
+                    skip_equivalents=skip_non_canonical,
+                    use_background_invariant_group=False,
             ):
                 yield config
 
     def by_supercell_with_continuous_dof(
-        self,
-        source: casmconfig.Configuration,
-        max: int,
-        min: int = 1,
-        unit_cell: Optional[np.ndarray] = None,
-        dirs: str = "abc",
-        diagonal_only: bool = False,
-        fixed_shape: bool = False,
-        skip_non_primitive: bool = True,
-        skip_equivalents: bool = True,
+            self,
+            source: casmconfig.Configuration,
+            max: int,
+            min: int = 1,
+            unit_cell: Optional[np.ndarray] = None,
+            dirs: str = "abc",
+            diagonal_only: bool = False,
+            fixed_shape: bool = False,
+            skip_non_primitive: bool = True,
+            skip_equivalents: bool = True,
     ):
         """Enumerate all occupations in a series of enumerated supercells, with
         non-default continuous DoF
@@ -521,21 +449,21 @@ class ConfigEnumAllOccupations:
         for super_background in super_backgrounds:
             sites = set(range(super_background.supercell.n_sites))
             for config in self._by_site(
-                background=super_background,
-                sites=sites,
-                skip_non_primitive=skip_non_primitive,
-                skip_equivalents=skip_equivalents,
-                use_background_invariant_group=True,
-                which_dofs=which_dofs,
+                    background=super_background,
+                    sites=sites,
+                    skip_non_primitive=skip_non_primitive,
+                    skip_equivalents=skip_equivalents,
+                    use_background_invariant_group=True,
+                    which_dofs=which_dofs,
             ):
                 yield config
 
     def by_linear_site_indices(
-        self,
-        background: casmconfig.Configuration,
-        sites: set[int],
-        skip_non_primitive: bool = False,
-        skip_equivalents: bool = True,
+            self,
+            background: casmconfig.Configuration,
+            sites: set[int],
+            skip_non_primitive: bool = False,
+            skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         specified sites
@@ -562,20 +490,20 @@ class ConfigEnumAllOccupations:
         """
         self._begin()
         for config in self._by_site(
-            background=background,
-            sites=sites,
-            skip_non_primitive=skip_non_primitive,
-            skip_equivalents=skip_equivalents,
-            use_background_invariant_group=True,
+                background=background,
+                sites=sites,
+                skip_non_primitive=skip_non_primitive,
+                skip_equivalents=skip_equivalents,
+                use_background_invariant_group=True,
         ):
             yield config
 
     def by_integral_site_coordinates(
-        self,
-        background: casmconfig.Configuration,
-        sites: list[xtal.IntegralSiteCoordinate],
-        skip_non_primitive: bool = False,
-        skip_equivalents: bool = True,
+            self,
+            background: casmconfig.Configuration,
+            sites: list[xtal.IntegralSiteCoordinate],
+            skip_non_primitive: bool = False,
+            skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         specified sites
@@ -604,21 +532,21 @@ class ConfigEnumAllOccupations:
         converter = background.supercell.site_index_converter
         site_indices = set([converter.linear_site_index(site) for site in sites])
         for config in self._by_site(
-            background=background,
-            sites=site_indices,
-            skip_non_primitive=skip_non_primitive,
-            skip_equivalents=skip_equivalents,
-            use_background_invariant_group=True,
+                background=background,
+                sites=site_indices,
+                skip_non_primitive=skip_non_primitive,
+                skip_equivalents=skip_equivalents,
+                use_background_invariant_group=True,
         ):
             yield config
 
     def by_sublattice(
-        self,
-        background: casmconfig.Configuration,
-        sublats: set[int],
-        supercells: Optional[dict] = None,
-        skip_non_primitive: bool = True,
-        skip_equivalents: bool = True,
+            self,
+            background: casmconfig.Configuration,
+            sublats: set[int],
+            supercells: Optional[dict] = None,
+            skip_non_primitive: bool = True,
+            skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         specified sublattices
@@ -659,21 +587,21 @@ class ConfigEnumAllOccupations:
         for super_background in super_backgrounds:
             sublat_sites = _make_sublat_sites(super_background.supercell, sublats)
             for config in self._by_site(
-                background=super_background,
-                sites=sublat_sites,
-                skip_non_primitive=skip_non_primitive,
-                skip_equivalents=skip_equivalents,
-                use_background_invariant_group=True,
+                    background=super_background,
+                    sites=sublat_sites,
+                    skip_non_primitive=skip_non_primitive,
+                    skip_equivalents=skip_equivalents,
+                    use_background_invariant_group=True,
             ):
                 yield config
 
     def by_cluster(
-        self,
-        background: casmconfig.Configuration,
-        cluster_specs: dict,
-        supercells: Optional[dict] = None,
-        skip_non_primitive: bool = False,
-        skip_equivalents: bool = True,
+            self,
+            background: casmconfig.Configuration,
+            cluster_specs: dict,
+            supercells: Optional[dict] = None,
+            skip_non_primitive: bool = False,
+            skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         specified clusters
@@ -731,21 +659,21 @@ class ConfigEnumAllOccupations:
             )
             for cluster_sites in distinct_cluster_sites:
                 for config in self._by_site(
-                    background=super_background,
-                    sites=cluster_sites,
-                    skip_non_primitive=skip_non_primitive,
-                    skip_equivalents=skip_equivalents,
-                    use_background_invariant_group=True,
+                        background=super_background,
+                        sites=cluster_sites,
+                        skip_non_primitive=skip_non_primitive,
+                        skip_equivalents=skip_equivalents,
+                        use_background_invariant_group=True,
                 ):
                     yield config
 
     def by_cluster_list(
-        self,
-        background: casmconfig.Configuration,
-        clusters: list[casmclust.Cluster],
-        supercells: Optional[dict] = None,
-        skip_non_primitive: bool = False,
-        skip_equivalents: bool = True,
+            self,
+            background: casmconfig.Configuration,
+            clusters: list[casmclust.Cluster],
+            supercells: Optional[dict] = None,
+            skip_non_primitive: bool = False,
+            skip_equivalents: bool = True,
     ):
         """Enumerate occupation perturbations of a background configuration on
         an explicitly provided list of clusters
@@ -803,10 +731,10 @@ class ConfigEnumAllOccupations:
             )
             for cluster_sites in distinct_cluster_sites:
                 for config in self._by_site(
-                    background=super_background,
-                    sites=cluster_sites,
-                    skip_non_primitive=skip_non_primitive,
-                    skip_equivalents=skip_equivalents,
-                    use_background_invariant_group=True,
+                        background=super_background,
+                        sites=cluster_sites,
+                        skip_non_primitive=skip_non_primitive,
+                        skip_equivalents=skip_equivalents,
+                        use_background_invariant_group=True,
                 ):
                     yield config

@@ -7,7 +7,7 @@ import libcasm.xtal as xtal
 
 try:
     spglib.error.OLD_ERROR_HANDLING = False
-except:
+except Exception:
     pass
 
 

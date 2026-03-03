@@ -10,9 +10,8 @@
 namespace CASM {
 namespace config {
 
-/// \brief (deprecated) Convert a Configuration to a SimpleStructure
-///
-/// This method is deprecated in favor of ToAtomicStructure.
+namespace ToAtomicStructure_impl {
+/// \brief Convert a Configuration to a SimpleStructure
 ///
 /// \param configuration The configuration being converted to
 ///     a SimpleStructure. If "disp" is a DoF, it is included
@@ -273,6 +272,7 @@ xtal::SimpleStructure make_simple_structure(
   structure.deform_coords(F);
   return structure;
 }
+}  // namespace ToAtomicStructure_impl
 
 /// \brief Constructor
 ///
@@ -314,9 +314,9 @@ ToAtomicStructure::ToAtomicStructure(std::string atom_type_naming_method,
 xtal::SimpleStructure ToAtomicStructure::operator()(
     ConfigurationWithProperties const &configuration_with_properties) {
   auto const &x = configuration_with_properties;
-  return make_simple_structure(x.configuration, x.local_properties,
-                               x.global_properties, m_atom_type_naming_method,
-                               m_excluded_species);
+  return ToAtomicStructure_impl::make_simple_structure(
+      x.configuration, x.local_properties, x.global_properties,
+      m_atom_type_naming_method, m_excluded_species);
 }
 
 /// \brief Convert a Configuration to a SimpleStructure
@@ -324,9 +324,9 @@ xtal::SimpleStructure ToAtomicStructure::operator()(
     Configuration const &configuration,
     std::map<std::string, Eigen::MatrixXd> const &local_properties,
     std::map<std::string, Eigen::VectorXd> const &global_properties) {
-  return make_simple_structure(configuration, local_properties,
-                               global_properties, m_atom_type_naming_method,
-                               m_excluded_species);
+  return ToAtomicStructure_impl::make_simple_structure(
+      configuration, local_properties, global_properties,
+      m_atom_type_naming_method, m_excluded_species);
 }
 
 }  // namespace config

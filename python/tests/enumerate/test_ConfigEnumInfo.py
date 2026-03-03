@@ -23,13 +23,7 @@ def test_ConfigEnumInfo_1():
         supercell_set=supercell_set,
     )
     info = casmenum.ConfigEnumInfo(config_enum, configuration_set)
-    for i, configuration in enumerate(
-        config_enum.by_supercell(
-            supercells={
-                "max": 4,
-            }
-        )
-    ):
+    for i, configuration in enumerate(config_enum.by_supercell(max=4)):
         info.check()
         info.n_config_total += 1
         if not filter(configuration):

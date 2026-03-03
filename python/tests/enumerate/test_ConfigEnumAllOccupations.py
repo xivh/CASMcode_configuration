@@ -15,29 +15,6 @@ def test_ConfigEnumAllOccupations_by_supercell_FCC_1():
     prim = casmconfig.Prim(xtal_prim)
     supercell_set = casmconfig.SupercellSet(prim=prim)
 
-    # Check DeprecationWarning for `supercells` argument
-    with pytest.warns(DeprecationWarning):
-        configuration_set = casmconfig.ConfigurationSet()
-        config_enum = casmenum.ConfigEnumAllOccupations(
-            prim=prim,
-            supercell_set=supercell_set,
-        )
-        for i, configuration in enumerate(
-            config_enum.by_supercell(
-                supercells={
-                    "max": 4,
-                },
-            )
-        ):
-            configuration_set.add(configuration)
-            assert isinstance(configuration, casmconfig.Configuration)
-
-        # for i, record in enumerate(configuration_set):
-        #     print(xtal.pretty_json(record.configuration.to_dict()))
-
-        assert len(configuration_set) == 29
-
-    # Test without `supercells` argument
     configuration_set = casmconfig.ConfigurationSet()
     config_enum = casmenum.ConfigEnumAllOccupations(
         prim=prim,

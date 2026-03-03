@@ -41,11 +41,7 @@ class ConfigEnumInfo:
         )
         info = ConfigEnumInfo(config_enum, configuration_set)
         for i, configuration in enumerate(
-            config_enum.by_supercell(
-                supercells={
-                    "max": 12,
-                }
-            )
+            config_enum.by_supercell(max=12)
         ):
             info.check()
             info.n_config_total += 1
