@@ -71,7 +71,6 @@ std::map<DoFKey, ConfigSpaceAnalysisResults> config_space_analysis(
     std::optional<std::map<int, int>> sublattice_index_to_default_occ,
     std::optional<std::map<Index, int>> site_index_to_default_occ, double tol) {
   std::map<DoFKey, ConfigSpaceAnalysisResults> results;
-  std::cout << "here 0" << std::endl;
 
   if (configurations.size() == 0) {
     return results;
