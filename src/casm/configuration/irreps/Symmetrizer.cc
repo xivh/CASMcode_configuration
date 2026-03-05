@@ -290,7 +290,8 @@ Eigen::MatrixXcd make_irrep_symmetrizer_matrix(
         vector_space_prepare(irrep_subspace, vec_compare_tol));
     i_strategy = 4;
   } else {
-    result = irrep_subspace.colPivHouseholderQr().solve(axes);
+    result = irrep_subspace.colPivHouseholderQr().solve(
+        standardize_column_vector_signs(axes, vec_compare_tol));
   }
 
   if (log.has_value() && log->verbosity() >= Log::verbose) {

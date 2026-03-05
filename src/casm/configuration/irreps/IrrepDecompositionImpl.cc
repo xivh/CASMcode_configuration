@@ -5,6 +5,7 @@
 #include <random>
 
 #include "casm/configuration/irreps/Symmetrizer.hh"
+#include "casm/configuration/irreps/VectorSymCompare_v2.hh"
 #include "casm/configuration/irreps/misc.hh"
 #include "casm/configuration/irreps/to_real.hh"
 #include "casm/global/threads.hh"
@@ -804,8 +805,14 @@ IrrepInfo subspace_to_full_space(IrrepInfo const &subspace_irrep,
                                  Eigen::MatrixXd const &subspace) {
   IrrepInfo result(subspace_irrep);
 
-  result.trans_mat = subspace_irrep.trans_mat *
-                     subspace.adjoint().template cast<std::complex<double>>();
+  double vec_compare_tol = TOL;
+  Eigen::MatrixXcd M_rows =
+      subspace_irrep.trans_mat *
+      subspace.adjoint().template cast<std::complex<double>>();
+  Eigen::MatrixXcd M_cols = M_rows.adjoint();
+  Eigen::MatrixXcd M_cols_standardized =
+      standardize_column_vector_signs(M_cols, vec_compare_tol);
+  result.trans_mat = M_cols_standardized.adjoint();
 
   result.irrep_dim = result.trans_mat.rows();
   result.vector_dim = result.trans_mat.cols();
