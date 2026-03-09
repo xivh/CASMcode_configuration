@@ -610,6 +610,30 @@ def ZrO_prim():
 
 
 @pytest.fixture
+def ZrO_prim_GLstrain_disp(ZrO_prim):
+    prim = ZrO_prim
+    disp_dof = xtal.DoFSetBasis("disp")  # Atomic displacement
+    local_dof = [
+        [disp_dof],
+        [disp_dof],
+        [disp_dof],
+        [disp_dof],
+    ]
+
+    GLstrain_dof = xtal.DoFSetBasis("GLstrain")  # Green-Lagrange strain metric
+    global_dof = [GLstrain_dof]
+
+    return xtal.Prim(
+        lattice=prim.lattice(),
+        coordinate_frac=prim.coordinate_frac(),
+        occ_dof=prim.occ_dof(),
+        local_dof=local_dof,
+        global_dof=global_dof,
+        occupants=prim.occupants(),
+    )
+
+
+@pytest.fixture
 def FCC_binary_discrete_Cmagspin_prim():
     # Lattice vectors
     lattice_column_vector_matrix = np.array(

@@ -5,6 +5,10 @@ import typing
 
 import alive_progress
 
+from ._get_subgroup_orbits import (
+    get_all_subgroup_orbits,
+    get_cyclic_subgroup_orbits,
+)
 from ._Group import (
     Group,
 )

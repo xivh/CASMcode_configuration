@@ -259,9 +259,20 @@ std::vector<Eigen::MatrixXd> make_dof_space_rep(
     std::vector<config::SupercellSymOp> const &group,
     clexulator::DoFSpace const &dof_space);
 
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of values in the basis of the given DoFSpace and make
+///     the corresponding SymGroup
+std::pair<std::vector<Eigen::MatrixXd>, std::shared_ptr<config::SymGroup const>>
+make_dof_space_symmetry(std::vector<config::SupercellSymOp> const &group,
+                        clexulator::DoFSpace const &dof_space);
+
 /// \brief Make a SymGroup from a list of SupercellSymOp
 std::shared_ptr<SymGroup const> make_symgroup(
     std::vector<SupercellSymOp> const &group);
+
+/// \brief Make a SymGroup from a list of SupercellSymOp
+std::shared_ptr<SymGroup const> make_symgroup_v2(
+    std::vector<SupercellSymOp> const &group, bool point_group);
 
 }  // namespace config
 }  // namespace CASM

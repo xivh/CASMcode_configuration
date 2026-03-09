@@ -115,3 +115,9 @@ def equivalent_order_parameters_index(
         if _x == _test:
             return i
     return None
+
+
+def pretty(x: np.ndarray, zero_tol: float = 1e-8) -> np.ndarray:
+    y = x + 0.0  # make a copy and convert -0.0 to 0.0
+    y[np.abs(y) < zero_tol] = 0.0
+    return y

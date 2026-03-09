@@ -746,11 +746,16 @@ PYBIND11_MODULE(_irreps, m) {
               of elements in the `j`-th subgroup of the `i`-th orbit of
               equivalent subgroups.
 
-              Subgroup orbits can be obtained for a
-              :class:`~libcasm.configuration.Supercell` using
-              :func:`~libcasm.configuration.Supercell.make_subgroup_orbits` or
-              in a more general case using methods of
-              :class:`~libcasm.sym_info.Subset`.
+              Subgroup orbits can be obtained for a particular group using
+              :func:`~libcasm.group.get_all_subgroup_orbits` for complete
+              symmetrization or
+              :func:`~libcasm.group.get_cyclic_subgroup_orbits` for fast but
+              possibly incomplete symmetrization. Finding all subgroup orbits
+              can be slow, but only needs to be done once per group. The
+              method :func:`~libcasm.group.get_all_subgroup_orbits` stores
+              results in a cache in your user space based on the group
+              multiplication table, so that results only need to be calculated
+              once per group.
 
           class_indices : Optional[list[int]] = None
               If provided, ``cc = class_indices[i]`` indicates that the

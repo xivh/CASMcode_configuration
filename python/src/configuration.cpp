@@ -4421,21 +4421,57 @@ PYBIND11_MODULE(_configuration, m) {
       )pbdoc",
         py::arg("group"), py::arg("dof_space"));
 
-  m.def("make_symgroup", &config::make_symgroup, R"pbdoc(
+  m.def("make_symgroup", &config::make_symgroup_v2, R"pbdoc(
         Make a SymGroup from a list of SupercellSymOp
 
         Parameters
         ----------
         group: list[:class:`~libcasm.configuration.SupercellSymOp`]
             The symmetry group, as a list of SupercellSymOp.
+        point_group: bool = False
+            If True, make a point group. Repeated elements are removed so the
+            the number of elements in the resulting `symgroup` may be less than
+            the size of `group`. Elements will be ordered consistently with
+            the output of :func:`~libcasm.configuration.make_dof_space_rep`
+            for global DoF.
 
         Returns
         -------
         symgroup: :class:`~libcasm.configuration.SymGroup`
-            The symmetry group, as a SymGroup representation
+            The symmetry group, as a SymGroup representation.
 
         )pbdoc",
-        py::arg("group"));
+        py::arg("group"), py::arg("point_group") = false);
+
+  m.def("make_dof_space_symmetry", &config::make_dof_space_symmetry, R"pbdoc(
+        Make the matrix representation of a group for transforming values in the DoF
+        space basis
+
+        Parameters
+        ----------
+        group: list[:class:`~libcasm.configuration.SupercellSymOp`]
+            The symmetry group, as a SupercellSymOp representation
+        dof_space: :class:`~libcasm.clexulator.DoFSpace`
+            A DoFSpace, with basis defining vectors in a subspace of the prim degree of
+            freedom (DoF) basis, `x_subspace` according to
+            ``x_prim = dof_space.basis @ x_subspace``, where `x_prim` is a vector in the
+            prim DoF basis.
+
+        Returns
+        -------
+        dof_space_rep: list[numpy.ndarray[numpy.float64[subspace_dim, subspace_dim]]]
+            Elements, `M`, of `dof_space_rep` transform subspace vectors according to
+            ``x_subspace_after = M @ x_subspace_before``. For global DoF, the
+            relevent symmetry is the point group symmetry, and any repeated elements
+            will be removed. This means that the size of `dof_space_rep` may
+            be less than the size of `group`.
+        symgroup: :class:`~libcasm.configuration.SymGroup`
+            The symmetry group, as a SymGroup representation, with elements
+            ordered consistently with `dof_space_rep`. For global DoF, `symgroup`
+            is a point group and elements will have no translational component.
+
+        )pbdoc",
+        py::arg("group"), py::arg("dof_space"));
 
   m.def("make_symgroup_multiplication_table",
         &config::make_symgroup_multiplication_table,

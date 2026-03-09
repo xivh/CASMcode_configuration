@@ -27,6 +27,7 @@ from ._configuration import (
     make_canonical_supercell,
     make_distinct_super_configurations,
     make_dof_space_rep,
+    make_dof_space_symmetry,
     make_equivalent_configurations,
     make_equivalent_supercells,
     make_global_dof_matrix_rep,
@@ -47,4 +48,5 @@ from ._misc import (
     equivalent_order_parameters_index,
     is_canonical_order_parameters,
     make_canonical_order_parameters,
+    pretty,
 )

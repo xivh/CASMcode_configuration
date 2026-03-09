@@ -15,6 +15,14 @@
 namespace CASM {
 namespace config {
 
+namespace {
+xtal::SymOp make_point_op(xtal::SymOp const &fg_op) {
+  return xtal::SymOp(get_matrix(fg_op), Eigen::Vector3d::Zero(),
+                     get_time_reversal(fg_op));
+};
+
+}  // namespace
+
 // --- Inline definitions ---
 
 /// Default invalid SupercellSymOp, not equal to end iterator
@@ -610,10 +618,6 @@ std::vector<Eigen::MatrixXd> make_global_dof_matrix_rep(
   // Get prim factor group indices for the point group of `group`
   std::set<Index> prim_factor_group_indices;
   xtal::SymOpCompare_f is_equal(xtal_tol);
-  auto make_point_op = [](xtal::SymOp const &fg_op) {
-    return xtal::SymOp(get_matrix(fg_op), Eigen::Vector3d::Zero(),
-                       get_time_reversal(fg_op));
-  };
   for (SupercellSymOp const &supercell_symop : group) {
     Index prim_fg_index = supercell_symop.prim_factor_group_index();
     xtal::SymOp point_op = make_point_op(factor_group_element[prim_fg_index]);
@@ -812,23 +816,15 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
   return result;
 }
 
-/// \brief Make the matrix representation of `group` that describes the
-///     transformation of values in the basis of the given DoFSpace
-///
-/// \param group The group that is to be represented (this may be larger than a
-///     crystallographic factor group)
-/// \param dof_space The DoFSpace. May be any type.
-///
-/// \returns matrix_rep The matrix representation of `group` which transforms
-///     values in the basis of `dof_space`.
-///
-std::vector<Eigen::MatrixXd> make_dof_space_rep(
-    std::vector<config::SupercellSymOp> const &group,
-    clexulator::DoFSpace const &dof_space) {
-  bool make_symgroup = false;
+namespace {
+
+/// \brief Implementation for make_dof_space_rep and make_dof_space_symmetry
+std::pair<std::vector<Eigen::MatrixXd>, std::shared_ptr<config::SymGroup const>>
+make_dof_space_rep_impl(std::vector<config::SupercellSymOp> const &group,
+                        clexulator::DoFSpace const &dof_space,
+                        bool make_symgroup) {
   std::shared_ptr<config::SymGroup const> symgroup;
   std::vector<Eigen::MatrixXd> fullspace_rep;
-  std::vector<Eigen::MatrixXd> dof_space_rep;
   if (dof_space.is_global) {
     fullspace_rep = config::make_global_dof_matrix_rep(group, dof_space.dof_key,
                                                        symgroup, make_symgroup);
@@ -844,12 +840,12 @@ std::vector<Eigen::MatrixXd> make_dof_space_rep(
   Eigen::MatrixXd const &basis = dof_space.basis;
   double tol = 1e-10;
   if (basis.isIdentity(tol)) {
-    return fullspace_rep;
+    return std::make_pair(fullspace_rep, symgroup);
   }
 
   // Multithreaded transformation: pre-size and assign disjoint elements
   Index const n = static_cast<Index>(fullspace_rep.size());
-  dof_space_rep.resize(n);
+  std::vector<Eigen::MatrixXd> dof_space_rep(n);
 
   Eigen::MatrixXd const &basis_inv = dof_space.basis_inv;
 
@@ -864,7 +860,34 @@ std::vector<Eigen::MatrixXd> make_dof_space_rep(
 
   threaded_run(n, worker);
 
-  return dof_space_rep;
+  return std::make_pair(dof_space_rep, symgroup);
+}
+
+}  // namespace
+
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of values in the basis of the given DoFSpace
+///
+/// \param group The group that is to be represented (this may be larger than a
+///     crystallographic factor group)
+/// \param dof_space The DoFSpace. May be any type.
+///
+/// \returns matrix_rep The matrix representation of `group` which transforms
+///     values in the basis of `dof_space`.
+///
+std::vector<Eigen::MatrixXd> make_dof_space_rep(
+    std::vector<config::SupercellSymOp> const &group,
+    clexulator::DoFSpace const &dof_space) {
+  return make_dof_space_rep_impl(group, dof_space, false).first;
+}
+
+/// \brief Make the matrix representation of `group` that describes the
+///     transformation of values in the basis of the given DoFSpace and make
+///     the corresponding SymGroup
+std::pair<std::vector<Eigen::MatrixXd>, std::shared_ptr<config::SymGroup const>>
+make_dof_space_symmetry(std::vector<config::SupercellSymOp> const &group,
+                        clexulator::DoFSpace const &dof_space) {
+  return make_dof_space_rep_impl(group, dof_space, true);
 }
 
 /// \brief Make a SymGroup from a list of SupercellSymOp
@@ -892,6 +915,56 @@ std::shared_ptr<SymGroup const> make_symgroup(
       supercell->prim->basicstructure->lattice().tol());
   return std::make_shared<SymGroup const>(
       group::make_group(element, multiply_f, equal_to_f));
+}
+
+/// \brief Make a SymGroup from a list of SupercellSymOp
+///
+/// \brief group The group as a list of SupercellSymOp
+/// \brief point_group If true, make a point group (set translations to zero
+///     and remove repeated elements). Otherwise, keep all elements as provided.
+///
+/// \returns symgroup The SymGroup corresponding to `group`. This is a head
+/// group, it is not a subgroup of the prim factor group because it can
+/// include unit cell translations.
+std::shared_ptr<SymGroup const> make_symgroup_v2(
+    std::vector<SupercellSymOp> const &group, bool point_group) {
+  if (!point_group) {
+    return make_symgroup(group);
+  }
+  if (group.size() == 0) {
+    throw std::runtime_error(
+        "Error in make_symgroup with point_group=true: group has size==0.");
+  }
+  Supercell const &supercell = *group.begin()->supercell();
+  Prim const &prim = *supercell.prim;
+  auto const &factor_group_element = prim.sym_info.factor_group->element;
+  xtal::Lattice const &prim_lattice = prim.basicstructure->lattice();
+  double xtal_tol = prim_lattice.tol();
+
+  // Get prim factor group indices for the point group of `group`
+  std::set<Index> prim_factor_group_indices;
+  std::vector<xtal::SymOp> point_ops;
+  xtal::SymOpCompare_f is_equal(xtal_tol);
+  for (SupercellSymOp const &supercell_symop : group) {
+    Index prim_fg_index = supercell_symop.prim_factor_group_index();
+    if (prim_factor_group_indices.count(prim_fg_index)) {
+      continue;
+    }
+
+    xtal::SymOp point_op = make_point_op(factor_group_element[prim_fg_index]);
+    auto it = std::find_if(point_ops.begin(), point_ops.end(),
+                           [&](xtal::SymOp const &other_point_op) {
+                             return is_equal(point_op, other_point_op);
+                           });
+    if (it == point_ops.end()) {
+      point_ops.push_back(point_op);
+    }
+  }
+
+  std::multiplies<SymOp> multiply_f;
+  xtal::SymOpPeriodicCompare_f equal_to_f(prim_lattice, xtal_tol);
+  return std::make_shared<SymGroup const>(
+      group::make_group(point_ops, multiply_f, equal_to_f));
 }
 
 }  // namespace config

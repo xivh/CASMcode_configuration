@@ -1,13 +1,14 @@
 import json
 import pathlib
+
 import numpy as np
 
-import libcasm.xtal as xtal
-import libcasm.xtal.prims as xtal_prims
 import libcasm.clexulator as casmclex
 import libcasm.configuration as casmconfig
 import libcasm.group as casmgroup
 import libcasm.irreps as casmirreps
+import libcasm.xtal as xtal
+import libcasm.xtal.prims as xtal_prims
 
 
 def pretty(x):

@@ -5,6 +5,18 @@ All notable changes to `libcasm-configuration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Added `get_cyclic_subgroup_orbits` and `get_all_subgroup_orbits` to `libcasm.group` for computing subgroup orbits of a symmetry group.
+- Added `libcasm.group.sqlite_cache.UserCache` for caching results in a user-level SQLite database (``~/.config/casm/sqlite_cache/``).
+- Added `make_dof_space_symmetry` function to `libcasm.configuration` for constructing the matrix representation and corresponding `SymGroup` for a `DoFSpace`.
+- Added `make_symgroup` function to `libcasm.configuration` for constructing a `SymGroup` from a list of `SupercellSymOp`.
+- Added `pretty` utility function to `libcasm.configuration` for zeroing near-zero elements in NumPy arrays.
+- Added `SupercellSymOp` C++ methods for constructing a `SymGroup` from a group of `SupercellSymOp`, including point group extraction.
+
+
 ## [3.0a1] - 2026-03-03
 
 ### Added
