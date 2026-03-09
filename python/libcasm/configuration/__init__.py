@@ -54,8 +54,9 @@ from ._ReciprocalSupercell import (
     AxisIrrepInfo,
     DiscreteFourierTransform,
     ReciprocalSupercell,
+    SupercellDoF,
     SupercellKpoints,
-    make_bloch_basis,
     make_kpoint_irreps,
+    make_plane_wave_basis,
     make_unique_kpoint_irreps,
 )

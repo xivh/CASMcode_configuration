@@ -1,5 +1,5 @@
-"""Tests for SupercellKpoints, DiscreteFourierTransform, and standalone functions
-make_bloch_basis, make_kpoint_irreps, and make_unique_kpoint_irreps."""
+"""Tests for SupercellKpoints, SupercellDoF, DiscreteFourierTransform, and standalone
+functions make_plane_wave_basis, make_kpoint_irreps, and make_unique_kpoint_irreps."""
 
 import numpy as np
 import pytest
@@ -28,7 +28,8 @@ def _check_orthonormal(B, tol=1e-8):
 
 
 class TestBCC2x2x2Disp:
-    """Tests for SupercellKpoints with 2x2x2 BCC supercell and disp DoF.
+    """Tests for SupercellKpoints and SupercellDoF with 2x2x2 BCC supercell and disp
+    DoF.
 
     BCC primitive cell has 1 basis site with 3 disp components.
     The 2x2x2 supercell has 8 unit cells and 24 total disp DoF.
@@ -39,31 +40,35 @@ class TestBCC2x2x2Disp:
         prim = casmconfig.Prim(xtal_prim=BCC_binary_GLstrain_disp_prim)
         T = np.eye(3, dtype=int) * 2
         supercell = casmconfig.Supercell(prim, T)
-        return casmconfig.SupercellKpoints(
-            supercell=supercell,
-            dof_key="disp",
-        )
+        return casmconfig.SupercellKpoints(supercell=supercell)
 
-    def test_construction(self, sc_kpts):
+    @pytest.fixture
+    def sc_dof(self, BCC_binary_GLstrain_disp_prim):
+        prim = casmconfig.Prim(xtal_prim=BCC_binary_GLstrain_disp_prim)
+        T = np.eye(3, dtype=int) * 2
+        supercell = casmconfig.Supercell(prim, T)
+        return casmconfig.SupercellDoF(supercell=supercell, dof_key="disp")
+
+    def test_construction(self, sc_kpts, sc_dof):
         assert sc_kpts.supercell is not None
-        assert sc_kpts.dof_key == "disp"
-        assert sc_kpts.dof_space is not None
-        assert sc_kpts.dof_id is not None
         assert sc_kpts.coordinates is not None
         assert sc_kpts.orbits is not None
         assert sc_kpts.little_groups is not None
+        assert sc_dof.dof_key == "disp"
+        assert sc_dof.dof_space is not None
+        assert sc_dof.dof_id is not None
 
     def test_kpoints_shape(self, sc_kpts):
         # 2x2x2 = 8 k-points
         assert sc_kpts.coordinates.shape == (3, 8)
         assert sc_kpts.indices.shape == (3, 8)
 
-    def test_dof_space(self, sc_kpts):
+    def test_dof_space(self, sc_dof):
         # 1 prim site * 3 disp components * 8 unitcells = 24 total DoF
-        assert sc_kpts.dof_space.basis.shape == (24, 24)
+        assert sc_dof.dof_space.basis.shape == (24, 24)
         # 1 sublattice * 3 disp components = 3 unique dof IDs
-        assert len(sc_kpts.dof_id) == 3
-        assert len(sc_kpts.axis_dof_id) == 24
+        assert len(sc_dof.dof_id) == 3
+        assert len(sc_dof.axis_dof_id) == 24
 
     def test_kpoint_orbits(self, sc_kpts):
         _check_kpoint_orbits(sc_kpts.coordinates, sc_kpts.orbits)
@@ -78,12 +83,13 @@ class TestBCC2x2x2Disp:
         for lg in sc_kpts.little_groups:
             assert len(lg) > 0
 
-    def test_make_bloch_basis(self, sc_kpts):
-        # Test make_bloch_basis for one k-point per orbit
+    def test_make_plane_wave_basis(self, sc_kpts, sc_dof):
+        # Test make_plane_wave_basis for one k-point per orbit
         for orbit in sc_kpts.orbits:
             kpoint_index = orbit[0]
-            basis = casmconfig.make_bloch_basis(
+            basis = casmconfig.make_plane_wave_basis(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
                 kpoint_index=kpoint_index,
                 as_complex=False,
             )
@@ -91,11 +97,12 @@ class TestBCC2x2x2Disp:
             assert basis.shape[0] == 24
             _check_orthonormal(basis)
 
-    def test_make_bloch_basis_complex(self, sc_kpts):
+    def test_make_plane_wave_basis_complex(self, sc_kpts, sc_dof):
         for orbit in sc_kpts.orbits:
             kpoint_index = orbit[0]
-            basis = casmconfig.make_bloch_basis(
+            basis = casmconfig.make_plane_wave_basis(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
                 kpoint_index=kpoint_index,
                 as_complex=True,
             )
@@ -107,12 +114,13 @@ class TestBCC2x2x2Disp:
                 basis.conj().T @ basis, np.eye(dim), atol=1e-8
             ), "Complex Bloch basis is not orthonormal"
 
-    def test_make_kpoint_irreps(self, sc_kpts):
+    def test_make_kpoint_irreps(self, sc_kpts, sc_dof):
         # Test make_kpoint_irreps for one k-point per orbit
         for orbit in sc_kpts.orbits:
             kpoint_index = orbit[0]
             irrep_decomp, dof_space = casmconfig.make_kpoint_irreps(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
                 kpoint_index=kpoint_index,
             )
             assert irrep_decomp is not None
@@ -122,10 +130,11 @@ class TestBCC2x2x2Disp:
             B = irrep_decomp.symmetry_adapted_subspace
             _check_orthonormal(B)
 
-    def test_make_unique_kpoint_irreps(self, sc_kpts):
-        dof_space, kpoint_irreps, axis_irrep_info = (
+    def test_make_unique_kpoint_irreps(self, sc_kpts, sc_dof):
+        kpoint_irreps, dof_space, axis_irrep_info = (
             casmconfig.make_unique_kpoint_irreps(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
             )
         )
         B = dof_space.basis
@@ -135,10 +144,11 @@ class TestBCC2x2x2Disp:
         assert len(kpoint_irreps) > 0
         assert len(axis_irrep_info) == 24
 
-    def test_axis_irrep_info(self, sc_kpts):
+    def test_axis_irrep_info(self, sc_kpts, sc_dof):
         """Each axis_irrep_info entry has valid orbit_index and kpoint_irreps_index."""
         _, kpoint_irreps, axis_irrep_info = casmconfig.make_unique_kpoint_irreps(
             supercell_kpoints=sc_kpts,
+            supercell_dof=sc_dof,
         )
         n_orbits = len(sc_kpts.orbits)
         for info in axis_irrep_info:
@@ -146,10 +156,13 @@ class TestBCC2x2x2Disp:
             assert 0 <= info.kpoint_irreps_index < len(kpoint_irreps)
             assert info.irrep_char_index >= 0
 
-    def test_discrete_fourier_transform_construction(self, sc_kpts):
-        dft = casmconfig.DiscreteFourierTransform(supercell_kpoints=sc_kpts)
+    def test_discrete_fourier_transform_construction(self, sc_kpts, sc_dof):
+        dft = casmconfig.DiscreteFourierTransform(
+            supercell_kpoints=sc_kpts,
+            supercell_dof=sc_dof,
+        )
         n_unitcells = sc_kpts.supercell.n_unitcells
-        n_dof_id = len(sc_kpts.dof_id)
+        n_dof_id = len(sc_dof.dof_id)
         assert dft.dft_M.shape == (n_unitcells, n_unitcells)
         assert dft.idft_M.shape == (n_unitcells, n_unitcells)
         assert dft.dft_phase.shape == (n_dof_id, n_unitcells)
@@ -157,7 +170,8 @@ class TestBCC2x2x2Disp:
 
 
 class TestZrO2x2x2Disp:
-    """Tests for SupercellKpoints with 2x2x2 ZrO supercell and disp DoF.
+    """Tests for SupercellKpoints and SupercellDoF with 2x2x2 ZrO supercell and disp
+    DoF.
 
     ZrO primitive cell has 4 basis sites each with 3 disp components.
     The 2x2x2 supercell has 8 unit cells and 96 total disp DoF.
@@ -168,30 +182,34 @@ class TestZrO2x2x2Disp:
         prim = casmconfig.Prim(xtal_prim=ZrO_prim_GLstrain_disp)
         T = np.eye(3, dtype=int) * 2
         supercell = casmconfig.Supercell(prim, T)
-        return casmconfig.SupercellKpoints(
-            supercell=supercell,
-            dof_key="disp",
-        )
+        return casmconfig.SupercellKpoints(supercell=supercell)
 
-    def test_construction(self, sc_kpts):
+    @pytest.fixture
+    def sc_dof(self, ZrO_prim_GLstrain_disp):
+        prim = casmconfig.Prim(xtal_prim=ZrO_prim_GLstrain_disp)
+        T = np.eye(3, dtype=int) * 2
+        supercell = casmconfig.Supercell(prim, T)
+        return casmconfig.SupercellDoF(supercell=supercell, dof_key="disp")
+
+    def test_construction(self, sc_kpts, sc_dof):
         assert sc_kpts.supercell is not None
-        assert sc_kpts.dof_key == "disp"
-        assert sc_kpts.dof_space is not None
         assert sc_kpts.coordinates is not None
         assert sc_kpts.orbits is not None
         assert sc_kpts.little_groups is not None
+        assert sc_dof.dof_key == "disp"
+        assert sc_dof.dof_space is not None
 
     def test_kpoints_shape(self, sc_kpts):
         # 2x2x2 = 8 k-points
         assert sc_kpts.coordinates.shape == (3, 8)
         assert sc_kpts.indices.shape == (3, 8)
 
-    def test_dof_space(self, sc_kpts):
+    def test_dof_space(self, sc_dof):
         # 4 prim sites * 3 disp components * 8 unitcells = 96 total DoF
-        assert sc_kpts.dof_space.basis.shape == (96, 96)
+        assert sc_dof.dof_space.basis.shape == (96, 96)
         # 4 sublattices * 3 disp components = 12 unique dof IDs
-        assert len(sc_kpts.dof_id) == 12
-        assert len(sc_kpts.axis_dof_id) == 96
+        assert len(sc_dof.dof_id) == 12
+        assert len(sc_dof.axis_dof_id) == 96
 
     def test_kpoint_orbits(self, sc_kpts):
         # All k-points are covered exactly once by orbits
@@ -205,22 +223,24 @@ class TestZrO2x2x2Disp:
         for lg in sc_kpts.little_groups:
             assert len(lg) > 0
 
-    def test_make_bloch_basis(self, sc_kpts):
+    def test_make_plane_wave_basis(self, sc_kpts, sc_dof):
         for orbit in sc_kpts.orbits:
             kpoint_index = orbit[0]
-            basis = casmconfig.make_bloch_basis(
+            basis = casmconfig.make_plane_wave_basis(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
                 kpoint_index=kpoint_index,
             )
             assert basis.ndim == 2
             assert basis.shape[0] == 96
             _check_orthonormal(basis)
 
-    def test_make_kpoint_irreps(self, sc_kpts):
+    def test_make_kpoint_irreps(self, sc_kpts, sc_dof):
         for orbit in sc_kpts.orbits:
             kpoint_index = orbit[0]
             irrep_decomp, dof_space = casmconfig.make_kpoint_irreps(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
                 kpoint_index=kpoint_index,
             )
             assert irrep_decomp is not None
@@ -228,10 +248,11 @@ class TestZrO2x2x2Disp:
             B = irrep_decomp.symmetry_adapted_subspace
             _check_orthonormal(B)
 
-    def test_make_unique_kpoint_irreps(self, sc_kpts):
-        dof_space, kpoint_irreps, axis_irrep_info = (
+    def test_make_unique_kpoint_irreps(self, sc_kpts, sc_dof):
+        kpoint_irreps, dof_space, axis_irrep_info = (
             casmconfig.make_unique_kpoint_irreps(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
             )
         )
         B = dof_space.basis
@@ -241,16 +262,20 @@ class TestZrO2x2x2Disp:
         assert len(kpoint_irreps) > 0
         assert len(axis_irrep_info) == 96
 
-    def test_discrete_fourier_transform_construction(self, sc_kpts):
-        dft = casmconfig.DiscreteFourierTransform(supercell_kpoints=sc_kpts)
+    def test_discrete_fourier_transform_construction(self, sc_kpts, sc_dof):
+        dft = casmconfig.DiscreteFourierTransform(
+            supercell_kpoints=sc_kpts,
+            supercell_dof=sc_dof,
+        )
         n_unitcells = sc_kpts.supercell.n_unitcells
-        n_dof_id = len(sc_kpts.dof_id)
+        n_dof_id = len(sc_dof.dof_id)
         assert dft.dft_M.shape == (n_unitcells, n_unitcells)
         assert dft.dft_phase.shape == (n_dof_id, n_unitcells)
 
 
 class TestZrO1x2x3Disp:
-    """Tests for SupercellKpoints with 1x2x3 ZrO supercell and disp DoF.
+    """Tests for SupercellKpoints and SupercellDoF with 1x2x3 ZrO supercell and disp
+    DoF.
 
     ZrO primitive cell has 4 basis sites each with 3 disp components.
     The 1x2x3 supercell has 6 unit cells and 72 total disp DoF.
@@ -261,30 +286,34 @@ class TestZrO1x2x3Disp:
         prim = casmconfig.Prim(xtal_prim=ZrO_prim_GLstrain_disp)
         T = np.diag([1, 2, 3]).astype(int)
         supercell = casmconfig.Supercell(prim, T)
-        return casmconfig.SupercellKpoints(
-            supercell=supercell,
-            dof_key="disp",
-        )
+        return casmconfig.SupercellKpoints(supercell=supercell)
 
-    def test_construction(self, sc_kpts):
+    @pytest.fixture
+    def sc_dof(self, ZrO_prim_GLstrain_disp):
+        prim = casmconfig.Prim(xtal_prim=ZrO_prim_GLstrain_disp)
+        T = np.diag([1, 2, 3]).astype(int)
+        supercell = casmconfig.Supercell(prim, T)
+        return casmconfig.SupercellDoF(supercell=supercell, dof_key="disp")
+
+    def test_construction(self, sc_kpts, sc_dof):
         assert sc_kpts.supercell is not None
-        assert sc_kpts.dof_key == "disp"
-        assert sc_kpts.dof_space is not None
         assert sc_kpts.coordinates is not None
         assert sc_kpts.orbits is not None
         assert sc_kpts.little_groups is not None
+        assert sc_dof.dof_key == "disp"
+        assert sc_dof.dof_space is not None
 
     def test_kpoints_shape(self, sc_kpts):
         # 1x2x3 = 6 k-points
         assert sc_kpts.coordinates.shape == (3, 6)
         assert sc_kpts.indices.shape == (3, 6)
 
-    def test_dof_space(self, sc_kpts):
+    def test_dof_space(self, sc_dof):
         # 4 prim sites * 3 disp components * 6 unitcells = 72 total DoF
-        assert sc_kpts.dof_space.basis.shape == (72, 72)
+        assert sc_dof.dof_space.basis.shape == (72, 72)
         # 4 sublattices * 3 disp components = 12 unique dof IDs
-        assert len(sc_kpts.dof_id) == 12
-        assert len(sc_kpts.axis_dof_id) == 72
+        assert len(sc_dof.dof_id) == 12
+        assert len(sc_dof.axis_dof_id) == 72
 
     def test_kpoint_orbits(self, sc_kpts):
         _check_kpoint_orbits(sc_kpts.coordinates, sc_kpts.orbits)
@@ -296,22 +325,24 @@ class TestZrO1x2x3Disp:
         for lg in sc_kpts.little_groups:
             assert len(lg) > 0
 
-    def test_make_bloch_basis(self, sc_kpts):
+    def test_make_plane_wave_basis(self, sc_kpts, sc_dof):
         for orbit in sc_kpts.orbits:
             kpoint_index = orbit[0]
-            basis = casmconfig.make_bloch_basis(
+            basis = casmconfig.make_plane_wave_basis(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
                 kpoint_index=kpoint_index,
             )
             assert basis.ndim == 2
             assert basis.shape[0] == 72
             _check_orthonormal(basis)
 
-    def test_make_kpoint_irreps(self, sc_kpts):
+    def test_make_kpoint_irreps(self, sc_kpts, sc_dof):
         for orbit in sc_kpts.orbits:
             kpoint_index = orbit[0]
             irrep_decomp, dof_space = casmconfig.make_kpoint_irreps(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
                 kpoint_index=kpoint_index,
             )
             assert irrep_decomp is not None
@@ -319,10 +350,11 @@ class TestZrO1x2x3Disp:
             B = irrep_decomp.symmetry_adapted_subspace
             _check_orthonormal(B)
 
-    def test_make_unique_kpoint_irreps(self, sc_kpts):
-        dof_space, kpoint_irreps, axis_irrep_info = (
+    def test_make_unique_kpoint_irreps(self, sc_kpts, sc_dof):
+        kpoint_irreps, dof_space, axis_irrep_info = (
             casmconfig.make_unique_kpoint_irreps(
                 supercell_kpoints=sc_kpts,
+                supercell_dof=sc_dof,
             )
         )
         B = dof_space.basis
@@ -332,9 +364,12 @@ class TestZrO1x2x3Disp:
         assert len(kpoint_irreps) > 0
         assert len(axis_irrep_info) == 72
 
-    def test_discrete_fourier_transform_construction(self, sc_kpts):
-        dft = casmconfig.DiscreteFourierTransform(supercell_kpoints=sc_kpts)
+    def test_discrete_fourier_transform_construction(self, sc_kpts, sc_dof):
+        dft = casmconfig.DiscreteFourierTransform(
+            supercell_kpoints=sc_kpts,
+            supercell_dof=sc_dof,
+        )
         n_unitcells = sc_kpts.supercell.n_unitcells
-        n_dof_id = len(sc_kpts.dof_id)
+        n_dof_id = len(sc_dof.dof_id)
         assert dft.dft_M.shape == (n_unitcells, n_unitcells)
         assert dft.dft_phase.shape == (n_dof_id, n_unitcells)

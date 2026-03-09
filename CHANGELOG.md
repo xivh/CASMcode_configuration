@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `get_cyclic_subgroup_orbits` and `get_all_subgroup_orbits` to `libcasm.group` for computing subgroup orbits of a symmetry group.
+- Added `SupercellKpoints` to `libcasm.configuration` for k-point generation, symmetry orbits, and little groups for a supercell.
+- Added `SupercellDoF` to `libcasm.configuration` for organizing DoF space data for a supercell and degree of freedom type.
+- Added `DiscreteFourierTransform` to `libcasm.configuration` for discrete Fourier transform functionality over a supercell.
+- Added `make_plane_wave_basis` to `libcasm.configuration` for constructing a plane wave basis for a k-point.
+- Added `make_kpoint_irreps` to `libcasm.configuration` for constructing irreducible representations for a k-point.
+- Added `make_unique_kpoint_irreps` to `libcasm.configuration` for constructing a symmetry-adapted DoF space for a supercell using k-point irreps.
 - Added `libcasm.group.sqlite_cache.UserCache` for caching results in a user-level SQLite database (``~/.config/casm/sqlite_cache/``).
 - Added `make_dof_space_symmetry` function to `libcasm.configuration` for constructing the matrix representation and corresponding `SymGroup` for a `DoFSpace`.
 - Added `make_symgroup` function to `libcasm.configuration` for constructing a `SymGroup` from a list of `SupercellSymOp`.
