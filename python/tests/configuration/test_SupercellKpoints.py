@@ -146,7 +146,7 @@ class TestBCC2x2x2Disp:
 
     def test_axis_irrep_info(self, sc_kpts, sc_dof):
         """Each axis_irrep_info entry has valid orbit_index and kpoint_irreps_index."""
-        _, kpoint_irreps, axis_irrep_info = casmconfig.make_unique_kpoint_irreps(
+        kpoint_irreps, _, axis_irrep_info = casmconfig.make_unique_kpoint_irreps(
             supercell_kpoints=sc_kpts,
             supercell_dof=sc_dof,
         )
