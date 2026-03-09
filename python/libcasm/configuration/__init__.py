@@ -50,3 +50,12 @@ from ._misc import (
     make_canonical_order_parameters,
     pretty,
 )
+from ._ReciprocalSupercell import (
+    AxisIrrepInfo,
+    DiscreteFourierTransform,
+    ReciprocalSupercell,
+    SupercellKpoints,
+    make_bloch_basis,
+    make_kpoint_irreps,
+    make_unique_kpoint_irreps,
+)
