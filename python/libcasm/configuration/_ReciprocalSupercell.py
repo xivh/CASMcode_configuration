@@ -10,7 +10,6 @@ from libcasm.group import (
 from libcasm.irreps import IrrepDecomposition, IrrepInfo
 from libcasm.xtal import (
     UnitCellIndexConverter,
-    min_periodic_displacement,
 )
 
 from ._configuration import (
@@ -21,6 +20,18 @@ from ._configuration import (
     make_symgroup,
 )
 from ._misc import pretty
+
+
+def _get_verbosity_level(verbosity: Optional[str] = None) -> int:
+    if verbosity is None or verbosity == "none":
+        verbosity_level = 0
+    elif verbosity == "standard":
+        verbosity_level = 1
+    elif verbosity == "verbose":
+        verbosity_level = 2
+    else:
+        raise ValueError(f"Invalid verbosity option: {verbosity}")
+    return verbosity_level
 
 
 def _normalize_column(
@@ -98,6 +109,8 @@ class AxisIrrepInfo:
     ----------
     orbit_index: int
         Index of the k-point orbit this axis belongs to.
+    kpoint_index: int
+        Index of the k-point whose subspace this axis belongs to.
     kpoint_irreps_index: int
         Index into `kpoint_irreps` list of the irrep this axis belongs to.
     irrep_char_index: int
@@ -107,10 +120,12 @@ class AxisIrrepInfo:
     def __init__(
         self,
         orbit_index: int,
+        kpoint_index: int,
         kpoint_irreps_index: int,
         irrep_char_index: int,
     ):
         self.orbit_index = orbit_index
+        self.kpoint_index = kpoint_index
         self.kpoint_irreps_index = kpoint_irreps_index
         self.irrep_char_index = irrep_char_index
 
@@ -123,7 +138,8 @@ def _get_irrep_char_index(
 ) -> int:
     """Helper to get a unique index for all irreps with the same characters."""
     found_index = -1
-    for _i, _irrep in enumerate(kpoint_irreps):
+    for _i, _axis_info in enumerate(axis_irrep_info):
+        _irrep = kpoint_irreps[_axis_info.kpoint_irreps_index]
         if len(_irrep.characters) != len(irrep.characters):
             continue
         if np.allclose(
@@ -131,7 +147,7 @@ def _get_irrep_char_index(
             irrep.characters,
             atol=1e-8,
         ):
-            found_index = axis_irrep_info[_i].irrep_char_index
+            found_index = _axis_info.irrep_char_index
             break
     if found_index == -1:
         irrep_char_index = next_irrep_char_index
@@ -268,8 +284,27 @@ class SupercellKpoints:
         because the real-valued plane wave basis for k and −k spans the same subspace.
         """
 
+        self._S_recip_inv = None
+        """np.ndarray: Inverse of the reciprocal superlattice column vector matrix,
+        with shape (3, 3).
+
+        Used to invert a Cartesian k-point back to integer coordinates.
+        """
+
+        self._kpoint_permutations = None
+        """np.ndarray: Permutation arrays for each supercell factor group element,
+        with shape (n_sc_fg, n_kpts).
+
+        ``_kpoint_permutations[sc_fg_idx, k]`` gives the index of the k-point that
+        k-point ``k`` maps to under the point-group matrix of supercell factor group
+        element ``sc_fg_idx``, where ``sc_fg_idx`` is the value returned by
+        ``SupercellSymOp.supercell_factor_group_index()``. Built by
+        :func:`_build_kpoint_permutations`.
+        """
+
         # build data
         self._build_kpoints()
+        self._build_kpoint_permutations()
         self._build_kpoint_orbits()
         self._build_little_groups()
 
@@ -297,50 +332,57 @@ class SupercellKpoints:
         # Compute k-points by applying S_recip to the integer index columns
         self.coordinates = pretty(S_recip @ self.indices)
 
+        # Precompute inverse for O(1) k-point lookup
+        self._S_recip_inv = np.linalg.inv(S_recip)
+
         # For each k-point, find the index of its negative (mod primitive reciprocal
         # lattice), or None if not found
         n_kpts = self.coordinates.shape[1]
         neg_kpoint_index = []
         for i in range(n_kpts):
             idx = self._get_kpoint_index(-self.coordinates[:, i])
-            neg_kpoint_index.append(idx if idx != -1 else None)
+            neg_kpoint_index.append(idx if idx != i else None)
         self.neg_kpoint_index = neg_kpoint_index
         return
 
-    def _get_kpoint_index(self, kpt: np.array) -> int:
-        """Find index of equivalent kpt in self.coordinates."""
-        for i in range(self.coordinates.shape[1]):
-            d = min_periodic_displacement(
-                lattice=self.reciprocal_prim_lattice,
-                r1=kpt,
-                r2=self.coordinates[:, i],
-            )
-            if np.linalg.norm(d) < self.tol:
-                return i
-        return -1
+    def _get_kpoint_index(self, kpt: np.ndarray) -> int:
+        """Find column index of equivalent k-point in self.coordinates."""
+        idx_float = self._S_recip_inv @ kpt
+        idx_int = np.round(idx_float).astype(int)
+        return int(self.index_converter.linear_unitcell_index(idx_int))
+
+    def _build_kpoint_permutations(self):
+        """Build permutation arrays for each unique factor group element.
+
+        For each supercell factor group element (indexed by
+        supercell_factor_group_index), precomputes the permutation of k-point indices.
+        """
+        n_kpts = self.coordinates.shape[1]
+        elements = self.supercell.factor_group.elements
+        n_sc_fg = len(elements)
+        self._kpoint_permutations = np.empty((n_sc_fg, n_kpts), dtype=int)
+        for sc_fg_idx, op in enumerate(elements):
+            matrix = op.matrix()
+            for k in range(n_kpts):
+                self._kpoint_permutations[sc_fg_idx, k] = self._get_kpoint_index(
+                    matrix @ self.coordinates[:, k]
+                )
 
     def _build_kpoint_orbits(self):
         """Populate self.orbits using symmetry operations of the supercell."""
         if self.coordinates is None:
             raise RuntimeError("coordinates must be built before computing orbits")
 
-        found = [False] * self.coordinates.shape[1]
+        n_kpts = self.coordinates.shape[1]
+        found = [False] * n_kpts
         kpoint_orbits = []
-        elements = self.supercell.factor_group.elements
-        for i in range(self.coordinates.shape[1]):
+        for i in range(n_kpts):
             if found[i]:
                 continue
-            kpt = self.coordinates[:, i]
             orbit = [i]
             found[i] = True
-            for op in elements:
-                matrix = op.matrix()
-                kpt_transformed = matrix @ kpt
-                kpt_index = self._get_kpoint_index(kpt_transformed)
-                if kpt_index == -1:
-                    raise ValueError(
-                        "Transformed k-point not found in list of k-points"
-                    )
+            for perm in self._kpoint_permutations:
+                kpt_index = int(perm[i])
                 if not found[kpt_index]:
                     orbit.append(kpt_index)
                     found[kpt_index] = True
@@ -374,27 +416,20 @@ class SupercellKpoints:
         end = SupercellSymOp.end(self.supercell)
         while it != end:
             op = it.copy()
-            matrix = op.to_symop().matrix()
+            sc_fg_idx = op.supercell_factor_group_index()
+            perm = self._kpoint_permutations[sc_fg_idx]
             is_factor_group_op = op.translation_index() == 0
 
-            # Compute transformed k-point index for each initial k-point index
-            kpt_transformed_indices = []
+            # Use precomputed permutation to find little group members
             for kpt_index_init in range(n_kpts):
-                kpt = self.coordinates[:, kpt_index_init]
-                kpt_index_final = self._get_kpoint_index(matrix @ kpt)
-                if kpt_index_final == -1:
-                    raise ValueError(
-                        "Transformed k-point not found in list of k-points"
-                    )
-                kpt_transformed_indices.append(kpt_index_final)
-                if kpt_index_final == kpt_index_init:
+                if perm[kpt_index_init] == kpt_index_init:
                     little_groups[kpt_index_init].append(op)
 
             # Use factor group ops to build equivalence_map (maps prototype k-point
             # in each orbit to each other k-point in the orbit)
             if is_factor_group_op:
                 for i_orbit, proto_idx in enumerate(prototype_indices):
-                    dest_idx = kpt_transformed_indices[proto_idx]
+                    dest_idx = perm[proto_idx]
                     j_dest = position_in_orbit.get(dest_idx)
                     if j_dest is not None and equivalence_map[i_orbit][j_dest] is None:
                         equivalence_map[i_orbit][j_dest] = op
@@ -1124,7 +1159,7 @@ def make_kpoint_irreps(
     supercell_dof: SupercellDoF,
     kpoint_index: int,
     symmetrization: str = "complete",
-    verbosity: str = None,
+    verbosity: Optional[str] = None,
 ):
     """Make irreducible representations for a set of k-points
 
@@ -1154,6 +1189,18 @@ def make_kpoint_irreps(
         The `irrep_decomposition` is constructed from the matrix representation
         acting on the basis of this DoF space.
     """
+    verbosity_level = _get_verbosity_level(verbosity)
+
+    if verbosity_level > 0:
+        print(
+            "Constructing irreps for k-point index "
+            f"{kpoint_index} with symmetrization method '{symmetrization}'...",
+            flush=True,
+        )
+        print(
+            "Constructing plane wave basis...",
+            flush=True,
+        )
 
     # Make DoF space with plane wave basis
     basis = make_plane_wave_basis(
@@ -1170,18 +1217,39 @@ def make_kpoint_irreps(
         basis=basis,
     )
 
+    if verbosity_level > 0:
+        print(
+            "Constructing matrix representation for the little group of the k-point...",
+            flush=True,
+        )
+
     matrix_rep = make_dof_space_rep(
         group=supercell_kpoints.little_groups[kpoint_index],
-        dof_space=supercell_dof.dof_space,
+        dof_space=dof_space,
     )
     if symmetrization == "none":
+        if verbosity_level > 0:
+            print(
+                "No symmetrization selected; skipping subgroup orbit construction.",
+                flush=True,
+            )
         subgroup_orbits = None
     elif symmetrization == "fast":
+        if verbosity_level > 0:
+            print(
+                "Constructing cyclic subgroup orbits for fast symmetrization...",
+                flush=True,
+            )
         symgroup = make_symgroup(supercell_kpoints.little_groups[kpoint_index])
         subgroup_orbits = get_cyclic_subgroup_orbits(
             symgroup=symgroup,
         )
     elif symmetrization == "complete":
+        if verbosity_level > 0:
+            print(
+                "Constructing all subgroup orbits for complete symmetrization...",
+                flush=True,
+            )
         symgroup = make_symgroup(supercell_kpoints.little_groups[kpoint_index])
         subgroup_orbits = get_all_subgroup_orbits(
             symgroup=symgroup,
@@ -1189,13 +1257,37 @@ def make_kpoint_irreps(
     else:
         raise ValueError(f"Invalid symmetrization option: {symmetrization}")
 
+    if verbosity_level > 0:
+        print(
+            f"Plane wave basis shape={basis.shape}, "
+            f"Matrix rep size={len(matrix_rep)}, "
+            f"Matrix rep element shape={matrix_rep[0].shape}",
+            flush=True,
+        )
+        print(
+            "Performing irrep decomposition...",
+            flush=True,
+        )
+    # matrix_rep acts in the d-dimensional plane wave subspace;
+    # init_subspace defaults to identity in that d-dimensional space.
     irrep_decomposition = IrrepDecomposition(
         matrix_rep=matrix_rep,
-        init_subspace=basis,
         allow_complex=False,
         subgroup_orbits=subgroup_orbits,
         verbosity=verbosity,
     )
+    if verbosity_level > 0:
+        print(
+            f"Constructed {len(irrep_decomposition.irreps)} irreps for k-point index "
+            f"{kpoint_index}.",
+            flush=True,
+        )
+        B_sub = irrep_decomposition.symmetry_adapted_subspace
+        print(
+            f"Symmetry-adapted subspace shape (plane wave coords): {B_sub.shape}",
+            flush=True,
+        )
+        print()
 
     return (irrep_decomposition, dof_space)
 
@@ -1204,6 +1296,7 @@ def make_unique_kpoint_irreps(
     supercell_kpoints: SupercellKpoints,
     supercell_dof: SupercellDoF,
     symmetrization: str = "complete",
+    verbosity: Optional[str] = None,
 ) -> DoFSpace:
     """Make a symmetry-adapted DoF space for the entire supercell for a
     particular degree of freedom type.
@@ -1231,6 +1324,9 @@ def make_unique_kpoint_irreps(
         :class:`libcasm.irreps.IrrepDecomposition` for details. Note that a "complete"
         symmetrization in this case is only for the subspace associated with a single
         k-point and not an orbit of k-points.
+    verbosity: Optional[str] = None
+        The verbosity level for logging the irrep decomposition. Options are None,
+        "none", "standard", and "verbose".
 
     Returns
     -------
@@ -1242,6 +1338,7 @@ def make_unique_kpoint_irreps(
     axis_irrep_info: list[AxisIrrepInfo]
         Information about each axis in the final symmetry-adapted basis.
     """
+    verbosity_level = _get_verbosity_level(verbosity)
 
     # Get the full DoF space for the supercell
     full_dof_space = supercell_dof.dof_space
@@ -1264,6 +1361,13 @@ def make_unique_kpoint_irreps(
     # k-point in the orbit, then use the equivalence map to extend the
     # symmetry-adapted basis to the other k-points in the orbit.
     for i_orbit, orbit in enumerate(supercell_kpoints.orbits):
+        if verbosity_level > 0:
+            print(
+                "Processing k-point orbit "
+                f"{i_orbit + 1}/{len(supercell_kpoints.orbits)}...",
+                flush=True,
+            )
+
         # Get irreps for first k-point in orbit
         kpoint_index = orbit[0]
         irrep_decomp, dof_space = make_kpoint_irreps(
@@ -1271,9 +1375,12 @@ def make_unique_kpoint_irreps(
             supercell_dof=supercell_dof,
             kpoint_index=kpoint_index,
             symmetrization=symmetrization,
+            verbosity=verbosity,
         )
 
-        B = irrep_decomp.symmetry_adapted_subspace
+        # symmetry_adapted_subspace is in plane wave subspace coordinates (d-dim);
+        # project back to the full DoF space (768-dim) via the plane wave basis.
+        B = dof_space.basis @ irrep_decomp.symmetry_adapted_subspace
         B = pretty(B)
 
         # Matrix reps for independent orbit members (skipping −k partners)
@@ -1305,8 +1412,11 @@ def make_unique_kpoint_irreps(
                     "columns are not orthonormal."
                 )
             orbit_cols = [kpoint_adapted_basis]
-            for D in equivalence_map_reps[1:]:
-                transformed = D @ kpoint_adapted_basis
+            orbit_cols_kpoint_index = [kpoint_index] * d
+            for j, D in enumerate(equivalence_map_reps):
+                if j == 0:
+                    continue
+                transformed = pretty(D @ kpoint_adapted_basis)
                 # Sanity check: transformed subspace should be orthogonal to prototype
                 overlap = kpoint_adapted_basis.T @ transformed
                 if not np.allclose(overlap, np.zeros_like(overlap), atol=1e-8):
@@ -1315,10 +1425,9 @@ def make_unique_kpoint_irreps(
                         "transformed subspace is not orthogonal to prototype subspace."
                     )
                 orbit_cols.append(transformed)
+                transformed_kpoint_index = orbit[independent_indices[j]]
+                orbit_cols_kpoint_index.extend([transformed_kpoint_index] * d)
             orbit_adapted_basis = np.hstack(orbit_cols)
-            # q, r = np.linalg.qr(orbit_adapted_basis)
-            # rank = np.linalg.matrix_rank(r)
-            # orbit_adapted_basis = pretty(q[:, :rank])
 
             orbit_adapted_bases.append(orbit_adapted_basis)
 
@@ -1331,10 +1440,17 @@ def make_unique_kpoint_irreps(
             )
 
             # Store axis irrep info
-            for _ in range(orbit_adapted_basis.shape[1]):
+            for j in range(orbit_adapted_basis.shape[1]):
+                kpt = orbit_cols_kpoint_index[j]
+                neg_kpt = supercell_kpoints.neg_kpoint_index[kpt]
+                if neg_kpt is None:
+                    x = [kpt]
+                else:
+                    x = sorted([kpt, neg_kpt])
                 axis_irrep_info.append(
                     AxisIrrepInfo(
                         orbit_index=i_orbit,
+                        kpoint_index=x,
                         kpoint_irreps_index=len(kpoint_irreps),
                         irrep_char_index=irrep_char_index,
                     )
@@ -1355,9 +1471,6 @@ def make_unique_kpoint_irreps(
                 "orthogonal to previously accumulated symmetry-adapted basis."
             )
         symmetry_adapted_basis = np.hstack([symmetry_adapted_basis, basis])
-    # q, r = np.linalg.qr(symmetry_adapted_basis)
-    # rank = np.linalg.matrix_rank(r)
-    # symmetry_adapted_basis = pretty(q[:, :rank])
 
     dof_space = DoFSpace(
         dof_key=supercell_dof.dof_key,
@@ -1370,7 +1483,3 @@ def make_unique_kpoint_irreps(
         dof_space,
         axis_irrep_info,
     )
-
-
-# Backward-compatible alias
-ReciprocalSupercell = SupercellKpoints

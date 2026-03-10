@@ -53,7 +53,6 @@ from ._misc import (
 from ._ReciprocalSupercell import (
     AxisIrrepInfo,
     DiscreteFourierTransform,
-    ReciprocalSupercell,
     SupercellDoF,
     SupercellKpoints,
     make_kpoint_irreps,

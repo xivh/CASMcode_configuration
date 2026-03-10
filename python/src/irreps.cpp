@@ -17,6 +17,7 @@
 #include "casm/configuration/irreps/VectorSpaceSymReport.hh"
 #include "casm/configuration/irreps/io/json/IrrepDecomposition_json_io.hh"
 #include "casm/configuration/irreps/io/json/VectorSpaceSymReport_json_io.hh"
+#include "casm/global/pybind11_helpers.hh"
 #include "casm/misc/CASM_Eigen_math.hh"
 #include "pybind11_json/pybind11_json.hpp"
 
@@ -162,10 +163,12 @@ irreps::IrrepDecomposition make_IrrepDecomposition(
         commuter_method + "\"");
   }
 
-  irreps::SolveByDisjointVariableSetsFlag flag;
-  return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
-                                    subgroup_orbits, class_indices,
-                                    allow_complex, log, flag, 1e-5, method);
+  return run_with_sigint_handler([&]() -> irreps::IrrepDecomposition {
+    irreps::SolveByDisjointVariableSetsFlag flag;
+    return irreps::IrrepDecomposition(matrix_rep, *head_group, *init_subspace,
+                                      subgroup_orbits, class_indices,
+                                      allow_complex, log, flag, 1e-5, method);
+  });
 }
 
 }  // namespace CASMpy

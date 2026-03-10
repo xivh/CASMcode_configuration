@@ -818,49 +818,160 @@ std::vector<Eigen::MatrixXd> make_local_dof_matrix_rep(
 
 namespace {
 
+/// \brief Like make_local_dof_matrix_rep, but projects each matrix immediately
+///     via `basis_inv * M * basis` to avoid storing all full-space matrices
+///     simultaneously.
+///
+/// Peak memory is O(one full-space matrix per thread) rather than
+/// O(group.size() full-space matrices).
+std::vector<Eigen::MatrixXd> make_projected_local_dof_matrix_rep(
+    std::vector<config::SupercellSymOp> const &group, DoFKey const &key,
+    std::set<Index> const &site_indices,
+    std::shared_ptr<config::SymGroup const> &symgroup, bool make_symgroup_flag,
+    Eigen::MatrixXd const &basis, Eigen::MatrixXd const &basis_inv) {
+  if (group.size() == 0) {
+    throw std::runtime_error(
+        "Error in make_projected_local_dof_matrix_rep: group has size==0.");
+  }
+
+  config::Supercell const &supercell = *group.begin()->supercell();
+  config::Prim const &prim = *supercell.prim;
+  xtal::Lattice const &prim_lattice = prim.basicstructure->lattice();
+  double xtal_tol = prim_lattice.tol();
+
+  sym_info::LocalDoFSymGroupRep const &local_dof_symgroup_rep =
+      prim.sym_info.local_dof_symgroup_rep.at(key);
+  if (local_dof_symgroup_rep.size() == 0) {
+    throw std::runtime_error(
+        "Error in make_projected_local_dof_matrix_rep: DoF symgroup rep has "
+        "size==0.");
+  }
+
+  std::map<Index, Index> site_index_to_basis_index;
+  Index total_dim = 0;
+  for (Index site_index : site_indices) {
+    Index b = supercell.unitcellcoord_index_converter(site_index).sublattice();
+    Index site_dof_dim = local_dof_symgroup_rep.at(0).at(b).cols();
+    site_index_to_basis_index[site_index] = total_dim;
+    total_dim += site_dof_dim;
+  }
+
+  Index n = static_cast<Index>(group.size());
+  std::vector<Eigen::MatrixXd> result(n);
+  std::vector<xtal::SymOp> element;
+  if (make_symgroup_flag) {
+    element.resize(n, xtal::SymOp::identity());
+  }
+
+  auto worker = [&](Index start, Index end, Index thread_id) {
+    // One full-space temporary per thread — not stored after projection
+    Eigen::MatrixXd trep(total_dim, total_dim);
+    Eigen::MatrixXd temp;
+    for (Index i = start; i < end; ++i) {
+      config::SupercellSymOp const &supercell_symop = group[i];
+      trep.setZero();
+      for (Index site_index : site_indices) {
+        Index to_site_index = site_index;
+        Index row = site_index_to_basis_index.find(to_site_index)->second;
+
+        Index from_site_index = supercell_symop.permute_index(site_index);
+        auto col_it = site_index_to_basis_index.find(from_site_index);
+        if (col_it == site_index_to_basis_index.end()) {
+          throw std::runtime_error(
+              "Error in make_projected_local_dof_matrix_rep: Input group "
+              "includes permutations between selected and unselected sites.");
+        }
+        Index col = col_it->second;
+
+        Index from_site_b =
+            supercell.unitcellcoord_index_converter(from_site_index)
+                .sublattice();
+        Index prim_factor_group_index =
+            supercell_symop.prim_factor_group_index();
+        Eigen::MatrixXd const &U =
+            local_dof_symgroup_rep.at(prim_factor_group_index).at(from_site_b);
+        trep.block(row, col, U.rows(), U.cols()) = U;
+      }
+      // Project to subspace immediately; trep is reused next iteration
+      temp.noalias() = trep * basis;
+      result[i].noalias() = basis_inv * temp;
+
+      if (make_symgroup_flag) {
+        element[i] = supercell_symop.to_symop();
+      }
+    }
+  };
+
+  threaded_run(n, worker);
+
+  if (make_symgroup_flag) {
+    std::multiplies<xtal::SymOp> multiply_f;
+    xtal::SymOpPeriodicCompare_f equal_to_f(
+        supercell.superlattice.superlattice(), xtal_tol);
+    symgroup = std::make_shared<config::SymGroup const>(
+        group::make_group(element, multiply_f, equal_to_f));
+  }
+
+  return result;
+}
+
 /// \brief Implementation for make_dof_space_rep and make_dof_space_symmetry
 std::pair<std::vector<Eigen::MatrixXd>, std::shared_ptr<config::SymGroup const>>
 make_dof_space_rep_impl(std::vector<config::SupercellSymOp> const &group,
                         clexulator::DoFSpace const &dof_space,
                         bool make_symgroup) {
   std::shared_ptr<config::SymGroup const> symgroup;
-  std::vector<Eigen::MatrixXd> fullspace_rep;
+
+  Eigen::MatrixXd const &basis = dof_space.basis;
+  double tol = 1e-10;
+  bool project = !basis.isIdentity(tol);
+
   if (dof_space.is_global) {
-    fullspace_rep = config::make_global_dof_matrix_rep(group, dof_space.dof_key,
-                                                       symgroup, make_symgroup);
+    // Global DoF matrices are small (e.g. 6×6 for strain), build all at once
+    std::vector<Eigen::MatrixXd> fullspace_rep =
+        config::make_global_dof_matrix_rep(group, dof_space.dof_key, symgroup,
+                                           make_symgroup);
+    if (!project) {
+      return std::make_pair(std::move(fullspace_rep), symgroup);
+    }
+    Eigen::MatrixXd const &basis_inv = dof_space.basis_inv;
+    Index const n = static_cast<Index>(fullspace_rep.size());
+    std::vector<Eigen::MatrixXd> dof_space_rep(n);
+    auto worker = [&fullspace_rep, &dof_space_rep, &basis_inv, &basis](
+                      Index start, Index end, Index thread_id) {
+      Eigen::MatrixXd temp;
+      for (Index i = start; i < end; ++i) {
+        temp.noalias() = fullspace_rep[i] * basis;
+        dof_space_rep[i].noalias() = basis_inv * temp;
+      }
+    };
+    threaded_run(n, worker);
+    return std::make_pair(std::move(dof_space_rep), symgroup);
+
   } else {
     if (!dof_space.sites.has_value()) {
       throw std::runtime_error(
           "Error in make_dof_space_rep with local DoF: no DoFSpace sites");
     }
-    fullspace_rep = config::make_local_dof_matrix_rep(
-        group, dof_space.dof_key, *dof_space.sites, symgroup, make_symgroup);
-  }
 
-  Eigen::MatrixXd const &basis = dof_space.basis;
-  double tol = 1e-10;
-  if (basis.isIdentity(tol)) {
-    return std::make_pair(fullspace_rep, symgroup);
-  }
-
-  // Multithreaded transformation: pre-size and assign disjoint elements
-  Index const n = static_cast<Index>(fullspace_rep.size());
-  std::vector<Eigen::MatrixXd> dof_space_rep(n);
-
-  Eigen::MatrixXd const &basis_inv = dof_space.basis_inv;
-
-  auto worker = [&fullspace_rep, &dof_space_rep, &basis_inv, &basis](
-                    Index start, Index end, Index thread_id) {
-    Eigen::MatrixXd temp;
-    for (Index i = start; i < end; ++i) {
-      temp.noalias() = fullspace_rep[i] * basis;
-      dof_space_rep[i].noalias() = basis_inv * temp;
+    if (!project) {
+      // Identity basis: return full-space rep directly
+      std::vector<Eigen::MatrixXd> fullspace_rep =
+          config::make_local_dof_matrix_rep(group, dof_space.dof_key,
+                                            *dof_space.sites, symgroup,
+                                            make_symgroup);
+      return std::make_pair(std::move(fullspace_rep), symgroup);
+    } else {
+      // Non-identity basis: build and project one matrix at a time to avoid
+      // storing all N full-space matrices simultaneously (peak memory
+      // reduction from O(N * dim^2) to O(threads * dim^2)).
+      std::vector<Eigen::MatrixXd> dof_space_rep =
+          make_projected_local_dof_matrix_rep(
+              group, dof_space.dof_key, *dof_space.sites, symgroup,
+              make_symgroup, basis, dof_space.basis_inv);
+      return std::make_pair(std::move(dof_space_rep), symgroup);
     }
-  };
-
-  threaded_run(n, worker);
-
-  return std::make_pair(dof_space_rep, symgroup);
+  }
 }
 
 }  // namespace

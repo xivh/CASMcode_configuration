@@ -1,8 +1,37 @@
+import shutil
+
+import pytest
+
 import libcasm.configuration as casmconfig
 import libcasm.group as casmgroup
 import libcasm.xtal.prims as xtal_prims
 from libcasm.group._get_subgroup_orbits import get_all_subgroup_orbits
-from libcasm.group.sqlite_cache import LocalCache, UserCache
+from libcasm.group.sqlite_cache import LocalCache, UserCache, get_casm_config_dir
+
+_TOUCHED_CACHES = ["_test_cache", "subgroup_orbits"]
+
+
+@pytest.fixture(autouse=True, scope="session")
+def backup_user_caches():
+    """Back up UserCache databases before the test session and restore afterward,
+    so running tests does not destroy real cached data."""
+    cache_dir = get_casm_config_dir() / "sqlite_cache"
+    backups = {}
+    for name in _TOUCHED_CACHES:
+        db = cache_dir / f"{name}.db"
+        if db.exists():
+            bak = db.with_suffix(".db.bak")
+            shutil.copy2(db, bak)
+            backups[db] = bak
+    yield
+    for db, bak in backups.items():
+        shutil.copy2(bak, db)
+        bak.unlink()
+    # Remove any db files created by the tests that did not exist before
+    for name in _TOUCHED_CACHES:
+        db = cache_dir / f"{name}.db"
+        if db not in backups and db.exists():
+            db.unlink()
 
 
 def _fcc_factor_group():

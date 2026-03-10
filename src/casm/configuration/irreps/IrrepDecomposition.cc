@@ -722,25 +722,35 @@ IrrepDecomposition::IrrepDecomposition(
 std::set<std::set<Index>> make_disjoint_variable_sets(
     MatrixRep const &fullspace_rep, GroupIndices const &head_group,
     double zero_tol) {
+  Index n = fullspace_rep[0].rows();
   std::set<std::set<Index>> disjoint_variable_sets;
-  std::vector<bool> variable_included(fullspace_rep[0].rows(), false);
-  for (Index i_x = 0; i_x < fullspace_rep[0].rows(); ++i_x) {
+  std::vector<bool> variable_included(n, false);
+  for (Index i_x = 0; i_x < n; ++i_x) {
     if (variable_included[i_x]) {
       continue;
     }
 
+    // BFS to find all columns transitively connected to i_x
     std::set<Index> variable_set;
+    std::vector<Index> queue;
     variable_set.insert(i_x);
     variable_included[i_x] = true;
-    for (Index j_x = 0; j_x < fullspace_rep[0].rows(); ++j_x) {
-      if (variable_included[j_x]) {
-        continue;
-      }
-      for (Index i_g : head_group) {
-        if (!almost_zero(fullspace_rep[i_g](j_x, i_x), zero_tol)) {
-          variable_set.insert(j_x);
-          variable_included[j_x] = true;
-          break;
+    queue.push_back(i_x);
+
+    while (!queue.empty()) {
+      Index k_x = queue.back();
+      queue.pop_back();
+      for (Index j_x = 0; j_x < n; ++j_x) {
+        if (variable_included[j_x]) {
+          continue;
+        }
+        for (Index i_g : head_group) {
+          if (!almost_zero(fullspace_rep[i_g](j_x, k_x), zero_tol)) {
+            variable_set.insert(j_x);
+            variable_included[j_x] = true;
+            queue.push_back(j_x);
+            break;
+          }
         }
       }
     }
@@ -830,6 +840,17 @@ IrrepDecomposition::IrrepDecomposition(
   std::set<std::set<Index>> disjoint_column_sets =
       make_disjoint_variable_sets(subspace_rep, head_group, zero_tol);
 
+  if (log.has_value()) {
+    Index i_variable_set = 1;
+    for (const auto &column_set : disjoint_column_sets) {
+      // Log column set
+      log->indent() << "Column set " << i_variable_set << " : "
+                    << SetPrinter(column_set) << std::endl;
+      ++i_variable_set;
+    }
+    log->indent() << std::endl;
+  }
+
   /// Find irreps for the projection of the initial subspace onto each
   /// variable set subspace
   Index i_variable_set = 1;
@@ -907,7 +928,8 @@ IrrepDecomposition::IrrepDecomposition(
 
   if (finished_subspace.cols() > finished_subspace.rows()) {
     throw std::runtime_error(
-        "Error in IrrepDecomposition: finished_subspace has more columns than "
+        "Error in IrrepDecomposition: finished_subspace has more columns "
+        "than "
         "rows for unknown reason.");
   }
   incomplete_subspace = make_kernel(finished_subspace);
