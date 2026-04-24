@@ -254,7 +254,7 @@ class OccInitCounter : public SingleStepBase<OccEventCounterData> {
   /// \brief Check if initial occupation satisifies
   ///     required occupation (required_occ_init)
   bool fails_required_occ_init() const {
-    if (!data()->params.required_init_atom_count.has_value()) {
+    if (!data()->params.required_occ_init.has_value()) {
       return false;
     }
     std::vector<int> const &occ_init = data()->occ_init_counter();
