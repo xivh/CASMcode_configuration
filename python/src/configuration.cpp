@@ -25,6 +25,7 @@
 #include "casm/configuration/dof_space_analysis.hh"
 #include "casm/configuration/io/json/Configuration_json_io.hh"
 #include "casm/configuration/io/json/Supercell_json_io.hh"
+#include "casm/configuration/supercell_name.hh"
 #include "casm/configuration/io/json/analysis_json_io.hh"
 #include "casm/configuration/irreps/VectorSpaceSymReport.hh"
 #include "casm/configuration/make_simple_structure.hh"
@@ -1393,6 +1394,33 @@ PYBIND11_MODULE(_configuration, m) {
             The :class:`~libcasm.configuration.Supercell` constructed from the dict.
         )pbdoc",
           py::arg("data"), py::arg("supercells"))
+      .def(
+          "supercell_name",
+          [](std::shared_ptr<config::Supercell const> const &supercell) {
+            auto const &superlattice = supercell->superlattice;
+            return config::make_supercell_name(superlattice.prim_lattice(),
+                                               superlattice.superlattice());
+          },
+          R"pbdoc(
+          Returns the supercell name.
+
+          The name has the format ``SCELV_A_B_C_D_E_F``, where ``V`` is the
+          supercell volume and ``A_B_C_D_E_F`` are entries in the Hermite
+          normal form of the transformation matrix.
+
+          .. code-block::
+
+              H = [[A, F, E],
+                   [0, B, D],
+                   [0, 0, C]]
+
+              V = A * B * C
+
+          Returns
+          -------
+          supercell_name : str
+              The supercell name.
+          )pbdoc")
       .def(
           "to_dict",
           [](std::shared_ptr<config::Supercell const> const &supercell) {
