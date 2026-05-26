@@ -146,6 +146,29 @@ def test_ConfigurationSet_to_dict_2(FCC_binary_Hstrain_noshear_prim):
     assert len(configurations) == 1
 
 
+def test_ConfigurationSet_from_dict_duplicate_warning(simple_cubic_binary_prim):
+    """from_dict warns when the input dict has duplicate configurations."""
+    prim = config.Prim(simple_cubic_binary_prim)
+    supercell = config.make_canonical_supercell(
+        config.Supercell(prim, np.eye(3, dtype=int))
+    )
+    configuration = config.Configuration(supercell)
+
+    configurations = config.ConfigurationSet()
+    configurations.add(configuration)
+    data = configurations.to_dict()
+
+    # Inject a duplicate entry under a different configuration_id
+    scel_name = list(data["supercells"].keys())[0]
+    data["supercells"][scel_name]["1"] = data["supercells"][scel_name]["0"]
+
+    supercells = config.SupercellSet(prim)
+    with pytest.warns(UserWarning, match="from_dict"):
+        configurations_in = config.ConfigurationSet.from_dict(data, supercells)
+
+    assert len(configurations_in) == 1
+
+
 def test_ConfigurationRecord_repr(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
     configurations = config.ConfigurationSet()

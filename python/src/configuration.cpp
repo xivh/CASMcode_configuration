@@ -2404,7 +2404,28 @@ PYBIND11_MODULE(_configuration, m) {
             jsonParser json{data};
             std::shared_ptr<config::ConfigurationSet> configurations =
                 std::make_shared<config::ConfigurationSet>();
+
+            // Count config entries in the dict before loading
+            std::size_t n_entries = 0;
+            if (data.contains("supercells")) {
+              for (auto const &[scel_name, scel_data] :
+                   data["supercells"].items()) {
+                n_entries += scel_data.size();
+              }
+            }
+
             from_json(*supercells, *configurations, json, supercells->prim());
+
+            if (configurations->size() != n_entries) {
+              std::stringstream msg;
+              msg << "ConfigurationSet.from_dict: the input dict contained "
+                  << n_entries << " configurations, but only "
+                  << configurations->size()
+                  << " unique configurations were inserted "
+                  << "(duplicates were discarded).";
+              py::module_::import("warnings").attr("warn")(msg.str());
+            }
+
             return configurations;
           },
           R"pbdoc(
