@@ -783,6 +783,12 @@ PYBIND11_MODULE(_configuration, m) {
         configurations directly:
         ``configuration == record.configuration``. Comparing
         ``configuration == record`` will warn and return ``False``.
+      - To compare a :class:`~libcasm.configuration.ConfigurationWithProperties`
+        with a :class:`~libcasm.configuration.ConfigurationRecord`, compare the
+        configurations directly:
+        ``configuration_with_properties.configuration == record.configuration``.
+        Comparing ``configuration_with_properties == record`` will warn and
+        return ``False``.
 
    )pbdoc");
 
@@ -850,6 +856,12 @@ PYBIND11_MODULE(_configuration, m) {
         configurations directly:
         ``configuration == record.configuration``. Comparing
         ``configuration == record`` will warn and return ``False``.
+      - To compare a :class:`~libcasm.configuration.Configuration` with a
+        :class:`~libcasm.configuration.ConfigurationWithProperties`, compare
+        the configurations directly:
+        ``configuration == configuration_with_properties.configuration``.
+        Comparing ``configuration == configuration_with_properties`` will
+        warn and return ``False``.
 
 
       .. rubric:: Special Methods
@@ -915,6 +927,18 @@ PYBIND11_MODULE(_configuration, m) {
       - ConfigurationWithProperties may be copied with
         :func:`ConfigurationWithProperties.copy <libcasm.configuration.ConfigurationWithProperties.copy>`,
         `copy.copy`, or `copy.deepcopy`.
+      - To compare a :class:`~libcasm.configuration.Configuration` with a
+        :class:`~libcasm.configuration.ConfigurationWithProperties`, compare
+        the configurations directly:
+        ``configuration_with_properties.configuration == configuration``.
+        Comparing ``configuration == configuration_with_properties`` will
+        warn and return ``False``.
+      - To compare a :class:`~libcasm.configuration.ConfigurationRecord` with a
+        :class:`~libcasm.configuration.ConfigurationWithProperties`, compare
+        the configurations directly:
+        ``configuration_with_properties.configuration == record.configuration``.
+        Comparing ``record == configuration_with_properties`` will warn and
+        return ``False``.
 
     )pbdoc");
 
@@ -3305,6 +3329,30 @@ PYBIND11_MODULE(_configuration, m) {
           },
           py::arg("other"))
       .def(
+          "__eq__",
+          [](config::Configuration const &,
+             config::ConfigurationWithProperties const &) -> bool {
+            py::module_::import("warnings").attr("warn")(
+                "Comparing a Configuration with a ConfigurationWithProperties "
+                "directly. Did you mean to compare "
+                "configuration == "
+                "configuration_with_properties.configuration?");
+            return false;
+          },
+          py::arg("other"))
+      .def(
+          "__ne__",
+          [](config::Configuration const &,
+             config::ConfigurationWithProperties const &) -> bool {
+            py::module_::import("warnings").attr("warn")(
+                "Comparing a Configuration with a ConfigurationWithProperties "
+                "directly. Did you mean to compare "
+                "configuration != "
+                "configuration_with_properties.configuration?");
+            return true;
+          },
+          py::arg("other"))
+      .def(
           "copy",
           [](config::Configuration const &self) {
             return config::Configuration(self);
@@ -3589,6 +3637,54 @@ PYBIND11_MODULE(_configuration, m) {
           float: Scalar global property value.
           )pbdoc",
           py::arg("key"))
+      .def(
+          "__eq__",
+          [](config::ConfigurationWithProperties const &,
+             config::Configuration const &) -> bool {
+            py::module_::import("warnings").attr("warn")(
+                "Comparing a ConfigurationWithProperties with a "
+                "Configuration directly. Did you mean to compare "
+                "configuration_with_properties.configuration == "
+                "configuration?");
+            return false;
+          },
+          py::arg("other"))
+      .def(
+          "__ne__",
+          [](config::ConfigurationWithProperties const &,
+             config::Configuration const &) -> bool {
+            py::module_::import("warnings").attr("warn")(
+                "Comparing a ConfigurationWithProperties with a "
+                "Configuration directly. Did you mean to compare "
+                "configuration_with_properties.configuration != "
+                "configuration?");
+            return true;
+          },
+          py::arg("other"))
+      .def(
+          "__eq__",
+          [](config::ConfigurationWithProperties const &,
+             config::ConfigurationRecord const &) -> bool {
+            py::module_::import("warnings").attr("warn")(
+                "Comparing a ConfigurationWithProperties with a "
+                "ConfigurationRecord directly. Did you mean to compare "
+                "configuration_with_properties.configuration == "
+                "record.configuration?");
+            return false;
+          },
+          py::arg("other"))
+      .def(
+          "__ne__",
+          [](config::ConfigurationWithProperties const &,
+             config::ConfigurationRecord const &) -> bool {
+            py::module_::import("warnings").attr("warn")(
+                "Comparing a ConfigurationWithProperties with a "
+                "ConfigurationRecord directly. Did you mean to compare "
+                "configuration_with_properties.configuration != "
+                "record.configuration?");
+            return true;
+          },
+          py::arg("other"))
       .def(
           "copy",
           [](config::ConfigurationWithProperties const &self) {
