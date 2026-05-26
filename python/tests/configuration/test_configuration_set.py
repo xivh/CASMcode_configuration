@@ -201,6 +201,36 @@ def test_ConfigurationSet_add_record_overwrite_warning(simple_cubic_binary_prim)
     assert result.configuration == configuration_b
 
 
+def test_Configuration_ConfigurationRecord_comparison_warning(
+    simple_cubic_binary_prim,
+):
+    """Comparing a Configuration with a ConfigurationRecord warns."""
+    prim = config.Prim(simple_cubic_binary_prim)
+    supercell = config.make_canonical_supercell(
+        config.Supercell(prim, np.eye(3, dtype=int))
+    )
+    configuration = config.Configuration(supercell)
+
+    configurations = config.ConfigurationSet()
+    record = configurations.add(configuration)
+
+    with pytest.warns(UserWarning, match="ConfigurationRecord"):
+        result = configuration == record
+    assert result is False
+
+    with pytest.warns(UserWarning, match="ConfigurationRecord"):
+        result = record == configuration
+    assert result is False
+
+    with pytest.warns(UserWarning, match="ConfigurationRecord"):
+        result = configuration != record
+    assert result is True
+
+    with pytest.warns(UserWarning, match="ConfigurationRecord"):
+        result = record != configuration
+    assert result is True
+
+
 def test_ConfigurationRecord_repr(simple_cubic_binary_prim):
     prim = config.Prim(simple_cubic_binary_prim)
     configurations = config.ConfigurationSet()

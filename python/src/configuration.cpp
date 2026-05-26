@@ -769,7 +769,20 @@ PYBIND11_MODULE(_configuration, m) {
   // ConfigurationRecord -- declare class
   py::class_<config::ConfigurationRecord> pyConfigurationRecord(
       m, "ConfigurationRecord", R"pbdoc(
-     Entry in a :class:`~libcasm.configuration.ConfigurationSet`
+      Entry in a :class:`~libcasm.configuration.ConfigurationSet`
+
+      Notes
+      -----
+
+      - :class:`~libcasm.configuration.ConfigurationRecord` comparison
+        (``==``, ``!=``, ``<``, etc.) is based on DoF values only, ignoring
+        ``configuration_name``. This is equivalent to comparing
+        ``self.configuration == other.configuration``.
+      - To compare a :class:`~libcasm.configuration.Configuration` with a
+        :class:`~libcasm.configuration.ConfigurationRecord`, compare the
+        configurations directly:
+        ``configuration == record.configuration``. Comparing
+        ``configuration == record`` will warn and return ``False``.
 
    )pbdoc");
 
@@ -832,6 +845,11 @@ PYBIND11_MODULE(_configuration, m) {
       - Configuration may be copied with
         :func:`Configuration.copy <libcasm.configuration.Configuration.copy>`,
         `copy.copy`, or `copy.deepcopy`.
+      - To compare a :class:`~libcasm.configuration.Configuration` with a
+        :class:`~libcasm.configuration.ConfigurationRecord`, compare the
+        configurations directly:
+        ``configuration == record.configuration``. Comparing
+        ``configuration == record`` will warn and return ``False``.
 
 
       .. rubric:: Special Methods
@@ -3264,6 +3282,28 @@ PYBIND11_MODULE(_configuration, m) {
            "True if configurations are equal, or approximately equal up the "
            "lattice tolerance if there continuous DoF. Only configurations "
            "with the same prim can be compared.")
+      .def(
+          "__eq__",
+          [](config::Configuration const &,
+             config::ConfigurationRecord const &) -> bool {
+            py::module_::import("warnings").attr("warn")(
+                "Comparing a Configuration with a ConfigurationRecord "
+                "directly. Did you mean to compare "
+                "configuration == record.configuration?");
+            return false;
+          },
+          py::arg("other"))
+      .def(
+          "__ne__",
+          [](config::Configuration const &,
+             config::ConfigurationRecord const &) -> bool {
+            py::module_::import("warnings").attr("warn")(
+                "Comparing a Configuration with a ConfigurationRecord "
+                "directly. Did you mean to compare "
+                "configuration != record.configuration?");
+            return true;
+          },
+          py::arg("other"))
       .def(
           "copy",
           [](config::Configuration const &self) {
