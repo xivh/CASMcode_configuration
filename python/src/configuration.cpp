@@ -629,6 +629,19 @@ PYBIND11_MODULE(_configuration, m) {
                                                         R"pbdoc(
      Entry in a :class:`~libcasm.configuration.SupercellSet`
 
+     Notes
+     -----
+
+     - :class:`~libcasm.configuration.SupercellRecord` comparison
+       (``==``, ``!=``, ``<``, etc.) is based on supercell geometry only,
+       ignoring ``supercell_name``. This is equivalent to comparing
+       ``self.supercell == other.supercell``.
+     - To compare a :class:`~libcasm.configuration.Supercell` with a
+       :class:`~libcasm.configuration.SupercellRecord`, compare the
+       supercells directly:
+       ``supercell == record.supercell``. Comparing
+       ``supercell == record`` will warn and return ``False``.
+
    )pbdoc");
 
   // ConfigurationSet -- declare class
@@ -947,6 +960,15 @@ PYBIND11_MODULE(_configuration, m) {
       A data structure that stores the supercell transformation matrix and
       the symmetry representations needed for applying symmetry to
       :class:`~libcasm.configuration.Configuration` in that supercell.
+
+      Notes
+      -----
+
+      - To compare a :class:`~libcasm.configuration.Supercell` with a
+        :class:`~libcasm.configuration.SupercellRecord`, compare the
+        supercells directly:
+        ``supercell == record.supercell``. Comparing
+        ``supercell == record`` will warn and return ``False``.
 
       )pbdoc")
       .def(py::init(&make_supercell), py::arg("prim"),
@@ -1407,6 +1429,28 @@ PYBIND11_MODULE(_configuration, m) {
            ""
            "True if supercells are not equal. Only supercells with the same "
            "prim can be compared.")
+      .def(
+          "__eq__",
+          [](std::shared_ptr<config::Supercell const> const &,
+             config::SupercellRecord const &) -> bool {
+            py::module_::import("warnings")
+                .attr("warn")(
+                    "Comparing a Supercell with a SupercellRecord directly. "
+                    "Did you mean to compare supercell == record.supercell?");
+            return false;
+          },
+          py::arg("other"))
+      .def(
+          "__ne__",
+          [](std::shared_ptr<config::Supercell const> const &,
+             config::SupercellRecord const &) -> bool {
+            py::module_::import("warnings")
+                .attr("warn")(
+                    "Comparing a Supercell with a SupercellRecord directly. "
+                    "Did you mean to compare supercell != record.supercell?");
+            return true;
+          },
+          py::arg("other"))
       .def_static(
           "from_dict",
           [](const nlohmann::json &data,
@@ -1532,6 +1576,28 @@ PYBIND11_MODULE(_configuration, m) {
       .def(py::self >= py::self, "Sorts SupercellRecord.")
       .def(py::self == py::self, "Compare SupercellRecord.")
       .def(py::self != py::self, "Compare SupercellRecord.")
+      .def(
+          "__eq__",
+          [](config::SupercellRecord const &,
+             std::shared_ptr<config::Supercell const> const &) -> bool {
+            py::module_::import("warnings")
+                .attr("warn")(
+                    "Comparing a SupercellRecord with a Supercell directly. "
+                    "Did you mean to compare record.supercell == supercell?");
+            return false;
+          },
+          py::arg("other"))
+      .def(
+          "__ne__",
+          [](config::SupercellRecord const &,
+             std::shared_ptr<config::Supercell const> const &) -> bool {
+            py::module_::import("warnings")
+                .attr("warn")(
+                    "Comparing a SupercellRecord with a Supercell directly. "
+                    "Did you mean to compare record.supercell != supercell?");
+            return true;
+          },
+          py::arg("other"))
       .def(
           "copy",
           [](config::SupercellRecord const &self) {
