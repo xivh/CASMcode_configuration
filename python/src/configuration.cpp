@@ -2147,6 +2147,17 @@ PYBIND11_MODULE(_configuration, m) {
           [](config::ConfigurationSet &m,
              config::ConfigurationRecord const &record)
               -> config::ConfigurationRecord const & {
+            auto name_it = m.find_by_name(record.configuration_name);
+            if (name_it != m.end() &&
+                m.find(record.configuration) == m.end()) {
+              std::stringstream msg;
+              msg << "ConfigurationSet.add_record: a record with "
+                     "configuration_name '"
+                  << record.configuration_name
+                  << "' already exists with different DoF. Overwriting.";
+              py::module_::import("warnings").attr("warn")(msg.str());
+              m.erase_by_name(record.configuration_name);
+            }
             return *m.insert(record).first;
           },
           py::return_value_policy::reference_internal,
@@ -2171,6 +2182,17 @@ PYBIND11_MODULE(_configuration, m) {
           [](config::ConfigurationSet &m,
              config::ConfigurationRecord const &record)
               -> config::ConfigurationRecord const & {
+            auto name_it = m.find_by_name(record.configuration_name);
+            if (name_it != m.end() &&
+                m.find(record.configuration) == m.end()) {
+              std::stringstream msg;
+              msg << "ConfigurationSet.add_record: a record with "
+                     "configuration_name '"
+                  << record.configuration_name
+                  << "' already exists with different DoF. Overwriting.";
+              py::module_::import("warnings").attr("warn")(msg.str());
+              m.erase_by_name(record.configuration_name);
+            }
             return *m.insert(record).first;
           },
           py::return_value_policy::reference_internal,
